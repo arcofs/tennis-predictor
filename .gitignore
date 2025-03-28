@@ -1,3 +1,5 @@
 .venv
 /data/raw
 /data/cleaned/combined_matches.csv
+# Large data files
+data/cleaned/combined_matches.csv
