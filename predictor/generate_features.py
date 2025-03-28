@@ -1,6 +1,9 @@
 import os
 import sys
 import time
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from functools import partial
 
 # Check if running in Google Colab
 def is_colab() -> bool:
@@ -167,6 +170,51 @@ class PlayerStats(BaseModel):
         validate_assignment = True
         extra = "ignore"
 
+# Add parallel processing configuration
+NUM_CORES = multiprocessing.cpu_count()
+NUM_THREADS = max(1, NUM_CORES - 1)  # Leave one core free for system
+CHUNK_SIZE = 10000  # Size of chunks for parallel processing
+
+def parallel_process_chunk(chunk_df: pd.DataFrame, func: callable) -> pd.DataFrame:
+    """
+    Process a chunk of data in parallel.
+    
+    Args:
+        chunk_df: DataFrame chunk to process
+        func: Function to apply to the chunk
+        
+    Returns:
+        Processed DataFrame chunk
+    """
+    return func(chunk_df)
+
+def parallel_process_dataframe(df: pd.DataFrame, func: callable, desc: str) -> pd.DataFrame:
+    """
+    Process DataFrame in parallel chunks.
+    
+    Args:
+        df: DataFrame to process
+        func: Function to apply to each chunk
+        desc: Description for progress bar
+        
+    Returns:
+        Processed DataFrame
+    """
+    # Split DataFrame into chunks
+    chunks = np.array_split(df, NUM_CORES)
+    
+    # Process chunks in parallel
+    with ProcessPoolExecutor(max_workers=NUM_CORES) as executor:
+        process_chunk = partial(parallel_process_chunk, func=func)
+        results = list(tqdm(
+            executor.map(process_chunk, chunks),
+            total=len(chunks),
+            desc=desc
+        ))
+    
+    # Combine results
+    return pd.concat(results, ignore_index=True)
+
 def load_data() -> pd.DataFrame:
     """
     Load the tennis match dataset with optimized dtypes.
@@ -273,12 +321,7 @@ def load_data() -> pd.DataFrame:
 def calculate_elo_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate Elo-based features including momentum and surface-specific ratings.
-    
-    Args:
-        df: DataFrame with match data
-        
-    Returns:
-        DataFrame with additional Elo features
+    Now with parallel processing and GPU acceleration.
     """
     print("Calculating Elo features...")
     
@@ -307,102 +350,141 @@ def calculate_elo_features(df: pd.DataFrame) -> pd.DataFrame:
         
         return winner_new, loser_new
     
-    # Calculate Elo changes and surface-specific ratings
-    elo_changes = []
-    surface_elo_changes = {
-        'Hard': [],
-        'Clay': [],
-        'Grass': []
-    }
-    
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Calculating Elo features"):
-        winner_id = row['winner_id']
-        loser_id = row['loser_id']
-        surface = row['surface']
+    # Process matches in parallel chunks
+    def process_chunk(chunk_df: pd.DataFrame) -> List[Dict]:
+        chunk_changes = []
+        chunk_surface_changes = {surface: [] for surface in surface_elos}
         
-        # Initialize Elo ratings if not exists
-        if winner_id not in player_elos:
-            player_elos[winner_id] = DEFAULT_ELO
-        if loser_id not in player_elos:
-            player_elos[loser_id] = DEFAULT_ELO
+        for idx, row in chunk_df.iterrows():
+            winner_id = row['winner_id']
+            loser_id = row['loser_id']
+            surface = row['surface']
             
-        # Initialize surface-specific Elo ratings
-        for s in surface_elos:
-            if winner_id not in surface_elos[s]:
-                surface_elos[s][winner_id] = DEFAULT_ELO
-            if loser_id not in surface_elos[s]:
-                surface_elos[s][loser_id] = DEFAULT_ELO
+            # Initialize Elo ratings if not exists
+            if winner_id not in player_elos:
+                player_elos[winner_id] = DEFAULT_ELO
+            if loser_id not in player_elos:
+                player_elos[loser_id] = DEFAULT_ELO
+                
+            # Initialize surface-specific Elo ratings
+            for s in surface_elos:
+                if winner_id not in surface_elos[s]:
+                    surface_elos[s][winner_id] = DEFAULT_ELO
+                if loser_id not in surface_elos[s]:
+                    surface_elos[s][loser_id] = DEFAULT_ELO
+            
+            # Store current Elo ratings
+            winner_elo = player_elos[winner_id]
+            loser_elo = player_elos[loser_id]
+            winner_surface_elo = surface_elos[surface][winner_id]
+            loser_surface_elo = surface_elos[surface][loser_id]
+            
+            # Update overall Elo ratings
+            winner_new, loser_new = update_elo(winner_elo, loser_elo, surface)
+            player_elos[winner_id] = winner_new
+            player_elos[loser_id] = loser_new
+            
+            # Update surface-specific Elo ratings
+            winner_surface_new, loser_surface_new = update_elo(winner_surface_elo, loser_surface_elo, surface)
+            surface_elos[surface][winner_id] = winner_surface_new
+            surface_elos[surface][loser_id] = loser_surface_new
+            
+            # Store changes
+            chunk_changes.append({
+                'match_id': idx,
+                'winner_id': winner_id,
+                'loser_id': loser_id,
+                'winner_elo_change': winner_new - winner_elo,
+                'loser_elo_change': loser_new - loser_elo
+            })
+            
+            chunk_surface_changes[surface].append({
+                'match_id': idx,
+                'winner_id': winner_id,
+                'loser_id': loser_id,
+                'winner_elo_change': winner_surface_new - winner_surface_elo,
+                'loser_elo_change': loser_surface_new - loser_surface_elo
+            })
         
-        # Store current Elo ratings
-        winner_elo = player_elos[winner_id]
-        loser_elo = player_elos[loser_id]
-        winner_surface_elo = surface_elos[surface][winner_id]
-        loser_surface_elo = surface_elos[surface][loser_id]
-        
-        # Update overall Elo ratings
-        winner_new, loser_new = update_elo(winner_elo, loser_elo, surface)
-        player_elos[winner_id] = winner_new
-        player_elos[loser_id] = loser_new
-        
-        # Update surface-specific Elo ratings
-        winner_surface_new, loser_surface_new = update_elo(winner_surface_elo, loser_surface_elo, surface)
-        surface_elos[surface][winner_id] = winner_surface_new
-        surface_elos[surface][loser_id] = loser_surface_new
-        
-        # Store Elo changes
-        elo_changes.append({
-            'match_id': idx,
-            'winner_id': winner_id,
-            'loser_id': loser_id,
-            'winner_elo_change': winner_new - winner_elo,
-            'loser_elo_change': loser_new - loser_elo
-        })
-        
-        # Store surface-specific Elo changes
-        surface_elo_changes[surface].append({
-            'match_id': idx,
-            'winner_id': winner_id,
-            'loser_id': loser_id,
-            'winner_elo_change': winner_surface_new - winner_surface_elo,
-            'loser_elo_change': loser_surface_new - loser_surface_elo
-        })
+        return chunk_changes, chunk_surface_changes
     
-    # Convert Elo changes to DataFrame
-    elo_changes_df = pd.DataFrame(elo_changes)
+    # Process chunks in parallel
+    chunks = np.array_split(df, NUM_CORES)
+    all_changes = []
+    all_surface_changes = {surface: [] for surface in surface_elos}
     
-    # Calculate rolling Elo changes and volatility
-    for player_type in ['winner', 'loser']:
-        # Calculate rolling Elo changes
-        df[f'{player_type}_elo_change_5'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
-            lambda x: x.rolling(window=5, min_periods=1).sum()
-        )
-        df[f'{player_type}_elo_change_10'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
-            lambda x: x.rolling(window=10, min_periods=1).sum()
-        )
-        df[f'{player_type}_elo_change_20'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
-            lambda x: x.rolling(window=20, min_periods=1).sum()
-        )
+    with ProcessPoolExecutor(max_workers=NUM_CORES) as executor:
+        results = list(tqdm(
+            executor.map(process_chunk, chunks),
+            total=len(chunks),
+            desc="Processing Elo chunks"
+        ))
         
-        # Calculate Elo volatility (standard deviation of changes)
-        df[f'{player_type}_elo_volatility'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
-            lambda x: x.rolling(window=20, min_periods=1).std()
-        )
+        # Combine results
+        for chunk_changes, chunk_surface_changes in results:
+            all_changes.extend(chunk_changes)
+            for surface in surface_elos:
+                all_surface_changes[surface].extend(chunk_surface_changes[surface])
+    
+    # Convert to DataFrame and calculate features using GPU if available
+    elo_changes_df = pd.DataFrame(all_changes)
+    
+    if USE_GPU:
+        # Use cuDF for GPU-accelerated calculations
+        elo_changes_gdf = cudf.DataFrame.from_pandas(elo_changes_df)
+        
+        # Calculate rolling features on GPU
+        for player_type in ['winner', 'loser']:
+            # Rolling Elo changes
+            for window in [5, 10, 20]:
+                df[f'{player_type}_elo_change_{window}'] = elo_changes_gdf.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+                    lambda x: x.rolling(window, min_periods=1).sum()
+                ).to_pandas()
+            
+            # Elo volatility
+            df[f'{player_type}_elo_volatility'] = elo_changes_gdf.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+                lambda x: x.rolling(20, min_periods=1).std()
+            ).to_pandas()
+    else:
+        # CPU calculations with parallel processing
+        for player_type in ['winner', 'loser']:
+            # Rolling Elo changes
+            for window in [5, 10, 20]:
+                df[f'{player_type}_elo_change_{window}'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+                    lambda x: x.rolling(window, min_periods=1).sum()
+                )
+            
+            # Elo volatility
+            df[f'{player_type}_elo_volatility'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+                lambda x: x.rolling(20, min_periods=1).std()
+            )
     
     # Calculate surface-specific Elo ratings and differences
     for surface in surface_elos:
-        surface_elo_changes_df = pd.DataFrame(surface_elo_changes[surface])
+        surface_elo_changes_df = pd.DataFrame(all_surface_changes[surface])
         
-        for player_type in ['winner', 'loser']:
-            # Calculate surface-specific Elo rating
-            df[f'{player_type}_elo_{surface.lower()}'] = df[f'{player_type}_id'].map(
-                surface_elos[surface]
-            )
+        if USE_GPU:
+            # Use GPU for surface-specific calculations
+            surface_elo_gdf = cudf.DataFrame.from_pandas(surface_elo_changes_df)
             
-            # Calculate difference between surface Elo and overall Elo
-            df[f'{player_type}_surface_elo_diff'] = (
-                df[f'{player_type}_elo_{surface.lower()}'] - 
-                df[f'{player_type}_elo']
-            )
+            for player_type in ['winner', 'loser']:
+                df[f'{player_type}_elo_{surface.lower()}'] = df[f'{player_type}_id'].map(
+                    surface_elos[surface]
+                )
+                df[f'{player_type}_surface_elo_diff'] = (
+                    df[f'{player_type}_elo_{surface.lower()}'] - 
+                    df[f'{player_type}_elo']
+                )
+        else:
+            # CPU calculations with parallel processing
+            for player_type in ['winner', 'loser']:
+                df[f'{player_type}_elo_{surface.lower()}'] = df[f'{player_type}_id'].map(
+                    surface_elos[surface]
+                )
+                df[f'{player_type}_surface_elo_diff'] = (
+                    df[f'{player_type}_elo_{surface.lower()}'] - 
+                    df[f'{player_type}_elo']
+                )
     
     return df
 
@@ -548,101 +630,58 @@ def convert_from_gpu(df: Union[pd.DataFrame, 'cudf.DataFrame']) -> pd.DataFrame:
 
 def generate_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Generate rolling window features for each player with multiple time windows.
-    Focus only on surface, Elo, and win rate features.
-    
-    Args:
-        df: Player-level DataFrame
-        
-    Returns:
-        DataFrame with added rolling features
+    Generate rolling window features with parallel processing and GPU acceleration.
     """
     print("Generating rolling features with multiple time windows...")
     
-    # Make sure player_df does not have player_id as an index
-    if 'player_id' in df.index.names:
-        df = df.reset_index()
-    
-    # Group by player
-    grouped = df.groupby('player_id')
-    
-    # Define multiple time windows for win rate calculation
-    time_windows = [5, 10, 20, 30, 50]
-    
-    # Calculate win rates for each time window
-    for window in time_windows:
-        print(f"  Calculating {window}-match win rate...")
-        df[f'win_rate_{window}'] = grouped['result'].transform(
-            lambda x: x.rolling(window, min_periods=1).mean()
-        ).astype('float32')
-    
-    # Surface-specific win rates with multiple time windows
-    print("  Calculating surface-specific win rates...")
-    for surface in df['surface'].unique():
-        # Skip NaN surfaces
-        if pd.isna(surface):
-            continue
-            
-        print(f"  Processing surface: {surface}")
-        surface_mask = df['surface'] == surface
+    if USE_GPU:
+        # Convert to cuDF for GPU acceleration
+        df_gpu = cudf.DataFrame.from_pandas(df)
         
+        # Calculate win rates on GPU
+        time_windows = [5, 10, 20, 30, 50]
         for window in time_windows:
-            df[f'win_rate_{surface}_{window}'] = np.nan
+            df_gpu[f'win_rate_{window}'] = df_gpu.groupby('player_id')['result'].transform(
+                lambda x: x.rolling(window, min_periods=1).mean()
+            )
+        
+        # Surface-specific win rates on GPU
+        for surface in df['surface'].unique():
+            if pd.isna(surface):
+                continue
+            surface_mask = df_gpu['surface'] == surface
+            for window in time_windows:
+                df_gpu[f'win_rate_{surface}_{window}'] = df_gpu[surface_mask].groupby('player_id')['result'].transform(
+                    lambda x: x.rolling(window, min_periods=1).mean()
+                )
+        
+        # Convert back to pandas
+        df = df_gpu.to_pandas()
+    else:
+        # CPU parallel processing
+        def process_player_chunk(chunk_df: pd.DataFrame) -> pd.DataFrame:
+            time_windows = [5, 10, 20, 30, 50]
             
-            for player_id in tqdm(df['player_id'].unique(), desc=f"Surface: {surface}, Window: {window}"):
-                player_surface_mask = (df['player_id'] == player_id) & surface_mask
-                if player_surface_mask.sum() > 0:
-                    player_indices = np.where(player_surface_mask)[0]
-                    
-                    for i, idx in enumerate(player_indices):
-                        if i == 0:
-                            df.loc[idx, f'win_rate_{surface}_{window}'] = df.loc[idx, 'result']
-                        else:
-                            # Get up to window previous matches on this surface
-                            start_idx = max(0, i - window)
-                            prev_results = df.loc[player_indices[start_idx:i], 'result'].values
-                            df.loc[idx, f'win_rate_{surface}_{window}'] = prev_results.mean()
-    
-    # Recent form indicators (win/loss streaks)
-    print("  Calculating win/loss streaks...")
-    
-    player_ids = df['player_id'].unique()
-    consecutive_wins = np.zeros(len(df), dtype=np.int8)
-    consecutive_losses = np.zeros(len(df), dtype=np.int8)
-    
-    with tqdm(total=len(player_ids), desc="Processing streaks") as pbar:
-        for player_id in player_ids:
-            player_mask = df['player_id'] == player_id
-            player_indices = np.where(player_mask)[0]
+            # Calculate win rates
+            for window in time_windows:
+                chunk_df[f'win_rate_{window}'] = chunk_df.groupby('player_id')['result'].transform(
+                    lambda x: x.rolling(window, min_periods=1).mean()
+                )
             
-            current_win_streak = 0
-            current_loss_streak = 0
+            # Surface-specific win rates
+            for surface in chunk_df['surface'].unique():
+                if pd.isna(surface):
+                    continue
+                surface_mask = chunk_df['surface'] == surface
+                for window in time_windows:
+                    chunk_df[f'win_rate_{surface}_{window}'] = chunk_df[surface_mask].groupby('player_id')['result'].transform(
+                        lambda x: x.rolling(window, min_periods=1).mean()
+                    )
             
-            for i, idx in enumerate(player_indices):
-                result = df.loc[idx, 'result']
-                
-                if result == 1:  # Win
-                    current_win_streak += 1
-                    current_loss_streak = 0
-                else:  # Loss
-                    current_loss_streak += 1
-                    current_win_streak = 0
-                
-                consecutive_wins[idx] = current_win_streak
-                consecutive_losses[idx] = current_loss_streak
-            
-            pbar.update(1)
-    
-    df['current_win_streak'] = consecutive_wins
-    df['current_loss_streak'] = consecutive_losses
-    
-    # Ensure player_id is a column and not an index
-    if 'player_id' in df.index.names:
-        df = df.reset_index()
-    
-    # Fill NaN values with default values
-    float_cols = df.select_dtypes(include=['float32', 'float64']).columns
-    df[float_cols] = df[float_cols].fillna(0.5)  # Use 0.5 as default for win rates
+            return chunk_df
+        
+        # Process in parallel chunks
+        df = parallel_process_dataframe(df, process_player_chunk, "Generating rolling features")
     
     return df
 
@@ -943,32 +982,17 @@ def debug_dataframe_info(df: pd.DataFrame, df_name: str) -> None:
 
 def main() -> None:
     """
-    Main function to generate all features and save to output file.
+    Main function to generate all features with parallel processing and GPU acceleration.
     """
     start_time = time.time()
     
-    # Define the steps for processing
-    steps = [
-        "Loading data",
-        "Calculating Elo features",
-        "Calculating physical features",
-        "Calculating H2H features",
-        "Preprocessing for player-level features",
-        "Generating rolling features",
-        "Converting to match prediction format",
-        "Combining all features",
-        "Optimizing memory usage",
-        "Saving to output file"
-    ]
-    total_steps = len(steps)
-    
-    print(f"Starting focused feature generation process with {total_steps} steps")
-    print(f"Keeping only surface, Elo ratings, and win rate features")
+    print(f"Starting focused feature generation process")
+    print(f"Using {NUM_CORES} CPU cores")
     print(f"GPU acceleration: {'Enabled' if USE_GPU else 'Disabled'}")
     print("=" * 80)
     
     # 1. Load data
-    print(f"[Step 1/{total_steps}] {steps[0]} - 0% complete")
+    print(f"[Step 1/{NUM_CORES}] Loading data - 0% complete")
     df = load_data()
     
     # Check if dataset is empty, if so exit gracefully
@@ -978,47 +1002,47 @@ def main() -> None:
         print("Feature generation completed with 0 matches.")
         return
         
-    print(f"Completed step 1/{total_steps} - 10% complete")
+    print(f"Completed step 1/{NUM_CORES} - 10% complete")
     print("-" * 80)
     
     # 2. Calculate Elo features
-    print(f"[Step 2/{total_steps}] {steps[1]} - 10% complete")
+    print(f"[Step 2/{NUM_CORES}] Calculating Elo features - 10% complete")
     df = calculate_elo_features(df)
-    print(f"Completed step 2/{total_steps} - 20% complete")
+    print(f"Completed step 2/{NUM_CORES} - 20% complete")
     print("-" * 80)
     
     # 3. Calculate physical features
-    print(f"[Step 3/{total_steps}] {steps[2]} - 20% complete")
+    print(f"[Step 3/{NUM_CORES}] Calculating physical features - 20% complete")
     df = calculate_physical_features(df)
-    print(f"Completed step 3/{total_steps} - 30% complete")
+    print(f"Completed step 3/{NUM_CORES} - 30% complete")
     print("-" * 80)
     
     # 4. Calculate H2H features
-    print(f"[Step 4/{total_steps}] {steps[3]} - 30% complete")
+    print(f"[Step 4/{NUM_CORES}] Calculating H2H features - 30% complete")
     df = calculate_head_to_head_features(df)
-    print(f"Completed step 4/{total_steps} - 40% complete")
+    print(f"Completed step 4/{NUM_CORES} - 40% complete")
     print("-" * 80)
     
     # 5. Preprocess for player-level features
-    print(f"[Step 5/{total_steps}] {steps[4]} - 40% complete")
+    print(f"[Step 5/{NUM_CORES}] Preprocessing for player-level features - 40% complete")
     player_df = preprocess_for_features(df)
-    print(f"Completed step 5/{total_steps} - 50% complete")
+    print(f"Completed step 5/{NUM_CORES} - 50% complete")
     print("-" * 80)
     
     # 6. Generate rolling features - only surface and win rate features
-    print(f"[Step 6/{total_steps}] {steps[5]} - 50% complete")
+    print(f"[Step 6/{NUM_CORES}] Generating rolling features - 50% complete")
     player_df = generate_rolling_features(player_df)
-    print(f"Completed step 6/{total_steps} - 70% complete")
+    print(f"Completed step 6/{NUM_CORES} - 70% complete")
     print("-" * 80)
     
     # 7. Convert back to match prediction format - only surface, Elo, and win rate features
-    print(f"[Step 7/{total_steps}] {steps[6]} - 70% complete")
+    print(f"[Step 7/{NUM_CORES}] Converting to match prediction format - 70% complete")
     match_df = convert_to_match_prediction_format(player_df, df)
-    print(f"Completed step 7/{total_steps} - 80% complete")
+    print(f"Completed step 7/{NUM_CORES} - 80% complete")
     print("-" * 80)
     
     # 8. Combine all features
-    print(f"[Step 8/{total_steps}] {steps[7]} - 80% complete")
+    print(f"[Step 8/{NUM_CORES}] Combining all features - 80% complete")
     print("Combining all features...")
     
     # Make sure df.index and match_df.index don't clash
@@ -1035,18 +1059,18 @@ def main() -> None:
     final_df = match_df
     
     # 9. Optimize memory usage
-    print(f"[Step 9/{total_steps}] {steps[8]} - 90% complete")
+    print(f"[Step 9/{NUM_CORES}] Optimizing memory usage - 90% complete")
     final_df = optimize_dtypes(final_df)
-    print(f"Completed step 9/{total_steps} - 95% complete")
+    print(f"Completed step 9/{NUM_CORES} - 95% complete")
     print("-" * 80)
     
     # 10. Save to output file
-    print(f"[Step 10/{total_steps}] {steps[9]} - 95% complete")
+    print(f"[Step 10/{NUM_CORES}] Saving to output file - 95% complete")
     print(f"Saving focused features to {OUTPUT_FILE}...")
     # Make sure directory exists
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     final_df.to_csv(OUTPUT_FILE, index=False)
-    print(f"Completed step 10/{total_steps} - 100% complete")
+    print(f"Completed step 10/{NUM_CORES} - 100% complete")
     print("=" * 80)
     
     end_time = time.time()
