@@ -272,21 +272,137 @@ def load_data() -> pd.DataFrame:
 
 def calculate_elo_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate Elo-based features.
+    Calculate Elo-based features including momentum and surface-specific ratings.
     
     Args:
         df: DataFrame with match data
         
     Returns:
-        DataFrame with added Elo features
+        DataFrame with additional Elo features
     """
     print("Calculating Elo features...")
     
-    # Calculate base Elo difference
-    df['elo_diff'] = df['winner_elo'] - df['loser_elo']
+    # Sort by date to ensure chronological order
+    df = df.sort_values('tourney_date')
     
-    # We'll do surface-specific Elo in a separate function
-    # that will update player stats over time
+    # Initialize Elo ratings
+    player_elos = {}
+    surface_elos = {
+        'Hard': {},
+        'Clay': {},
+        'Grass': {}
+    }
+    
+    # Default Elo values
+    DEFAULT_ELO = 1500.0
+    K_FACTOR = 32.0
+    
+    def update_elo(winner_elo: float, loser_elo: float, surface: str) -> Tuple[float, float]:
+        """Update Elo ratings for both players."""
+        expected_winner = 1 / (1 + 10 ** ((loser_elo - winner_elo) / 400))
+        expected_loser = 1 - expected_winner
+        
+        winner_new = winner_elo + K_FACTOR * (1 - expected_winner)
+        loser_new = loser_elo + K_FACTOR * (0 - expected_loser)
+        
+        return winner_new, loser_new
+    
+    # Calculate Elo changes and surface-specific ratings
+    elo_changes = []
+    surface_elo_changes = {
+        'Hard': [],
+        'Clay': [],
+        'Grass': []
+    }
+    
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Calculating Elo features"):
+        winner_id = row['winner_id']
+        loser_id = row['loser_id']
+        surface = row['surface']
+        
+        # Initialize Elo ratings if not exists
+        if winner_id not in player_elos:
+            player_elos[winner_id] = DEFAULT_ELO
+        if loser_id not in player_elos:
+            player_elos[loser_id] = DEFAULT_ELO
+            
+        # Initialize surface-specific Elo ratings
+        for s in surface_elos:
+            if winner_id not in surface_elos[s]:
+                surface_elos[s][winner_id] = DEFAULT_ELO
+            if loser_id not in surface_elos[s]:
+                surface_elos[s][loser_id] = DEFAULT_ELO
+        
+        # Store current Elo ratings
+        winner_elo = player_elos[winner_id]
+        loser_elo = player_elos[loser_id]
+        winner_surface_elo = surface_elos[surface][winner_id]
+        loser_surface_elo = surface_elos[surface][loser_id]
+        
+        # Update overall Elo ratings
+        winner_new, loser_new = update_elo(winner_elo, loser_elo, surface)
+        player_elos[winner_id] = winner_new
+        player_elos[loser_id] = loser_new
+        
+        # Update surface-specific Elo ratings
+        winner_surface_new, loser_surface_new = update_elo(winner_surface_elo, loser_surface_elo, surface)
+        surface_elos[surface][winner_id] = winner_surface_new
+        surface_elos[surface][loser_id] = loser_surface_new
+        
+        # Store Elo changes
+        elo_changes.append({
+            'match_id': idx,
+            'winner_id': winner_id,
+            'loser_id': loser_id,
+            'winner_elo_change': winner_new - winner_elo,
+            'loser_elo_change': loser_new - loser_elo
+        })
+        
+        # Store surface-specific Elo changes
+        surface_elo_changes[surface].append({
+            'match_id': idx,
+            'winner_id': winner_id,
+            'loser_id': loser_id,
+            'winner_elo_change': winner_surface_new - winner_surface_elo,
+            'loser_elo_change': loser_surface_new - loser_surface_elo
+        })
+    
+    # Convert Elo changes to DataFrame
+    elo_changes_df = pd.DataFrame(elo_changes)
+    
+    # Calculate rolling Elo changes and volatility
+    for player_type in ['winner', 'loser']:
+        # Calculate rolling Elo changes
+        df[f'{player_type}_elo_change_5'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+            lambda x: x.rolling(window=5, min_periods=1).sum()
+        )
+        df[f'{player_type}_elo_change_10'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+            lambda x: x.rolling(window=10, min_periods=1).sum()
+        )
+        df[f'{player_type}_elo_change_20'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+            lambda x: x.rolling(window=20, min_periods=1).sum()
+        )
+        
+        # Calculate Elo volatility (standard deviation of changes)
+        df[f'{player_type}_elo_volatility'] = elo_changes_df.groupby(f'{player_type}_id')['winner_elo_change'].transform(
+            lambda x: x.rolling(window=20, min_periods=1).std()
+        )
+    
+    # Calculate surface-specific Elo ratings and differences
+    for surface in surface_elos:
+        surface_elo_changes_df = pd.DataFrame(surface_elo_changes[surface])
+        
+        for player_type in ['winner', 'loser']:
+            # Calculate surface-specific Elo rating
+            df[f'{player_type}_elo_{surface.lower()}'] = df[f'{player_type}_id'].map(
+                surface_elos[surface]
+            )
+            
+            # Calculate difference between surface Elo and overall Elo
+            df[f'{player_type}_surface_elo_diff'] = (
+                df[f'{player_type}_elo_{surface.lower()}'] - 
+                df[f'{player_type}_elo']
+            )
     
     return df
 
