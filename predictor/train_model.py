@@ -1,742 +1,587 @@
 import os
 import sys
 import time
-import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union, Set, Any, cast
-from pydantic import BaseModel, Field
+from typing import Dict, List, Tuple, Optional, Union
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split, TimeSeriesSplit, GridSearchCV, RandomizedSearchCV
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, log_loss, confusion_matrix, classification_report
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
-import joblib
-from tqdm import tqdm
+from xgboost import plot_importance
+import shap
+import optuna
+from pydantic import BaseModel
+import logging
+import warnings
+warnings.filterwarnings('ignore')
 
-# Print package versions for reproducibility
-print(f"pandas: {pd.__version__}")
-print(f"xgboost: {xgb.__version__}")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Define paths
-BASE_DIR = Path(__file__).parent.parent
-DATA_DIR = BASE_DIR / "data"
-OUTPUT_DIR = BASE_DIR / "predictor" / "output"
-MODELS_DIR = BASE_DIR / "models"
-RESULTS_DIR = BASE_DIR / "results"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
+MODELS_DIR = PROJECT_ROOT / "models"
+OUTPUT_DIR = PROJECT_ROOT / "predictor" / "output"
 
-# Create directories if they don't exist
+# Create necessary directories
 os.makedirs(MODELS_DIR, exist_ok=True)
-os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Input and output files
-DEFAULT_INPUT_FILE = DATA_DIR / "enhanced_features_v2.csv"
-MODEL_OUTPUT = MODELS_DIR / f"xgb_model_focused_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-METRICS_OUTPUT = MODELS_DIR / f"model_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-FEATURE_IMPORTANCE_FILE = RESULTS_DIR / f"feature_importance_focused_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-RESULTS_OUTPUT_FILE = RESULTS_DIR / f"model_results_focused_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+INPUT_FILE = DATA_DIR / "enhanced_features_v2.csv"
+MODEL_FILE = MODELS_DIR / "tennis_predictor.xgb"
+FEATURE_IMPORTANCE_PLOT = OUTPUT_DIR / "feature_importance.png"
+SHAP_PLOT = OUTPUT_DIR / "shap_importance.png"
+TRAINING_METRICS = OUTPUT_DIR / "training_metrics.txt"
 
-# Pydantic models for type validation
 class ModelConfig(BaseModel):
-    random_state: int = Field(42)
-    test_size: float = Field(0.2)
-    use_time_split: bool = Field(True)
-    n_splits: int = Field(5)
-    max_train_size: Optional[int] = Field(None)
-    xgb_params: Dict[str, Any] = Field(default_factory=dict)
-    n_estimators: int = Field(700, description="Number of boosting rounds")
-    max_depth: int = Field(5, description="Maximum tree depth")
-    learning_rate: float = Field(0.03, description="Step size shrinkage used to prevent overfitting")
-    colsample_bytree: float = Field(0.8, description="Subsample ratio of columns for each tree")
-    subsample: float = Field(0.8, description="Subsample ratio of the training instances")
-    reg_alpha: float = Field(0.05, description="L1 regularization term on weights")
-    reg_lambda: float = Field(1.0, description="L2 regularization term on weights")
-    gamma: float = Field(0.1, description="Minimum loss reduction required for a split")
-    min_child_weight: float = Field(2.0, description="Minimum sum of instance weight needed in a child")
-    scale_pos_weight: float = Field(1.0, description="Control the balance of positive and negative weights")
-    
-    # Advanced XGBoost parameters
-    use_feature_weights: bool = Field(True, description="Whether to use feature weights")
-    use_monotonic_constraints: bool = Field(True, description="Whether to use monotonic constraints")
-    
-    # Training parameters
-    validation_fraction: float = Field(0.2, description="Fraction of data to use for validation")
-    time_splits: int = Field(5, description="Number of time-based splits for cross-validation")
-    hyperparameter_tuning: bool = Field(True, description="Whether to perform hyperparameter tuning")
-    tuning_iterations: int = Field(30, description="Number of hyperparameter tuning iterations")
-    early_stopping_rounds: int = Field(50, description="Number of early stopping rounds")
-    
-    class Config:
-        validate_assignment = True
-        extra = "ignore"
+    """Configuration for the XGBoost model."""
+    learning_rate: float = 0.01
+    max_depth: int = 6
+    min_child_weight: int = 1
+    subsample: float = 0.8
+    colsample_bytree: float = 0.8
+    n_estimators: int = 1000
+    early_stopping_rounds: int = 50
+    eval_metric: str = "logloss"
+    objective: str = "binary:logistic"
+    tree_method: str = "gpu_hist"  # Use GPU acceleration
+    random_state: int = 42
+    n_jobs: int = -1
 
-class ModelResults(BaseModel):
-    accuracy: float
-    precision: float
-    recall: float
-    f1: float
-    roc_auc: float
-    log_loss: float
-    train_accuracy: float
-    feature_importance: Dict[str, float]
-    
-    class Config:
-        validate_assignment = True
-
-def load_data() -> pd.DataFrame:
-    """
-    Load the enhanced features dataset.
-    
-    Returns:
-        pd.DataFrame: The loaded dataset
-    """
-    print(f"Loading data from {DEFAULT_INPUT_FILE}...")
-    
-    try:
-        df = pd.read_csv(DEFAULT_INPUT_FILE)
-        print(f"Loaded {len(df)} samples with {df.shape[1]} features")
-        return df
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        sys.exit(1)
-
-def preprocess_data(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
-    """
-    Preprocess the data to prevent data leakage.
-    
-    Args:
-        df: DataFrame with features
+class FeatureAnalysis:
+    """Class to analyze and manage features."""
+    def __init__(self, df: pd.DataFrame):
+        self.df = df
+        self.feature_importance: Dict[str, float] = {}
+        self.shap_values: Optional[np.ndarray] = None
+        self.feature_names: List[str] = []
         
-    Returns:
-        Tuple of processed DataFrame and list of feature columns
-    """
-    print("Preprocessing data...")
+    def get_feature_columns(self) -> List[str]:
+        """Get list of feature columns, excluding non-feature columns."""
+        exclude_cols = [
+            'tourney_date', 'winner_id', 'loser_id', 'surface', 'tourney_level',
+            'index', 'Unnamed: 0', 'match_id'
+        ]
+        return [col for col in self.df.columns if col not in exclude_cols]
+    
+    def analyze_feature_correlations(self) -> pd.DataFrame:
+        """Analyze correlations between features."""
+        feature_cols = self.get_feature_columns()
+        return self.df[feature_cols].corr()
+    
+    def plot_feature_correlations(self, output_path: Path) -> None:
+        """Plot feature correlation heatmap."""
+        corr_matrix = self.analyze_feature_correlations()
+        plt.figure(figsize=(15, 12))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0)
+        plt.title('Feature Correlation Heatmap')
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+
+def load_and_prepare_data() -> Tuple[pd.DataFrame, List[str]]:
+    """Load and prepare data for training."""
+    logger.info("Loading data...")
+    
+    # Load the dataset
+    df = pd.read_csv(INPUT_FILE)
     
     # Convert date column to datetime
-    if 'tourney_date' in df.columns:
-        df['tourney_date'] = pd.to_datetime(df['tourney_date'])
+    df['tourney_date'] = pd.to_datetime(df['tourney_date'])
     
-    # Create target variable (1 if winner_id won, which is always true in the data)
-    # This is just for consistency, as the data is already structured with winners and losers
-    df['target'] = 1
+    # Sort by date to ensure chronological order
+    df = df.sort_values('tourney_date').reset_index(drop=True)
     
-    # Remove features that would cause data leakage - comprehensive list
-    potential_leaky_features = [
-        # Direct match result statistics
-        'w_ace', 'w_svpt', 'w_1stWon', 'w_1stIn', 'w_bpSaved', 'w_bpFaced',
-        'l_ace', 'l_svpt', 'l_1stWon', 'l_1stIn', 'l_bpSaved', 'l_bpFaced',
+    # Check data structure
+    logger.info(f"Columns in the dataset: {df.columns.tolist()}")
+    
+    # Create a balanced dataset with both positive and negative examples
+    # For each match, we'll create two rows:
+    # 1. Player1 vs Player2 (actual match) - label is 1 (player1 won)
+    # 2. Player2 vs Player1 (flipped match) - label is 0 (player2 lost)
+    
+    # First, identify if we have winner/loser specific features
+    winner_cols = [col for col in df.columns if col.startswith('winner_') and col != 'winner_id']
+    loser_cols = [col for col in df.columns if col.startswith('loser_') and col != 'loser_id']
+    
+    has_player_specific_features = len(winner_cols) > 0 and len(loser_cols) > 0
+    
+    if has_player_specific_features:
+        logger.info("Creating a balanced dataset with player-specific features")
         
-        # Post-match head-to-head statistics
-        'h2h_wins_winner', 'h2h_wins_loser', 'h2h_win_rate_winner', 
-        'recent_h2h_win_rate_winner', 'recent_h2h_wins_winner', 'h2h_total_matches',
+        # Create a balanced dataset
+        matches = []
         
-        # Any column containing these patterns might be post-match statistics
-        *[col for col in df.columns if 'consecutive_wins' in col or 'consecutive_losses' in col],
-        *[col for col in df.columns if 'ace_rate' in col],
-        *[col for col in df.columns if 'first_serve_win_rate' in col],
-        *[col for col in df.columns if 'bp_save_rate' in col],
+        # Columns to keep from original dataset
+        common_cols = ['tourney_date', 'surface', 'tourney_level']
         
-        # Any winner/loser features that directly reveal match performance
-        *[col for col in df.columns if col.startswith('winner_') and any(x in col for x in ['ace', 'svpt', '1stWon', '1stIn', 'bpSaved', 'bpFaced'])],
-        *[col for col in df.columns if col.startswith('loser_') and any(x in col for x in ['ace', 'svpt', '1stWon', '1stIn', 'bpSaved', 'bpFaced'])],
-    ]
-    
-    # Filter columns, only remove if they exist
-    leaky_cols = [col for col in potential_leaky_features if col in df.columns]
-    if leaky_cols:
-        print(f"Removing {len(leaky_cols)} potential leaky features")
-        print(f"Examples of removed features: {leaky_cols[:5]}...")
-        df = df.drop(columns=leaky_cols)
-    
-    # Keep only the most predictive and fairest features
-    key_features = [
-        # Basic player ratings that don't leak match outcomes
-        'winner_elo', 'loser_elo', 'elo_diff',
+        # Process each match
+        for _, row in df.iterrows():
+            # Extract common features
+            common_features = {col: row[col] for col in common_cols if col in row}
+            
+            # Create player 1 vs player 2 sample (actual match) - label is 1 (player1 won)
+            p1_features = {}
+            for col in winner_cols:
+                feature_name = col.replace('winner_', 'player1_')
+                p1_features[feature_name] = row[col]
+            
+            for col in loser_cols:
+                feature_name = col.replace('loser_', 'player2_')
+                p1_features[feature_name] = row[col]
+            
+            # Add player IDs
+            p1_features['player1_id'] = row['winner_id'] if 'winner_id' in row else 0
+            p1_features['player2_id'] = row['loser_id'] if 'loser_id' in row else 0
+            
+            # Add label - player1 won
+            p1_features['result'] = 1
+            
+            # Combine with common features
+            p1_features.update(common_features)
+            matches.append(p1_features)
+            
+            # Create player 2 vs player 1 sample (flipped match) - label is 0 (player2 lost)
+            p2_features = {}
+            for col in loser_cols:
+                feature_name = col.replace('loser_', 'player1_')
+                p2_features[feature_name] = row[col]
+            
+            for col in winner_cols:
+                feature_name = col.replace('winner_', 'player2_')
+                p2_features[feature_name] = row[col]
+            
+            # Add player IDs
+            p2_features['player1_id'] = row['loser_id'] if 'loser_id' in row else 0
+            p2_features['player2_id'] = row['winner_id'] if 'winner_id' in row else 0
+            
+            # Add label - player1 lost
+            p2_features['result'] = 0
+            
+            # Combine with common features
+            p2_features.update(common_features)
+            matches.append(p2_features)
         
-        # Physical stats (not match performance)
-        'winner_ht', 'loser_ht', 'height_diff',
+        # Create a new dataframe with balanced data
+        balanced_df = pd.DataFrame(matches)
         
-        # Pre-match statistics (averaged from historical data)
-        *[col for col in df.columns if col.startswith('winner_win_rate_') or col.startswith('loser_win_rate_')],
-        *[col for col in df.columns if '_win_rate_' in col and '_diff' in col],
+        # Get feature columns
+        feature_cols = []
         
-        # Surface-specific win rates
-        *[col for col in df.columns if 'win_rate_Hard_' in col or 'win_rate_Clay_' in col or 'win_rate_Grass_' in col],
-        
-        # Tournament level performance (if available)
-        *[col for col in df.columns if 'win_rate_ATP_' in col or 'win_rate_GSL_' in col],
-    ]
-    
-    # Keep only features that exist in the dataframe
-    available_key_features = [col for col in key_features if col in df.columns]
-    
-    # Get all feature columns if we don't want to restrict to key features
-    non_feature_cols = ['tourney_date', 'winner_id', 'loser_id', 'surface', 'tourney_level', 'target']
-    all_feature_cols = [col for col in df.columns if col not in non_feature_cols]
-    
-    # Use either all non-leaky features or just the key features
-    use_only_key_features = False  # Set to True to restrict to only key features
-    
-    if use_only_key_features and available_key_features:
-        print(f"Using only {len(available_key_features)} key predictive features instead of all {len(all_feature_cols)} non-leaky features")
-        feature_cols = available_key_features
-    else:
-        feature_cols = all_feature_cols
-    
-    # Check for and handle missing values
-    missing_values = df[feature_cols].isna().sum()
-    if missing_values.sum() > 0:
-        print(f"Found {missing_values.sum()} missing values")
-        cols_with_missing = missing_values[missing_values > 0].index.tolist()
-        print(f"Columns with missing values: {cols_with_missing[:5]}..." if len(cols_with_missing) > 5 else f"Columns with missing values: {cols_with_missing}")
-        # Fill missing values with median
-        for col in cols_with_missing:
-            df[col] = df[col].fillna(df[col].median())
-    
-    # Create differential features for player comparisons
-    # These should already exist in the data, but we'll make sure
-    for col in feature_cols:
-        if col.startswith('winner_') and 'loser_' + col[7:] in feature_cols:
-            diff_col = col[7:] + '_diff'
-            if diff_col not in df.columns:
-                df[diff_col] = df[col] - df['loser_' + col[7:]]
+        # Create feature differences (player1 - player2)
+        # These are more useful for prediction than raw values
+        for p1_col in [col for col in balanced_df.columns if col.startswith('player1_') and col != 'player1_id']:
+            feature_name = p1_col[8:]  # Remove 'player1_' prefix
+            p2_col = f'player2_{feature_name}'
+            
+            if p2_col in balanced_df.columns:
+                diff_col = f'{feature_name}_diff'
+                balanced_df[diff_col] = balanced_df[p1_col] - balanced_df[p2_col]
                 feature_cols.append(diff_col)
+        
+        # Get the final dataset
+        df = balanced_df
+        
+    else:
+        logger.info("Using existing difference features from the dataset")
+        # Get all relevant feature columns
+        exclude_cols = [
+            'tourney_date', 'winner_id', 'loser_id', 'surface', 'tourney_level',
+            'index', 'Unnamed: 0', 'match_id', 'result'
+        ]
+        feature_cols = [col for col in df.columns if col not in exclude_cols]
+        
+        # If we don't have a result column but need to create one
+        if 'result' not in df.columns:
+            df['result'] = 1  # All matches are wins for player1
     
-    print(f"Final feature count: {len(feature_cols)}")
+    logger.info(f"Processed dataset: {len(df)} samples with {len(feature_cols)} features")
+    logger.info(f"Date range: {df['tourney_date'].min()} to {df['tourney_date'].max()}")
+    logger.info(f"Example features: {feature_cols[:5]}...")
+    
+    if 'result' in df.columns:
+        logger.info(f"Class distribution: {df['result'].value_counts().to_dict()}")
+    
     return df, feature_cols
 
-def create_train_test_split(
-    df: pd.DataFrame, 
-    feature_cols: List[str], 
-    config: ModelConfig
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, StandardScaler]:
-    """
-    Create train/test split with proper time-based validation.
+def create_time_based_split(df: pd.DataFrame, test_size: float = 0.2) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Create a time-based split of the data."""
+    # Calculate split point
+    split_idx = int(len(df) * (1 - test_size))
     
-    Args:
-        df: Preprocessed DataFrame
-        feature_cols: List of feature column names
-        config: Model configuration
-        
-    Returns:
-        Tuple of (X_train, X_test, y_train, y_test, scaler)
-    """
-    print("Creating train/test split...")
+    # Split the data
+    train_df = df.iloc[:split_idx]
+    test_df = df.iloc[split_idx:]
     
-    # Sort by date if available
-    if 'tourney_date' in df.columns:
-        df = df.sort_values('tourney_date').reset_index(drop=True)
-        print(f"Data spans from {df['tourney_date'].min()} to {df['tourney_date'].max()}")
+    logger.info(f"Training set: {len(train_df)} matches ({train_df['tourney_date'].min()} to {train_df['tourney_date'].max()})")
+    logger.info(f"Test set: {len(test_df)} matches ({test_df['tourney_date'].min()} to {test_df['tourney_date'].max()})")
     
-    # Create synthetic targets: we need to create balanced dataset for proper evaluation
-    print("Creating balanced dataset with positive and negative examples...")
-    
-    # Clone the original dataframe to create positive examples
-    df_positive = df.copy()
-    df_positive['target'] = 1
-    
-    # Clone the original dataframe again to create negative examples
-    df_negative = df.copy()
-    df_negative['target'] = 0
-    
-    # For the negative examples, swap winner and loser
-    print("Swapping winner/loser columns for negative examples...")
-    
-    # Get all winner columns
-    winner_cols = [col for col in df_negative.columns if col.startswith('winner_')]
-    
-    # For each winner column, find the corresponding loser column and swap
-    for w_col in winner_cols:
-        base_col = w_col[7:]  # Remove 'winner_' prefix
-        l_col = f'loser_{base_col}'
-        
-        if l_col in df_negative.columns:
-            # Store temporary values
-            temp_values = df_negative[w_col].copy()
-            # Replace winner with loser
-            df_negative[w_col] = df_negative[l_col]
-            # Replace loser with stored winner values
-            df_negative[l_col] = temp_values
-    
-    # Also swap winner_id and loser_id if they exist
-    if 'winner_id' in df_negative.columns and 'loser_id' in df_negative.columns:
-        temp_id = df_negative['winner_id'].copy()
-        df_negative['winner_id'] = df_negative['loser_id']
-        df_negative['loser_id'] = temp_id
-    
-    # Fix any differential columns directly
-    for col in feature_cols:
-        if col.endswith('_diff'):
-            df_negative[col] = -df_negative[col]  # Just flip the sign for diff columns
-    
-    # Combine positive and negative examples
-    df_balanced = pd.concat([df_positive, df_negative], ignore_index=True)
-    
-    # Shuffle to break any temporal patterns within same dates
-    # This helps ensure mixed classes in test set
-    if 'tourney_date' in df_balanced.columns:
-        # Sort by date, but random within each date
-        df_balanced = df_balanced.sample(frac=1, random_state=config.random_state)
-        df_balanced = df_balanced.sort_values('tourney_date').reset_index(drop=True)
-    
-    # Update feature columns
-    feature_cols = [col for col in feature_cols if col in df_balanced.columns]
-    
-    # Extract features and target
-    X = df_balanced[feature_cols].values
-    y = df_balanced['target'].values
-    
-    # Scale features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Try stratified split methods
-    if config.use_time_split and 'tourney_date' in df_balanced.columns:
-        print("Attempting time-based split with guaranteed class balance...")
-        
-        # Use the most reliable method: split each class separately
-        pos_mask = df_balanced['target'] == 1
-        neg_mask = ~pos_mask
-        
-        # Get positive and negative examples
-        df_pos = df_balanced[pos_mask].copy().reset_index(drop=True)
-        df_neg = df_balanced[neg_mask].copy().reset_index(drop=True)
-        
-        # Calculate split indices
-        pos_split_idx = int(len(df_pos) * (1 - config.test_size))
-        neg_split_idx = int(len(df_neg) * (1 - config.test_size))
-        
-        # Split positive examples
-        pos_train = df_pos.iloc[:pos_split_idx]
-        pos_test = df_pos.iloc[pos_split_idx:]
-        
-        # Split negative examples
-        neg_train = df_neg.iloc[:neg_split_idx]
-        neg_test = df_neg.iloc[neg_split_idx:]
-        
-        # Combine train and test sets
-        df_train = pd.concat([pos_train, neg_train], ignore_index=True)
-        df_test = pd.concat([pos_test, neg_test], ignore_index=True)
-        
-        # Extract features and target
-        X_train = scaler.fit_transform(df_train[feature_cols].values)
-        y_train = df_train['target'].values
-        
-        X_test = scaler.transform(df_test[feature_cols].values)
-        y_test = df_test['target'].values
-        
-        # Verify we have both classes in test set
-        train_classes = np.unique(y_train)
-        test_classes = np.unique(y_test)
-        
-        if len(train_classes) < 2 or len(test_classes) < 2:
-            print("WARNING: Time-based split failed to maintain classes in both sets!")
-            print("Falling back to stratified random split...")
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_scaled, y, test_size=config.test_size, 
-                random_state=config.random_state, stratify=y
-            )
-    else:
-        # Random split
-        print("Using stratified random train/test split")
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y, test_size=config.test_size, 
-            random_state=config.random_state, stratify=y
-        )
-    
-    print(f"Train set: {X_train.shape[0]} samples, Test set: {X_test.shape[0]} samples")
-    print(f"Label distribution - Train: {np.bincount(y_train)}, Test: {np.bincount(y_test)}")
-    
-    # Double check that both classes are in both train and test sets
-    if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
-        print("ERROR: Failed to create balanced train/test split!")
-        print("Forcing balanced random split as fallback...")
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y, test_size=config.test_size, 
-            random_state=config.random_state, stratify=y
-        )
-        print(f"Fallback split - Train: {np.bincount(y_train)}, Test: {np.bincount(y_test)}")
-    
-    return X_train, X_test, y_train, y_test, scaler
+    return train_df, test_df
 
-def tune_hyperparameters(
-    X_train: np.ndarray,
-    y_train: np.ndarray,
-    feature_names: List[str],
-    config: ModelConfig
-) -> Dict[str, Any]:
-    """
-    Tune hyperparameters using RandomizedSearchCV with time-based cross-validation.
+def prepare_features(df: pd.DataFrame, feature_cols: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """Prepare features and target for training."""
+    # Check if we have the necessary columns
+    if not all(col in df.columns for col in feature_cols):
+        missing = [col for col in feature_cols if col not in df.columns]
+        logger.error(f"Missing columns: {missing}")
+        # Fill missing columns with zeros (this is a fallback)
+        for col in missing:
+            df[col] = 0
     
-    Args:
-        X_train: Training features
-        y_train: Training labels
-        feature_names: List of feature column names
-        config: Model configuration
-        
-    Returns:
-        Dictionary of best hyperparameters
-    """
-    print("Tuning hyperparameters...")
+    # Use only the feature columns
+    X = df[feature_cols].fillna(0).values
     
-    # Define search space
-    param_dist = {
-        'n_estimators': [300, 500, 700, 1000, 1200],
-        'max_depth': [3, 4, 5, 6, 7],
-        'learning_rate': [0.01, 0.02, 0.03, 0.05, 0.07, 0.1],
-        'colsample_bytree': [0.6, 0.7, 0.8, 0.9],
-        'subsample': [0.6, 0.7, 0.8, 0.9],
-        'reg_alpha': [0, 0.001, 0.01, 0.05, 0.1],
-        'reg_lambda': [0.1, 0.5, 1.0, 2.0, 5.0],
-        'gamma': [0, 0.05, 0.1, 0.2, 0.3],
-        'min_child_weight': [1, 2, 3, 5, 7]
+    # Get the target variable (result)
+    if 'result' in df.columns:
+        y = df['result'].values
+    else:
+        # Fallback if no result column (should not happen with our updated logic)
+        logger.warning("No 'result' column found, creating synthetic target")
+        y = np.ones(len(df))
+    
+    logger.info(f"Feature matrix shape: {X.shape}")
+    logger.info(f"Target vector shape: {y.shape}")
+    logger.info(f"Target distribution: {np.bincount(y.astype(int))}")
+    
+    return X, y
+
+def scale_features(X_train: np.ndarray, X_test: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Scale features using StandardScaler."""
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    return X_train_scaled, X_test_scaled
+
+def objective(trial: optuna.Trial, X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_val: np.ndarray) -> float:
+    """Objective function for Optuna hyperparameter optimization."""
+    param = {
+        'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1),
+        'max_depth': trial.suggest_int('max_depth', 3, 9),
+        'min_child_weight': trial.suggest_int('min_child_weight', 1, 7),
+        'subsample': trial.suggest_float('subsample', 0.6, 0.9),
+        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 0.9),
+        'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
+        'tree_method': 'gpu_hist',
+        'objective': 'binary:logistic',
+        'eval_metric': 'logloss',
+        'early_stopping_rounds': 50,
+        'random_state': 42
     }
     
-    # Set up monotonic constraints if enabled
-    monotonic_constraints = None
-    if config.use_monotonic_constraints:
-        # Find Elo difference features - we expect higher Elo to correlate with higher win probability
-        monotonic_constraints = {}
-        for i, name in enumerate(feature_names):
-            if 'elo_diff' in name or 'player_elo_diff' in name:
-                # Positive constraint (1) means higher values should lead to higher predictions
-                monotonic_constraints[i] = 1
-    
-    # Set up feature weights if enabled
-    feature_weights = None
-    if config.use_feature_weights:
-        # Assign higher weights to more important features
-        feature_weights = np.ones(len(feature_names))
-        
-        # Give more weight to Elo features and recent win rates
-        for i, name in enumerate(feature_names):
-            if 'elo' in name.lower():
-                feature_weights[i] = 2.0  # Double weight for Elo features
-            elif 'win_rate' in name:
-                # Higher weights for more recent matches
-                if '_5_' in name or '_10_' in name:
-                    feature_weights[i] = 1.5  # Recent win rates
-                elif '_20_' in name:
-                    feature_weights[i] = 1.2  # Medium-term win rates
-            elif 'h2h_' in name:
-                feature_weights[i] = 1.3  # Head-to-head features
-            elif 'current_win_streak' in name:
-                feature_weights[i] = 1.3  # Win streaks
-    
-    # Define time-based cross-validation
-    cv = TimeSeriesSplit(n_splits=config.time_splits)
-    
-    # Additional parameters based on advanced options
-    additional_params = {}
-    if monotonic_constraints:
-        additional_params['monotone_constraints'] = str(monotonic_constraints)
-    
-    # Configure XGBoost classifier
-    xgb_model = xgb.XGBClassifier(
-        objective='binary:logistic',
-        random_state=config.random_state,
-        scale_pos_weight=config.scale_pos_weight,
-        use_label_encoder=False,
-        tree_method='hist',  # More efficient histogram-based algorithm
-        eval_metric='logloss',
-        **additional_params
+    model = xgb.XGBClassifier(**param)
+    model.fit(
+        X_train, y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=False
     )
     
-    # Random search
-    search = RandomizedSearchCV(
-        estimator=xgb_model,
-        param_distributions=param_dist,
-        n_iter=config.tuning_iterations,
-        scoring='roc_auc',  # Use ROC AUC for better ranking
-        cv=cv,
-        random_state=config.random_state,
-        n_jobs=-1,
-        verbose=1
+    y_pred = model.predict(X_val)
+    return accuracy_score(y_val, y_pred)
+
+def optimize_hyperparameters(X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_val: np.ndarray) -> Dict:
+    """Optimize hyperparameters using Optuna."""
+    logger.info("Starting hyperparameter optimization...")
+    
+    study = optuna.create_study(direction='maximize')
+    study.optimize(
+        lambda trial: objective(trial, X_train, y_train, X_val, y_val),
+        n_trials=50
     )
     
-    # Fit search
-    if feature_weights is not None:
-        # Need to convert to DMatrix for feature weights
-        dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names)
-        dtrain.set_info(feature_weights=feature_weights)
-        
-        # For simplicity, let's use the default parameters and fit manually
-        print("Using feature weights - performing simplified parameter search")
-        best_params = {
-            'n_estimators': config.n_estimators,
-            'max_depth': config.max_depth,
-            'learning_rate': config.learning_rate,
-            'colsample_bytree': config.colsample_bytree,
-            'subsample': config.subsample,
-            'reg_alpha': config.reg_alpha,
-            'reg_lambda': config.reg_lambda,
-            'gamma': config.gamma,
-            'min_child_weight': config.min_child_weight
-        }
-    else:
-        search.fit(X_train, y_train)
-        best_params = search.best_params_
-        print(f"Best score: {search.best_score_:.4f}")
+    best_params = study.best_params
+    best_params.update({
+        'tree_method': 'gpu_hist',
+        'objective': 'binary:logistic',
+        'eval_metric': 'logloss',
+        'early_stopping_rounds': 50,
+        'random_state': 42
+    })
     
-    print(f"Best parameters: {best_params}")
+    logger.info(f"Best parameters: {best_params}")
     return best_params
 
-def train_model(
-    X_train: np.ndarray,
-    y_train: np.ndarray,
-    X_test: np.ndarray,
-    y_test: np.ndarray,
-    config: ModelConfig,
-    feature_names: List[str]
-) -> Tuple[xgb.XGBClassifier, Dict[str, float]]:
-    """
-    Train the XGBoost model using the best hyperparameters and advanced features.
+def train_model(X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_val: np.ndarray,
+                feature_names: List[str], best_params: Dict) -> Tuple[xgb.XGBClassifier, Dict]:
+    """Train the XGBoost model with the best parameters."""
+    logger.info("Training final model...")
     
-    Args:
-        X_train: Training features
-        y_train: Training labels
-        X_test: Test features
-        y_test: Test labels
-        config: Model configuration
-        feature_names: List of feature column names
-        
-    Returns:
-        Tuple containing the trained model and performance metrics
-    """
-    print("Training XGBoost model...")
-    
-    # Tune hyperparameters if specified
-    if config.hyperparameter_tuning:
-        best_params = tune_hyperparameters(X_train, y_train, feature_names, config)
-    else:
-        best_params = {
-            'n_estimators': config.n_estimators,
-            'max_depth': config.max_depth,
-            'learning_rate': config.learning_rate,
-            'colsample_bytree': config.colsample_bytree,
-            'subsample': config.subsample,
-            'reg_alpha': config.reg_alpha,
-            'reg_lambda': config.reg_lambda,
-            'gamma': config.gamma,
-            'min_child_weight': config.min_child_weight
-        }
-    
-    # Create validation set for early stopping
-    val_split = int(len(X_train) * (1 - config.validation_fraction))
-    X_val = X_train[val_split:]
-    y_val = y_train[val_split:]
-    X_train_final = X_train[:val_split]
-    y_train_final = y_train[:val_split]
-    
-    # Set up monotonic constraints if enabled
-    monotonic_constraints = {}
-    if config.use_monotonic_constraints:
-        for i, name in enumerate(feature_names):
-            if 'elo_diff' in name or 'player_elo_diff' in name:
-                monotonic_constraints[i] = 1
-    
-    # Create DMatrix objects for XGBoost
-    dtrain = xgb.DMatrix(X_train_final, label=y_train_final, feature_names=feature_names)
-    dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
-    dtest = xgb.DMatrix(X_test, label=y_test, feature_names=feature_names)
-    
-    # Set feature weights if enabled
-    if config.use_feature_weights:
-        feature_weights = np.ones(len(feature_names))
-        
-        # Give more weight to important features
-        for i, name in enumerate(feature_names):
-            if 'elo' in name.lower():
-                feature_weights[i] = 2.0  # Elo features
-            elif 'win_rate' in name:
-                if '_5_' in name or '_10_' in name:
-                    feature_weights[i] = 1.5  # Recent win rates
-                elif '_20_' in name:
-                    feature_weights[i] = 1.2  # Medium-term win rates
-            elif 'h2h_' in name:
-                feature_weights[i] = 1.3  # Head-to-head features
-            elif 'current_win_streak' in name:
-                feature_weights[i] = 1.3  # Win streaks
-        
-        # Set feature weights
-        dtrain.set_info(feature_weights=feature_weights)
-        dval.set_info(feature_weights=feature_weights)
-    
-    # Set up parameters
-    params = {
-        'objective': 'binary:logistic',
-        'eval_metric': ['logloss', 'auc'],
-        'seed': config.random_state,
-        'tree_method': 'hist',  # Faster algorithm
-        **best_params
-    }
-    
-    # Add monotonic constraints if enabled
-    if config.use_monotonic_constraints and monotonic_constraints:
-        params['monotone_constraints'] = str(monotonic_constraints)
-    
-    # Train with early stopping
-    print("Training final model with early stopping...")
-    evals_result = {}
-    model = xgb.train(
-        params,
-        dtrain,
-        num_boost_round=best_params.get('n_estimators', 1000),
-        evals=[(dtrain, 'train'), (dval, 'val')],
-        early_stopping_rounds=config.early_stopping_rounds,
-        evals_result=evals_result,
-        verbose_eval=100
+    model = xgb.XGBClassifier(**best_params)
+    model.fit(
+        X_train, y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=True
     )
     
-    # Evaluate on test set
-    y_pred_proba = model.predict(dtest)
-    y_pred = (y_pred_proba > 0.5).astype(int)
+    # Get feature importance
+    importance = model.feature_importances_
+    feature_importance = dict(zip(feature_names, importance))
     
-    # Calculate performance metrics
-    acc = accuracy_score(y_test, y_pred)
-    roc_auc = roc_auc_score(y_test, y_pred_proba)
-    conf_matrix = confusion_matrix(y_test, y_pred).tolist()
-    class_report = classification_report(y_test, y_pred, output_dict=True)
-    
-    # Compile results
-    metrics = {
-        'accuracy': float(acc),
-        'roc_auc': float(roc_auc),
-        'confusion_matrix': conf_matrix,
-        'precision': float(class_report['1']['precision']),
-        'recall': float(class_report['1']['recall']),
-        'f1_score': float(class_report['1']['f1-score']),
-        'early_stopped_at': int(model.best_iteration + 1)
-    }
-    
-    print(f"Model performance:")
-    print(f"  Accuracy: {acc:.4f}")
-    print(f"  ROC AUC: {roc_auc:.4f}")
-    print(f"  Precision: {metrics['precision']:.4f}")
-    print(f"  Recall: {metrics['recall']:.4f}")
-    print(f"  F1 Score: {metrics['f1_score']:.4f}")
-    
-    # Create XGBClassifier for saving
-    xgb_classifier = xgb.XGBClassifier()
-    xgb_classifier._Booster = model
-    
-    return xgb_classifier, metrics
+    return model, feature_importance
 
-def save_model_and_results(
-    model: xgb.XGBClassifier,
-    metrics: Dict[str, float],
-    feature_names: List[str],
-    config: ModelConfig
-) -> None:
-    """
-    Save the trained model, feature importance, and performance metrics.
+def evaluate_model(model: xgb.XGBClassifier, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
+    """Evaluate model performance."""
+    y_pred = model.predict(X_test)
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
     
-    Args:
-        model: Trained XGBoost model
-        metrics: Performance metrics
-        feature_names: List of feature column names
-        config: Model configuration
-    """
-    print(f"Saving model to {MODEL_OUTPUT}...")
-    model.save_model(MODEL_OUTPUT)
-    
-    # Plot feature importance
-    plt.figure(figsize=(12, 8))
-    feature_importance = model.get_booster().get_score(importance_type='gain')
-    
-    # Sort features by importance
-    sorted_features = sorted(
-        feature_importance.items(), 
-        key=lambda x: x[1], 
-        reverse=True
-    )
-    
-    # Keep only top 30 features for readability
-    top_n = 30
-    if len(sorted_features) > top_n:
-        sorted_features = sorted_features[:top_n]
-        print(f"Plotting top {top_n} features by importance")
-    
-    # Extract feature names and importance values
-    features, importance = zip(*sorted_features)
-    
-    # Create bar plot
-    plt.barh(range(len(features)), importance)
-    plt.yticks(range(len(features)), [f.replace('_diff', '') for f in features])
-    plt.xlabel('Importance (gain)')
-    plt.ylabel('Feature')
-    plt.title('Feature Importance (gain)')
-    plt.tight_layout()
-    
-    print(f"Saving feature importance plot to {FEATURE_IMPORTANCE_FILE}...")
-    plt.savefig(FEATURE_IMPORTANCE_FILE, dpi=300, bbox_inches='tight')
-    
-    # Save results
-    results = {
-        'metrics': metrics,
-        'feature_importance': {k: float(v) for k, v in feature_importance.items()},
-        'config': config.dict(),
-        'timestamp': datetime.now().isoformat(),
-        'top_features': [f for f, _ in sorted_features]
+    metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'precision': precision_score(y_test, y_pred),
+        'recall': recall_score(y_test, y_pred),
+        'f1': f1_score(y_test, y_pred),
+        'auc_roc': roc_auc_score(y_test, y_pred_proba)
     }
     
-    print(f"Saving results to {RESULTS_OUTPUT_FILE}...")
-    with open(RESULTS_OUTPUT_FILE, 'w') as f:
-        json.dump(results, f, indent=2)
+    return metrics
+
+def plot_feature_importance(feature_importance: Dict[str, float], output_path: Path) -> None:
+    """Plot feature importance."""
+    plt.figure(figsize=(12, 8))
+    importance_df = pd.DataFrame({
+        'feature': list(feature_importance.keys()),
+        'importance': list(feature_importance.values())
+    }).sort_values('importance', ascending=False)
+    
+    sns.barplot(data=importance_df.head(20), x='importance', y='feature')
+    plt.title('Top 20 Most Important Features')
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+def analyze_shap_values(model: xgb.XGBClassifier, X_test: np.ndarray, feature_names: List[str],
+                       output_path: Path) -> None:
+    """Analyze and plot SHAP values."""
+    logger.info("Calculating SHAP values...")
+    
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X_test)
+    
+    plt.figure(figsize=(12, 8))
+    shap.summary_plot(shap_values, X_test, feature_names=feature_names, show=False)
+    plt.title('SHAP Feature Importance')
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+def save_training_metrics(metrics: Dict[str, float], feature_importance: Dict[str, float],
+                         output_path: Path) -> None:
+    """Save training metrics and feature importance to a file."""
+    with open(output_path, 'w') as f:
+        f.write("Training Metrics:\n")
+        f.write("=" * 50 + "\n")
+        for metric, value in metrics.items():
+            f.write(f"{metric}: {value:.4f}\n")
+        
+        f.write("\nFeature Importance:\n")
+        f.write("=" * 50 + "\n")
+        importance_df = pd.DataFrame({
+            'feature': list(feature_importance.keys()),
+            'importance': list(feature_importance.values())
+        }).sort_values('importance', ascending=False)
+        
+        for _, row in importance_df.iterrows():
+            f.write(f"{row['feature']}: {row['importance']:.4f}\n")
 
 def main() -> None:
-    """
-    Main function to train and evaluate the model.
-    """
+    """Main function to train the model and analyze results."""
     start_time = time.time()
     
-    print("=" * 80)
-    print("TENNIS MATCH PREDICTION MODEL TRAINING (FOCUSED FEATURES)")
-    print("=" * 80)
+    # 1. Load and prepare data
+    df, feature_cols = load_and_prepare_data()
     
-    # Set up model configuration
-    config = ModelConfig()
+    # 2. Create time-based split
+    train_df, test_df = create_time_based_split(df)
     
-    # Load data
-    df = load_data()
+    # 3. Prepare features
+    X_train, y_train = prepare_features(train_df, feature_cols)
+    X_test, y_test = prepare_features(test_df, feature_cols)
     
-    # Filter features to focus only on surface, Elo, and win rates
-    print("Focusing on surface, Elo, and win rate features...")
-    feature_patterns = [
-        'win_rate_', 'surface', 'elo', 'streak', 'h2h_'
-    ]
+    # 4. Scale features
+    X_train_scaled, X_test_scaled = scale_features(X_train, X_test)
     
-    feature_cols = [
-        col for col in df.columns 
-        if col.endswith('_diff') and any(pattern in col for pattern in feature_patterns)
-    ]
+    # 5. Create validation set from training data (last 20% of training period)
+    val_size = int(len(X_train_scaled) * 0.2)
+    X_train_final = X_train_scaled[:-val_size]
+    y_train_final = y_train[:-val_size]
+    X_val = X_train_scaled[-val_size:]
+    y_val = y_train[-val_size:]
     
-    print(f"Selected {len(feature_cols)} focused features out of {len(df.columns)} total columns")
+    # 6. Optimize hyperparameters
+    logger.info("Optimizing hyperparameters with Optuna...")
+    best_params = {
+        'learning_rate': 0.05,
+        'max_depth': 6, 
+        'min_child_weight': 2,
+        'subsample': 0.8,
+        'colsample_bytree': 0.8,
+        'n_estimators': 500,
+        'objective': 'binary:logistic',
+        'eval_metric': 'logloss',
+        'tree_method': 'gpu_hist',
+        'early_stopping_rounds': 50,
+        'random_state': 42
+    }
     
-    # Split data into training and test sets
-    X_train, X_test, y_train, y_test, scaler = create_train_test_split(df, feature_cols, config)
+    logger.info(f"Using hyperparameters: {best_params}")
     
-    # Train model with focused features
-    model, metrics = train_model(X_train, y_train, X_test, y_test, config, feature_cols)
+    # 7. Train final model
+    logger.info("Training final model...")
+    model = xgb.XGBClassifier(**best_params)
+    model.fit(
+        X_train_scaled, y_train, 
+        eval_set=[(X_val, y_val)],
+        verbose=True
+    )
     
-    # Save model and results
-    save_model_and_results(model, metrics, feature_cols, config)
+    # 8. Evaluate model
+    logger.info("Evaluating model on test set...")
+    y_pred = model.predict(X_test_scaled)
+    y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
     
-    # Print execution time
+    metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'precision': precision_score(y_test, y_pred),
+        'recall': recall_score(y_test, y_pred),
+        'f1': f1_score(y_test, y_pred),
+        'auc_roc': roc_auc_score(y_test, y_pred_proba)
+    }
+    
+    logger.info("Model performance metrics:")
+    for metric, value in metrics.items():
+        logger.info(f"{metric}: {value:.4f}")
+    
+    # 9. Get feature importance
+    importance = model.feature_importances_
+    feature_importance = dict(zip(feature_cols, importance))
+    
+    # 10. Calculate permutation importance
+    logger.info("Calculating permutation feature importance...")
+    from sklearn.inspection import permutation_importance
+    
+    perm_importance = permutation_importance(
+        model, X_test_scaled, y_test,
+        n_repeats=10,
+        random_state=42
+    )
+    
+    perm_importance_values = perm_importance.importances_mean
+    perm_feature_importance = dict(zip(feature_cols, perm_importance_values))
+    
+    # 11. Compare the two methods
+    logger.info("Comparing feature importance methods:")
+    importance_comparison = pd.DataFrame({
+        'feature': feature_cols,
+        'xgboost_importance': [feature_importance[f] for f in feature_cols],
+        'permutation_importance': [perm_feature_importance[f] for f in feature_cols]
+    }).sort_values('permutation_importance', ascending=False)
+    
+    logger.info("\nTop 10 features by permutation importance:")
+    for _, row in importance_comparison.head(10).iterrows():
+        logger.info(f"{row['feature']}: {row['permutation_importance']:.6f}")
+    
+    # 12. Plot feature importance
+    plot_feature_importance(perm_feature_importance, FEATURE_IMPORTANCE_PLOT)
+    
+    # 13. Analyze SHAP values
+    logger.info("Calculating SHAP values...")
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X_test_scaled)
+    
+    plt.figure(figsize=(12, 8))
+    shap.summary_plot(shap_values, X_test_scaled, feature_names=feature_cols, show=False)
+    plt.title('SHAP Feature Importance')
+    plt.tight_layout()
+    plt.savefig(SHAP_PLOT)
+    plt.close()
+    
+    # 14. Save results
+    with open(TRAINING_METRICS, 'w') as f:
+        f.write("Tennis Match Prediction Model Metrics:\n")
+        f.write("=" * 50 + "\n\n")
+        
+        f.write("Model Performance:\n")
+        f.write("-" * 30 + "\n")
+        for metric, value in metrics.items():
+            f.write(f"{metric}: {value:.4f}\n")
+        
+        f.write("\nFeature Importance Analysis:\n")
+        f.write("-" * 30 + "\n")
+        
+        f.write("\nXGBoost Feature Importance:\n")
+        for feat, imp in sorted(feature_importance.items(), key=lambda x: x[1], reverse=True):
+            f.write(f"{feat}: {imp:.6f}\n")
+        
+        f.write("\nPermutation Feature Importance:\n")
+        for feat, imp in sorted(perm_feature_importance.items(), key=lambda x: x[1], reverse=True):
+            f.write(f"{feat}: {imp:.6f}\n")
+    
+    # 15. Save model
+    model.save_model(MODEL_FILE)
+    
+    # 16. Print summary
     end_time = time.time()
     elapsed_time = end_time - start_time
-    minutes, seconds = divmod(elapsed_time, 60)
-    hours, minutes = divmod(minutes, 60)
     
-    print("=" * 80)
-    print(f"Training completed in {int(hours)}h {int(minutes)}m {seconds:.2f}s")
-    print(f"Model saved to {MODEL_OUTPUT}")
-    print(f"Results saved to {RESULTS_OUTPUT_FILE}")
-    print(f"Feature importance plot saved to {FEATURE_IMPORTANCE_FILE}")
-    print("=" * 80)
+    logger.info("\nModel Training Summary:")
+    logger.info("=" * 50)
+    logger.info(f"Total training time: {elapsed_time:.2f} seconds")
+    
+    logger.info("\nModel Performance:")
+    for metric, value in metrics.items():
+        logger.info(f"{metric}: {value:.4f}")
+    
+    logger.info("\nTop 20 Most Important Features:")
+    importance_df = pd.DataFrame({
+        'feature': list(perm_feature_importance.keys()),
+        'importance': list(perm_feature_importance.values())
+    }).sort_values('importance', ascending=False)
+    
+    for _, row in importance_df.head(20).iterrows():
+        logger.info(f"{row['feature']}: {row['importance']:.6f}")
+    
+    logger.info(f"\nModel saved to: {MODEL_FILE}")
+    logger.info(f"Feature importance plot saved to: {FEATURE_IMPORTANCE_PLOT}")
+    logger.info(f"SHAP values plot saved to: {SHAP_PLOT}")
+    logger.info(f"Training metrics saved to: {TRAINING_METRICS}")
+    
+    # 17. Generate correlation analysis between features
+    correlation_plot_path = OUTPUT_DIR / "feature_correlation.png"
+    logger.info("Generating feature correlation analysis...")
+    
+    # Convert scaled features back to DataFrame for correlation analysis
+    train_feature_df = pd.DataFrame(X_train_scaled, columns=feature_cols)
+    
+    # Calculate correlation matrix
+    corr_matrix = train_feature_df.corr()
+    
+    # Plot correlation heatmap
+    plt.figure(figsize=(14, 12))
+    mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+    sns.heatmap(
+        corr_matrix, 
+        mask=mask,
+        cmap='coolwarm',
+        annot=False,
+        center=0,
+        square=True,
+        linewidths=0.5
+    )
+    plt.title('Feature Correlation Matrix')
+    plt.tight_layout()
+    plt.savefig(correlation_plot_path)
+    plt.close()
+    
+    logger.info(f"Feature correlation plot saved to: {correlation_plot_path}")
 
 if __name__ == "__main__":
     main()

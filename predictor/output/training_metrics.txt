@@ -1,0 +1,69 @@
+Tennis Match Prediction Model Metrics:
+==================================================
+
+Model Performance:
+------------------------------
+accuracy: 0.8586
+precision: 0.8611
+recall: 0.8552
+f1: 0.8581
+auc_roc: 0.9382
+
+Feature Importance Analysis:
+------------------------------
+
+XGBoost Feature Importance:
+win_rate_20_diff: 0.213232
+win_rate_5_diff: 0.212579
+win_rate_30_diff: 0.147037
+win_rate_Hard_5_diff: 0.047882
+win_rate_Clay_5_diff: 0.043658
+win_rate_10_diff: 0.042483
+player_elo_diff: 0.035730
+win_rate_Carpet_30_diff: 0.027307
+win_rate_Clay_10_diff: 0.024102
+win_rate_Grass_10_diff: 0.023394
+win_rate_Grass_20_diff: 0.022933
+win_rate_Carpet_20_diff: 0.018659
+win_rate_Grass_5_diff: 0.016008
+win_rate_Hard_30_diff: 0.015389
+win_rate_Carpet_10_diff: 0.014159
+win_rate_Hard_20_diff: 0.012619
+win_rate_Carpet_5_diff: 0.012259
+win_rate_50_diff: 0.011445
+win_rate_Clay_50_diff: 0.009763
+win_rate_Grass_30_diff: 0.008857
+win_rate_Hard_50_diff: 0.008470
+win_rate_Carpet_50_diff: 0.007679
+win_rate_Hard_10_diff: 0.007441
+win_rate_Clay_20_diff: 0.006130
+win_rate_Grass_50_diff: 0.006080
+win_rate_Clay_30_diff: 0.004706
+
+Permutation Feature Importance:
+win_rate_5_diff: 0.093796
+win_rate_Hard_5_diff: 0.051365
+win_rate_Clay_5_diff: 0.047539
+player_elo_diff: 0.031079
+win_rate_Grass_5_diff: 0.004232
+win_rate_Clay_10_diff: 0.001796
+win_rate_10_diff: 0.001616
+win_rate_20_diff: 0.001338
+win_rate_30_diff: 0.001116
+win_rate_Hard_10_diff: 0.000853
+win_rate_Clay_20_diff: 0.000762
+win_rate_50_diff: 0.000602
+win_rate_Hard_30_diff: 0.000546
+win_rate_Hard_20_diff: 0.000519
+win_rate_Clay_30_diff: 0.000495
+win_rate_Clay_50_diff: 0.000427
+win_rate_Hard_50_diff: 0.000347
+win_rate_Grass_10_diff: 0.000244
+win_rate_Carpet_5_diff: 0.000207
+win_rate_Grass_20_diff: 0.000102
+win_rate_Grass_50_diff: 0.000047
+win_rate_Carpet_10_diff: 0.000035
+win_rate_Grass_30_diff: 0.000022
+win_rate_Carpet_20_diff: 0.000019
+win_rate_Carpet_30_diff: 0.000004
+win_rate_Carpet_50_diff: -0.000001
