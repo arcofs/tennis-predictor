@@ -1,0 +1,95 @@
+# Tennis Predictor Development Rules
+
+## Project Structure
+- Raw data must be stored in the `data/` directory
+- All prediction-related scripts must be in the `predictor/` directory
+- Jupyter notebooks are allowed for data exploration and prototyping
+
+## Code Style and Type Safety
+- Strict type hints are required for all variables and function returns
+- Use type annotations when first declaring variables: `variable_name: type = value`
+- Function return types must be explicitly declared: `def function_name() -> return_type:`
+- Avoid using `Any` type - use specific types instead
+- Use Pydantic models for all data structures
+- No `@staticmethod` decorators allowed
+- Prefer functional programming over OOP when possible
+
+## Dependencies
+- Use `requirements.txt` for dependency management
+- If runnings commands, always ensure you are using the virtual environment: .venv located in the root of the project
+- Use latest versions of packages
+- Required packages:
+  - pandas
+  - numpy
+  - xgboost
+  - pydantic
+  - scikit-learn
+
+## Error Handling
+- All functions must include proper error handling
+- Use try-except blocks where appropriate
+- Raise specific exceptions with meaningful messages
+- Log errors appropriately
+
+## Data Processing
+- All data processing functions must handle missing values explicitly
+- Data validation must be performed using Pydantic models
+- Raw data should not be modified - create new processed datasets instead
+
+## Model Development
+- Use type hints for all model parameters and return values
+- Model configurations should be defined using Pydantic models
+- Feature engineering functions must be pure functions where possible
+
+## Code Organization
+- Keep functions small and focused
+- Use descriptive variable names
+- Group related functions together
+- Avoid global variables
+
+## File Naming
+- Use snake_case for all Python files
+- Use descriptive names that indicate the file's purpose
+- Group related files with similar prefixes
+
+## Comments and Code Clarity
+- Add comments for complex logic
+- Use type hints to improve code readability
+- Break down complex operations into smaller, well-named functions
+
+## Data Types
+- Use specific types instead of generic ones
+- Prefer built-in types over custom types when possible
+- Use Pydantic models for complex data structures
+- Use enums for fixed sets of values
+
+## Function Design
+- Functions should have a single responsibility
+- Use pure functions when possible
+- Return new objects instead of modifying existing ones
+- Use type hints for all parameters and return values
+
+## Example Type Annotations
+```python
+# Variable declarations
+player_names: list[str] = ["Player1", "Player2"]
+match_scores: dict[str, int] = {"Player1": 6, "Player2": 4}
+
+# Function definitions
+def calculate_elo_rating(player_rating: float, opponent_rating: float, result: int) -> float:
+    ...
+
+# Pydantic models
+class MatchData(BaseModel):
+    player1: str
+    player2: str
+    surface: str
+    tournament: str
+    date: datetime
+```
+
+## IDE Settings
+- Enable strict type checking
+- Enable Pydantic validation
+- Show type hints inline
+- Enable auto-imports for type hints 
