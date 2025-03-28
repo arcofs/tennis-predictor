@@ -4,6 +4,12 @@ import time
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
+import warnings
+
+# Suppress specific warnings
+warnings.filterwarnings("ignore", message=".*swapaxes.*")
+warnings.filterwarnings("ignore", message=".*Downcasting object dtype.*")
+warnings.filterwarnings("ignore", message=".*Series.fillna.*")
 
 # Check if running in Google Colab
 def is_colab() -> bool:
@@ -667,15 +673,38 @@ def process_player_chunk(chunk_df: pd.DataFrame, time_windows: List[int]) -> pd.
         chunk_df[f'win_rate_{window}'] = chunk_df.groupby('player_id')['result'].transform(
             lambda x: x.rolling(window, min_periods=1).mean()
         )
+        
+        # Add feature flag to indicate insufficient data
+        chunk_df[f'win_rate_{window}_reliable'] = chunk_df.groupby('player_id')['result'].transform(
+            lambda x: x.rolling(window, min_periods=1).count() >= window/2
+        )
     
     # Surface-specific win rates
     for surface in chunk_df['surface'].unique():
         if pd.isna(surface):
             continue
         surface_mask = chunk_df['surface'] == surface
+        
         for window in time_windows:
-            chunk_df[f'win_rate_{surface}_{window}'] = chunk_df[surface_mask].groupby('player_id')['result'].transform(
+            # Calculate surface-specific win rates only for matches on that surface
+            surface_win_rates = chunk_df[surface_mask].groupby('player_id')['result'].transform(
                 lambda x: x.rolling(window, min_periods=1).mean()
+            )
+            
+            # Create the column in the full dataframe
+            chunk_df[f'win_rate_{surface}_{window}'] = None
+            
+            # Assign the calculated values only to rows with that surface
+            chunk_df.loc[surface_mask, f'win_rate_{surface}_{window}'] = surface_win_rates
+            
+            # Forward-fill the values to later matches (regardless of surface)
+            chunk_df[f'win_rate_{surface}_{window}'] = chunk_df.groupby('player_id')[f'win_rate_{surface}_{window}'].transform(
+                lambda x: x.ffill().infer_objects(copy=False)
+            )
+            
+            # Add reliability indicator
+            chunk_df[f'win_rate_{surface}_{window}_reliable'] = chunk_df.groupby('player_id')[f'win_rate_{surface}_{window}'].transform(
+                lambda x: x.notna()
             )
     
     return chunk_df
@@ -696,15 +725,38 @@ def generate_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
             df_gpu[f'win_rate_{window}'] = df_gpu.groupby('player_id')['result'].transform(
                 lambda x: x.rolling(window, min_periods=1).mean()
             )
+            
+            # Add feature flag to indicate insufficient data
+            df_gpu[f'win_rate_{window}_reliable'] = df_gpu.groupby('player_id')['result'].transform(
+                lambda x: x.rolling(window, min_periods=1).count() >= window/2
+            )
         
         # Surface-specific win rates on GPU
         for surface in df['surface'].unique():
             if pd.isna(surface):
                 continue
             surface_mask = df_gpu['surface'] == surface
+            
             for window in time_windows:
-                df_gpu[f'win_rate_{surface}_{window}'] = df_gpu[surface_mask].groupby('player_id')['result'].transform(
+                # Calculate surface-specific win rates only for matches on that surface
+                surface_win_rates = df_gpu[surface_mask].groupby('player_id')['result'].transform(
                     lambda x: x.rolling(window, min_periods=1).mean()
+                )
+                
+                # Create the column in the full dataframe
+                df_gpu[f'win_rate_{surface}_{window}'] = None
+                
+                # Assign the calculated values only to rows with that surface
+                df_gpu.loc[surface_mask, f'win_rate_{surface}_{window}'] = surface_win_rates
+                
+                # Forward-fill the values to later matches (regardless of surface)
+                df_gpu[f'win_rate_{surface}_{window}'] = df_gpu.groupby('player_id')[f'win_rate_{surface}_{window}'].transform(
+                    lambda x: x.ffill().infer_objects(copy=False)
+                )
+                
+                # Add reliability indicator
+                df_gpu[f'win_rate_{surface}_{window}_reliable'] = df_gpu.groupby('player_id')[f'win_rate_{surface}_{window}'].transform(
+                    lambda x: x.notna()
                 )
         
         # Convert back to pandas
@@ -920,12 +972,26 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     
     total_matches = len(match_df)
     
-    # Initialize all feature columns with 0.0 to avoid insertion issues
-    for col in feature_cols:
-        match_df[f'winner_{col}'] = 0.0
-        match_df[f'loser_{col}'] = 0.0
+    # Create new column dictionaries to avoid fragmentation
+    winner_cols = {}
+    loser_cols = {}
+    winner_imputed_cols = {}
+    loser_imputed_cols = {}
     
-    # For each match, get features for both players
+    # Initialize columns for each feature
+    for col in feature_cols:
+        winner_cols[f'winner_{col}'] = None
+        loser_cols[f'loser_{col}'] = None
+        winner_imputed_cols[f'winner_{col}_imputed'] = False
+        loser_imputed_cols[f'loser_{col}_imputed'] = False
+    
+    # Add all columns at once to avoid fragmentation
+    match_df = match_df.assign(**winner_cols)
+    match_df = match_df.assign(**loser_cols)
+    match_df = match_df.assign(**winner_imputed_cols)
+    match_df = match_df.assign(**loser_imputed_cols)
+    
+    # Process each match
     for idx, row in tqdm(match_df.iterrows(), total=total_matches, desc="Creating prediction features"):
         # Get features for winner
         winner_mask = (player_df['player_id'] == row['winner_id']) & (player_df['tourney_date'] <= row['tourney_date'])
@@ -945,16 +1011,225 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
                 if col in loser_features:
                     match_df.loc[idx, f'loser_{col}'] = loser_features[col]
     
+    # Calculate tour averages for different surfaces and time windows for better imputation
+    print("Calculating tour averages for improved imputation...")
+    
+    # Overall win rates by window - will be close to 0.5 by definition but for completeness
+    tour_win_rates = {}
+    for window in time_windows:
+        win_rate_col = f'win_rate_{window}'
+        if win_rate_col in player_df.columns:
+            tour_win_rates[win_rate_col] = player_df[win_rate_col].mean()
+    
+    # Surface-specific tour averages
+    surface_tour_win_rates = {}
+    for surface in player_df['surface'].unique():
+        if pd.isna(surface):
+            continue
+        
+        surface_mask = player_df['surface'] == surface
+        for window in time_windows:
+            surface_win_rate_col = f'win_rate_{surface}_{window}'
+            if surface_win_rate_col in player_df.columns:
+                surface_data = player_df.loc[surface_mask, surface_win_rate_col]
+                if not surface_data.empty:
+                    surface_tour_win_rates[surface_win_rate_col] = surface_data.mean()
+    
+    # Calculate player ranking tiers for rank-based imputation
+    print("Calculating player ranking tiers for rank-based imputation...")
+    
+    # Use Elo as a proxy for ranking
+    if 'player_elo' in player_df.columns:
+        # Create 5 ranking tiers based on Elo
+        elo_quantiles = player_df['player_elo'].quantile([0.2, 0.4, 0.6, 0.8]).tolist()
+        
+        # Tier win rates for different windows
+        tier_win_rates = {}
+        for i, (lower, upper) in enumerate(zip([0] + elo_quantiles, elo_quantiles + [float('inf')])):
+            tier_mask = (player_df['player_elo'] > lower) & (player_df['player_elo'] <= upper)
+            
+            for window in time_windows:
+                win_rate_col = f'win_rate_{window}'
+                if win_rate_col in player_df.columns:
+                    tier_data = player_df.loc[tier_mask, win_rate_col]
+                    if not tier_data.empty:
+                        tier_win_rates[(win_rate_col, i)] = tier_data.mean()
+            
+            # Surface-specific tier win rates
+            for surface in player_df['surface'].unique():
+                if pd.isna(surface):
+                    continue
+                
+                for window in time_windows:
+                    surface_win_rate_col = f'win_rate_{surface}_{window}'
+                    if surface_win_rate_col in player_df.columns:
+                        surface_tier_mask = tier_mask & (player_df['surface'] == surface)
+                        surface_tier_data = player_df.loc[surface_tier_mask, surface_win_rate_col]
+                        if not surface_tier_data.empty and len(surface_tier_data) > 10:  # Only if we have enough data
+                            tier_win_rates[(surface_win_rate_col, i)] = surface_tier_data.mean()
+    
+    # Mark imputed values and apply smart imputation strategies
+    print("Applying smart imputation for missing values...")
+    
+    # Group features by type for appropriate imputation strategies
+    win_rate_features = [col for col in feature_cols if 'win_rate' in col]
+    elo_features = [col for col in feature_cols if 'elo' in col or 'rating' in col]
+    streak_features = [col for col in feature_cols if 'streak' in col]
+    h2h_features = [col for col in feature_cols if 'h2h' in col]
+    
+    # Helper function to find player's ranking tier based on Elo
+    def get_player_tier(player_id, match_date):
+        player_matches = player_df[(player_df['player_id'] == player_id) & 
+                                   (player_df['tourney_date'] <= match_date)]
+        
+        if player_matches.empty or 'player_elo' not in player_matches.columns:
+            return None
+        
+        player_elo = player_matches.iloc[-1]['player_elo']
+        
+        # Determine tier based on Elo
+        for i, (lower, upper) in enumerate(zip([0] + elo_quantiles, elo_quantiles + [float('inf')])):
+            if lower < player_elo <= upper:
+                return i
+        
+        return None
+    
+    # Helper function to get related surface win rates
+    def get_related_surface_rates(player_id, target_surface, match_date, window):
+        player_matches = player_df[(player_df['player_id'] == player_id) & 
+                                   (player_df['tourney_date'] <= match_date)]
+        
+        if player_matches.empty:
+            return None
+        
+        # Map of related surfaces (by similarity)
+        surface_map = {
+            'Hard': ['Carpet', 'Grass', 'Clay'],  # Most similar to least
+            'Clay': ['Carpet', 'Hard', 'Grass'],
+            'Grass': ['Carpet', 'Hard', 'Clay'],
+            'Carpet': ['Hard', 'Grass', 'Clay']
+        }
+        
+        # If target surface not in map, return None
+        if target_surface not in surface_map:
+            return None
+        
+        # Check if player has win rates for related surfaces
+        related_surfaces = surface_map[target_surface]
+        
+        for surface in related_surfaces:
+            surface_col = f'win_rate_{surface}_{window}'
+            if surface_col in player_matches.columns and not player_matches[surface_col].isna().all():
+                # Return the most recent non-NaN value
+                for idx in range(len(player_matches)-1, -1, -1):
+                    value = player_matches.iloc[idx][surface_col]
+                    if not pd.isna(value):
+                        return value
+        
+        return None
+    
+    # Impute missing values with appropriate strategies for each feature type
+    for player in ['winner', 'loser']:
+        # 1. For win rate features: use sophisticated imputation
+        for col in win_rate_features:
+            col_name = f'{player}_{col}'
+            impute_mask = match_df[col_name].isna()
+            
+            if impute_mask.any():
+                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
+                
+                # Process each missing value with custom imputation logic
+                for idx in match_df[impute_mask].index:
+                    player_id = match_df.loc[idx, f'{player}_id']
+                    match_date = match_df.loc[idx, 'tourney_date']
+                    
+                    # STRATEGY 1: If it's a surface-specific win rate, try related surfaces first
+                    if '_' in col and not col.startswith('win_rate_'):  # Surface-specific (e.g., win_rate_Clay_5)
+                        parts = col.split('_')
+                        if len(parts) >= 3:
+                            surface = parts[1]
+                            window = int(parts[2])
+                            
+                            # First try to use player's win rates from related surfaces
+                            related_rate = get_related_surface_rates(player_id, surface, match_date, window)
+                            if related_rate is not None:
+                                match_df.loc[idx, col_name] = related_rate
+                                continue
+                    
+                    # STRATEGY 2: Use player's Elo tier-based win rate if available
+                    player_tier = get_player_tier(player_id, match_date)
+                    if player_tier is not None and (col, player_tier) in tier_win_rates:
+                        match_df.loc[idx, col_name] = tier_win_rates[(col, player_tier)]
+                        continue
+                    
+                    # STRATEGY 3: For surface-specific rates, use overall tour average for that surface
+                    if col in surface_tour_win_rates:
+                        match_df.loc[idx, col_name] = surface_tour_win_rates[col]
+                        continue
+                    
+                    # STRATEGY 4: Use tour average for the time window
+                    if col in tour_win_rates:
+                        match_df.loc[idx, col_name] = tour_win_rates[col]
+                        continue
+                    
+                    # FALLBACK: Use 0.5 if all else fails
+                    match_df.loc[idx, col_name] = 0.5
+            
+        # 2. For Elo features: impute with starting Elo (1500)
+        for col in elo_features:
+            col_name = f'{player}_{col}'
+            if col_name in match_df.columns:
+                impute_mask = match_df[col_name].isna()
+                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
+                match_df.loc[impute_mask, col_name] = 1500.0
+        
+        # 3. For streak features: impute with 0 (no streak)
+        for col in streak_features:
+            col_name = f'{player}_{col}'
+            if col_name in match_df.columns:
+                impute_mask = match_df[col_name].isna()
+                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
+                match_df.loc[impute_mask, col_name] = 0
+        
+        # 4. For H2H features: impute with 0.5 (no prior H2H information)
+        for col in h2h_features:
+            col_name = f'{player}_{col}'
+            if col_name in match_df.columns:
+                impute_mask = match_df[col_name].isna()
+                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
+                match_df.loc[impute_mask, col_name] = 0.5
+    
     # Calculate feature differences (winner - loser)
+    print("Calculating feature differences...")
     for col in feature_cols:
-        match_df[f'{col}_diff'] = match_df[f'winner_{col}'] - match_df[f'loser_{col}']
+        winner_col = f'winner_{col}'
+        loser_col = f'loser_{col}'
+        diff_col = f'{col}_diff'
+        
+        # Calculate diff only when both columns exist
+        if winner_col in match_df.columns and loser_col in match_df.columns:
+            match_df[diff_col] = match_df[winner_col] - match_df[loser_col]
+            
+            # Add imputation flag for diff column - True if either player value was imputed
+            match_df[f'{diff_col}_imputed'] = match_df[f'winner_{col}_imputed'] | match_df[f'loser_{col}_imputed']
     
     # Add Elo difference directly
     if 'winner_elo' in original_df.columns and 'loser_elo' in original_df.columns:
         match_df['elo_diff'] = original_df['winner_elo'] - original_df['loser_elo']
+        
+        # Add imputation flag for elo_diff
+        winner_elo_imputed = match_df['winner_elo'].isna().fillna(False) 
+        loser_elo_imputed = match_df['loser_elo'].isna().fillna(False)
+        match_df['elo_diff_imputed'] = winner_elo_imputed | loser_elo_imputed
     
-    # Fill NaN values with 0.5 (for win rates)
-    match_df = match_df.fillna(0.5)
+    # Print imputation statistics
+    imputed_cols = [col for col in match_df.columns if col.endswith('_imputed')]
+    for col in imputed_cols:
+        base_col = col.replace('_imputed', '')
+        if base_col in match_df.columns:
+            pct_imputed = match_df[col].mean() * 100
+            if pct_imputed > 0:
+                print(f"Imputed {pct_imputed:.2f}% of values for {base_col}")
     
     # Ensure required columns are present and properly typed
     print(f"Final match_df shape: {match_df.shape}")
@@ -1011,6 +1286,12 @@ def debug_dataframe_info(df: pd.DataFrame, df_name: str) -> None:
     print(f"First few rows preview:")
     print(df.head(2))
     print("-" * 40)
+
+def apply_lag(df: pd.DataFrame, group_col: str, sort_col: str, lag_col: str, lag: int) -> pd.Series:
+    """Apply a lag to a column within groups."""
+    return df.sort_values(sort_col).groupby(group_col)[lag_col].shift(lag).transform(
+        lambda x: x.ffill().infer_objects(copy=False)
+    )
 
 def main() -> None:
     """
@@ -1090,19 +1371,27 @@ def main() -> None:
     # Final dataframe is match_df
     final_df = match_df
     
-    # 9. Optimize memory usage
-    print(f"[Step 9/{NUM_CORES}] Optimizing memory usage - 90% complete")
-    final_df = optimize_dtypes(final_df)
-    print(f"Completed step 9/{NUM_CORES} - 95% complete")
+    # XGBoost preparation
+    print(f"[Step 9/{NUM_CORES}] Preparing features for XGBoost - 85% complete")
+    
+    # 9. Calculate feature reliability weights and add XGBoost metadata
+    final_df = prepare_features_for_xgboost(final_df)
+    print(f"Completed step 9/{NUM_CORES} - 90% complete")
     print("-" * 80)
     
-    # 10. Save to output file
-    print(f"[Step 10/{NUM_CORES}] Saving to output file - 95% complete")
+    # 10. Optimize memory usage
+    print(f"[Step 10/{NUM_CORES}] Optimizing memory usage - 90% complete")
+    final_df = optimize_dtypes(final_df)
+    print(f"Completed step 10/{NUM_CORES} - 95% complete")
+    print("-" * 80)
+    
+    # 11. Save to output file
+    print(f"[Step 11/{NUM_CORES}] Saving to output file - 95% complete")
     print(f"Saving focused features to {OUTPUT_FILE}...")
     # Make sure directory exists
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     final_df.to_csv(OUTPUT_FILE, index=False)
-    print(f"Completed step 10/{NUM_CORES} - 100% complete")
+    print(f"Completed step 11/{NUM_CORES} - 100% complete")
     print("=" * 80)
     
     end_time = time.time()
@@ -1115,6 +1404,152 @@ def main() -> None:
     print(f"DataFrame memory usage: {final_df.memory_usage(deep=True).sum() / 1e6:.2f} MB")
     print(f"Output file saved to: {OUTPUT_FILE}")
     print("=" * 80)
+
+def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prepare features for optimal XGBoost performance:
+    1. Add feature reliability weights
+    2. Handle categorical variables
+    3. Add feature metadata
+    4. Check for and eliminate potential data leakage
+    
+    Args:
+        df: DataFrame with features
+        
+    Returns:
+        DataFrame optimized for XGBoost
+    """
+    print("Preparing features for XGBoost...")
+    
+    # Check for columns with too many missing values that might cause problems for XGBoost
+    missing_pct = df.isna().mean()
+    high_missing_cols = missing_pct[missing_pct > 0.5].index.tolist()
+    if high_missing_cols:
+        print(f"Warning: Features with >50% missing values may reduce model quality: {high_missing_cols}")
+    
+    # 1. Calculate feature reliability weights
+    # These can be used in sample_weight parameter in XGBoost to give less weight to samples with imputed values
+    reliability_cols = [col for col in df.columns if col.endswith('_imputed')]
+    
+    # Map imputed columns to their base feature
+    imputed_feature_map = {}
+    for col in reliability_cols:
+        base_feature = col.replace('_imputed', '')
+        if base_feature in df.columns:
+            imputed_feature_map[base_feature] = col
+    
+    # Calculate overall reliability score for each row (1 = fully reliable, lower = less reliable)
+    # Focus on the most important features for tennis prediction
+    key_features = [
+        'win_rate_10_diff', 'win_rate_Hard_10_diff', 'win_rate_Clay_10_diff', 
+        'elo_diff', 'player_elo_diff', 'h2h_win_pct_diff'
+    ]
+    
+    # Filter to only key features that actually exist in the dataframe
+    key_features = [f for f in key_features if f in df.columns]
+    
+    # Initialize reliability weight column
+    df['reliability_weight'] = 1.0
+    
+    if key_features:
+        print(f"Calculating reliability weights based on {len(key_features)} key features...")
+        
+        # Get imputation flags for key features
+        key_imputed_flags = []
+        for feature in key_features:
+            if f"{feature}_imputed" in df.columns:
+                key_imputed_flags.append(f"{feature}_imputed")
+        
+        if key_imputed_flags:
+            # Calculate what percentage of key features are imputed (0 = none, 1 = all)
+            df['imputed_key_pct'] = df[key_imputed_flags].mean(axis=1)
+            
+            # Reliability weight formula: 1.0 for no imputation, decreasing as more features are imputed
+            # We use a sigmoid function to ensure weights remain positive but decrease with more imputation
+            df['reliability_weight'] = 1.0 - (df['imputed_key_pct'] * 0.5)
+    
+    # 2. Handle categorical features (surface, tourney_level)
+    # XGBoost handles categorical features automatically, but we need to ensure they're properly encoded
+    
+    for cat_col in ['surface', 'tourney_level']:
+        if cat_col in df.columns:
+            print(f"Preparing categorical feature: {cat_col}")
+            
+            # Ensure categorical columns are properly encoded as category dtype
+            if not pd.api.types.is_categorical_dtype(df[cat_col]):
+                df[cat_col] = df[cat_col].astype('category')
+    
+    # 3. Check for data leakage risk
+    print("Checking for potential data leakage...")
+    
+    # 3.1 Ensure strict time-based separation
+    if 'tourney_date' in df.columns:
+        df = df.sort_values('tourney_date').reset_index(drop=True)
+        print("DataFrame sorted by tourney_date to enforce temporal order")
+    
+    # 3.2 Check for post-match statistics that might leak results
+    leakage_keyword_patterns = [
+        'result', 'winner', 'loser', 'win', 'loss', 'score', 'games_won',
+        'sets_won', 'match_time', 'retirement', 'walkover'
+    ]
+    
+    potential_leakage_cols = []
+    for pattern in leakage_keyword_patterns:
+        # Only check in feature diff columns, which are key to prediction
+        matches = [col for col in df.columns if pattern in col.lower() and col.endswith('_diff') and not col.endswith('_imputed')]
+        potential_leakage_cols.extend(matches)
+    
+    # Remove obvious non-leakage features
+    safe_features = [
+        'win_rate_10_diff', 'win_rate_20_diff', 'win_rate_30_diff', 'win_rate_50_diff',
+        'win_rate_Hard_10_diff', 'win_rate_Clay_10_diff', 'win_rate_Grass_10_diff',
+        'h2h_win_pct_diff'
+    ]
+    
+    potential_leakage_cols = [col for col in potential_leakage_cols if col not in safe_features]
+    
+    if potential_leakage_cols:
+        print(f"Warning: Potential data leakage in columns (verify these use only historical data): {potential_leakage_cols}")
+    
+    # 4. Add feature metadata - create a feature definitions JSON file
+    feature_metadata = {}
+    
+    for col in df.columns:
+        if col.endswith('_diff') and not col.endswith('_imputed'):
+            # This is a prediction feature
+            feature_metadata[col] = {
+                'is_prediction_feature': True,
+                'derived_from': [col.replace('_diff', '')],
+                'imputation_flag': f"{col}_imputed" if f"{col}_imputed" in df.columns else None,
+                'has_missing_values': df[col].isna().any(),
+                'missing_pct': df[col].isna().mean() * 100,
+                'description': f"Difference between winner and loser {col.replace('_diff', '')}"
+            }
+    
+    # Save feature metadata to JSON file
+    import json
+    metadata_path = os.path.join(OUTPUT_DIR, "feature_metadata.json")
+    with open(metadata_path, 'w') as f:
+        json.dump(feature_metadata, f, indent=2)
+    
+    print(f"Feature metadata saved to {metadata_path}")
+    
+    # 5. Create XGBoost-friendly final feature list
+    # Extract the difference features that will be used for prediction
+    # These are features that represent the difference between player stats, excluding metadata columns
+    
+    prediction_features = [
+        col for col in df.columns 
+        if col.endswith('_diff') and not col.endswith('_imputed')
+    ]
+    
+    # Add metadata column with the list of prediction features
+    df.attrs['prediction_features'] = prediction_features
+    
+    print(f"Identified {len(prediction_features)} XGBoost-ready prediction features")
+    print(f"Top prediction features: {prediction_features[:5]}...")
+    
+    return df
 
 if __name__ == "__main__":
     main() 
