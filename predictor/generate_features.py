@@ -814,52 +814,93 @@ def generate_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
         
         # Add streak calculations on GPU
         # First convert to CPU since streak calculations are difficult to vectorize on GPU
+        print("Calculating win/loss streaks with parallel processing...")
         df_cpu = df_gpu.to_pandas()
         
-        # Calculate streak features - we'll do this on CPU then transfer back to GPU
+        # Calculate streak features - we'll do this with parallel processing for better performance
         # Create shift column to check consecutive results
         df_cpu['prev_result'] = df_cpu.groupby('player_id')['result'].shift(1).fillna(0)
         
-        # Add streak counter that will be used to calculate consecutive wins/losses
-        df_cpu['win_streak_counter'] = 1
-        df_cpu['loss_streak_counter'] = 1
+        # Initialize streak columns
+        df_cpu['current_win_streak'] = 0
+        df_cpu['current_loss_streak'] = 0
         
-        # Reset counter when streak breaks
-        mask_win_continues = (df_cpu['result'] == 1) & (df_cpu['prev_result'] == 1)
-        mask_loss_continues = (df_cpu['result'] == 0) & (df_cpu['prev_result'] == 0)
+        # Get unique player IDs for parallelization
+        player_ids = df_cpu['player_id'].unique()
+        print(f"Processing streaks for {len(player_ids)} players using {MAX_USABLE_CORES} cores...")
         
-        # Calculate cumulative streak lengths
-        for player_id in df_cpu['player_id'].unique():
-            player_mask = df_cpu['player_id'] == player_id
-            if not player_mask.any():
-                continue
-                
-            # Get player's matches in chronological order
-            player_df = df_cpu.loc[player_mask].sort_values('tourney_date')
+        # Define a function to process streaks for a subset of players
+        def process_player_streaks_gpu(player_ids_chunk: List[int], data: pd.DataFrame) -> Dict[int, Dict[str, List]]:
+            """Process win/loss streaks for a chunk of players."""
+            results = {}
             
-            # Initialize streak counters
-            current_win_streak = 0
-            current_loss_streak = 0
-            
-            # Calculate streaks
-            for idx, row in player_df.iterrows():
-                if row['result'] == 1:  # Win
-                    current_win_streak += 1
-                    current_loss_streak = 0
-                else:  # Loss
-                    current_loss_streak += 1
-                    current_win_streak = 0
+            for i, player_id in enumerate(player_ids_chunk):
+                player_mask = data['player_id'] == player_id
+                if not player_mask.any():
+                    continue
+                    
+                # Get player's matches in chronological order
+                player_df = data.loc[player_mask].sort_values('tourney_date')
                 
-                # Store streak values
-                df_cpu.loc[idx, 'current_win_streak'] = current_win_streak
-                df_cpu.loc[idx, 'current_loss_streak'] = current_loss_streak
+                # Initialize streak counters
+                current_win_streak = 0
+                current_loss_streak = 0
+                
+                # Store results for this player
+                win_streaks = []
+                loss_streaks = []
+                indices = []
+                
+                # Calculate streaks
+                for idx, row in player_df.iterrows():
+                    if row['result'] == 1:  # Win
+                        current_win_streak += 1
+                        current_loss_streak = 0
+                    else:  # Loss
+                        current_loss_streak += 1
+                        current_win_streak = 0
+                    
+                    # Store values
+                    indices.append(idx)
+                    win_streaks.append(current_win_streak)
+                    loss_streaks.append(current_loss_streak)
+                
+                # Save player results
+                results[player_id] = {
+                    'indices': indices,
+                    'win_streaks': win_streaks,
+                    'loss_streaks': loss_streaks
+                }
+            
+            return results
+        
+        # Split players into chunks for parallel processing
+        player_chunks = np.array_split(player_ids, MAX_USABLE_CORES)
+        
+        # Process player streaks in parallel
+        with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
+            process_func = partial(process_player_streaks_gpu, data=df_cpu)
+            all_results = list(tqdm(
+                executor.map(process_func, player_chunks),
+                total=len(player_chunks),
+                desc="Calculating player streaks (GPU version)"
+            ))
+        
+        # Combine results and update the dataframe
+        print("Combining streak results...")
+        for chunk_result in all_results:
+            for player_id, player_data in chunk_result.items():
+                indices = player_data['indices']
+                if indices:  # Skip empty results
+                    df_cpu.loc[indices, 'current_win_streak'] = player_data['win_streaks']
+                    df_cpu.loc[indices, 'current_loss_streak'] = player_data['loss_streaks']
         
         # Transfer streak features back to GPU
         df_gpu['current_win_streak'] = df_cpu['current_win_streak']
         df_gpu['current_loss_streak'] = df_cpu['current_loss_streak']
         
         # Clean up intermediate columns
-        df_cpu = df_cpu.drop(['prev_result', 'win_streak_counter', 'loss_streak_counter'], axis=1, errors='ignore')
+        df_cpu = df_cpu.drop(['prev_result'], axis=1, errors='ignore')
         
         # Convert back to pandas
         df = df_gpu.to_pandas()
@@ -880,31 +921,75 @@ def generate_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
         df['current_win_streak'] = 0
         df['current_loss_streak'] = 0
         
-        # Calculate streaks for each player
-        for player_id in df['player_id'].unique():
-            player_mask = df['player_id'] == player_id
-            if not player_mask.any():
-                continue
-                
-            # Get player's matches in chronological order
-            player_df = df.loc[player_mask].sort_values('tourney_date')
+        # Get unique player IDs for parallelization
+        player_ids = df['player_id'].unique()
+        print(f"Processing streaks for {len(player_ids)} players using {MAX_USABLE_CORES} cores...")
+        
+        # Define a function to process streaks for a subset of players
+        def process_player_streaks(player_ids_chunk: List[int], data: pd.DataFrame) -> Dict[int, Dict[str, List]]:
+            """Process win/loss streaks for a chunk of players."""
+            results = {}
             
-            # Initialize streak counters
-            current_win_streak = 0
-            current_loss_streak = 0
-            
-            # Calculate streaks
-            for idx, row in player_df.iterrows():
-                if row['result'] == 1:  # Win
-                    current_win_streak += 1
-                    current_loss_streak = 0
-                else:  # Loss
-                    current_loss_streak += 1
-                    current_win_streak = 0
+            for i, player_id in enumerate(player_ids_chunk):
+                player_mask = data['player_id'] == player_id
+                if not player_mask.any():
+                    continue
+                    
+                # Get player's matches in chronological order
+                player_df = data.loc[player_mask].sort_values('tourney_date')
                 
-                # Store streak values
-                df.loc[idx, 'current_win_streak'] = current_win_streak
-                df.loc[idx, 'current_loss_streak'] = current_loss_streak
+                # Initialize streak counters
+                current_win_streak = 0
+                current_loss_streak = 0
+                
+                # Store results for this player
+                win_streaks = []
+                loss_streaks = []
+                indices = []
+                
+                # Calculate streaks
+                for idx, row in player_df.iterrows():
+                    if row['result'] == 1:  # Win
+                        current_win_streak += 1
+                        current_loss_streak = 0
+                    else:  # Loss
+                        current_loss_streak += 1
+                        current_win_streak = 0
+                    
+                    # Store values
+                    indices.append(idx)
+                    win_streaks.append(current_win_streak)
+                    loss_streaks.append(current_loss_streak)
+                
+                # Save player results
+                results[player_id] = {
+                    'indices': indices,
+                    'win_streaks': win_streaks,
+                    'loss_streaks': loss_streaks
+                }
+            
+            return results
+        
+        # Split players into chunks for parallel processing
+        player_chunks = np.array_split(player_ids, MAX_USABLE_CORES)
+        
+        # Process player streaks in parallel
+        with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
+            process_func = partial(process_player_streaks, data=df)
+            all_results = list(tqdm(
+                executor.map(process_func, player_chunks),
+                total=len(player_chunks),
+                desc="Calculating player streaks"
+            ))
+        
+        # Combine results and update the dataframe
+        print("Combining streak results...")
+        for chunk_result in all_results:
+            for player_id, player_data in chunk_result.items():
+                indices = player_data['indices']
+                if indices:  # Skip empty results
+                    df.loc[indices, 'current_win_streak'] = player_data['win_streaks']
+                    df.loc[indices, 'current_loss_streak'] = player_data['loss_streaks']
         
         # Clean up intermediate columns
         df = df.drop(['prev_result'], axis=1, errors='ignore')
