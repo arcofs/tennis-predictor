@@ -517,6 +517,110 @@ def save_training_metrics(metrics: Dict[str, float], feature_importance: Dict[st
         for _, row in importance_df.iterrows():
             f.write(f"{row['feature']}: {row['importance']:.4f}\n")
 
+def train_xgboost_model(
+    X_train: np.ndarray, 
+    y_train: np.ndarray,
+    X_val: Optional[np.ndarray] = None,
+    y_val: Optional[np.ndarray] = None,
+    sample_weights: Optional[np.ndarray] = None,
+    config: Optional[Dict] = None
+) -> xgb.XGBClassifier:
+    """
+    Train an XGBoost model with proper handling of missing values.
+    
+    Args:
+        X_train: Training features
+        y_train: Training labels
+        X_val: Validation features
+        y_val: Validation labels
+        sample_weights: Optional sample weights to give different importance to different samples
+        config: Optional configuration dictionary
+        
+    Returns:
+        Trained XGBoost model
+    """
+    import xgboost as xgb
+    from sklearn.model_selection import StratifiedKFold
+    
+    print("Training XGBoost model with proper missing value handling...")
+    
+    # Default configuration
+    default_config = {
+        'objective': 'binary:logistic',
+        'eval_metric': 'logloss',
+        'use_label_encoder': False,
+        'n_estimators': 500,
+        'max_depth': 6,
+        'learning_rate': 0.01,
+        'subsample': 0.8,
+        'colsample_bytree': 0.8,
+        'min_child_weight': 1,
+        'gamma': 0,
+        'reg_alpha': 0,
+        'reg_lambda': 1,
+        'scale_pos_weight': 1,
+        'random_state': 42,
+        'verbosity': 1,
+        # Critical for proper missing value handling
+        'missing': np.nan,  # Explicitly tell XGBoost to use NaN as missing value marker
+        'enable_categorical': True  # Support for categorical features
+    }
+    
+    # Update with custom config if provided
+    if config:
+        default_config.update(config)
+    
+    # Check for missing values and log information
+    missing_rate = np.isnan(X_train).mean() * 100
+    print(f"Training data has {missing_rate:.2f}% missing values")
+    
+    if missing_rate > 0:
+        print("XGBoost will use its built-in missing value handling")
+        # Print missing rate by feature
+        missing_by_feature = np.isnan(X_train).mean(axis=0) * 100
+        high_missing_features = [(i, rate) for i, rate in enumerate(missing_by_feature) if rate > 20]
+        if high_missing_features:
+            print(f"Features with high missingness (>20%): {high_missing_features}")
+    
+    # Initialize model with proper config
+    model = xgb.XGBClassifier(**default_config)
+    
+    # Define evaluation set if validation data is provided
+    eval_set = None
+    if X_val is not None and y_val is not None:
+        eval_set = [(X_train, y_train), (X_val, y_val)]
+        print(f"Using validation set with {len(X_val)} samples")
+    
+    # Train the model
+    if sample_weights is not None:
+        print("Training with sample weights")
+        model.fit(
+            X_train, y_train,
+            sample_weight=sample_weights,
+            eval_set=eval_set,
+            early_stopping_rounds=50 if eval_set else None,
+            verbose=True
+        )
+    else:
+        model.fit(
+            X_train, y_train,
+            eval_set=eval_set,
+            early_stopping_rounds=50 if eval_set else None,
+            verbose=True
+        )
+    
+    # Print feature importance
+    feature_importance = model.feature_importances_
+    importance_df = pd.DataFrame({
+        'Feature': [f"Feature_{i}" for i in range(len(feature_importance))],
+        'Importance': feature_importance
+    }).sort_values('Importance', ascending=False)
+    
+    print("\nTop 10 important features:")
+    print(importance_df.head(10))
+    
+    return model
+
 def main() -> None:
     """Main function to train the model and analyze results."""
     start_time = time.time()

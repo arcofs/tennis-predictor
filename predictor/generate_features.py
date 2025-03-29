@@ -43,9 +43,13 @@ if is_colab():
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union, Set, Any
+from typing import Dict, List, Tuple, Optional, Union, Set, Any, Callable
 from tqdm.auto import tqdm
 from pydantic import BaseModel, Field
+import matplotlib.pyplot as plt
+import seaborn as sns
+import json
+from datetime import datetime, timedelta
 
 # Print pandas version for debugging
 print(f"Using pandas version: {pd.__version__}")
@@ -962,18 +966,18 @@ def process_h2h_chunk(chunk_df: pd.DataFrame, all_matches_df: pd.DataFrame) -> p
             result_chunk.loc[idx, 'h2h_matches'] = total_matches
             
             # Win percentages (avoid division by zero)
-            result_chunk.loc[idx, 'h2h_win_pct_p1'] = p1_wins / total_matches if total_matches > 0 else 0.5
-            result_chunk.loc[idx, 'h2h_win_pct_p2'] = p2_wins / total_matches if total_matches > 0 else 0.5
+            result_chunk.loc[idx, 'h2h_win_pct_p1'] = p1_wins / total_matches if total_matches > 0 else np.nan
+            result_chunk.loc[idx, 'h2h_win_pct_p2'] = p2_wins / total_matches if total_matches > 0 else np.nan
             
-            # Surface-specific win percentages
+            # Surface-specific win percentages - use NaN to indicate no data
             result_chunk.loc[idx, 'h2h_hard_win_pct_p1'] = (
-                p1_hard_wins / len(p1_hard_matches) if len(p1_hard_matches) > 0 else 0.5
+                p1_hard_wins / len(p1_hard_matches) if len(p1_hard_matches) > 0 else np.nan
             )
             result_chunk.loc[idx, 'h2h_clay_win_pct_p1'] = (
-                p1_clay_wins / len(p1_clay_matches) if len(p1_clay_matches) > 0 else 0.5
+                p1_clay_wins / len(p1_clay_matches) if len(p1_clay_matches) > 0 else np.nan
             )
             result_chunk.loc[idx, 'h2h_grass_win_pct_p1'] = (
-                p1_grass_wins / len(p1_grass_matches) if len(p1_grass_matches) > 0 else 0.5
+                p1_grass_wins / len(p1_grass_matches) if len(p1_grass_matches) > 0 else np.nan
             )
     
     # Map these back to winner/loser during historical feature generation
@@ -1243,16 +1247,62 @@ def impute_chunk_optimized(df_chunk: pd.DataFrame,
                 result_chunk.loc[mask, col_name] = 0
                 result_chunk.loc[mask, f'{col_name}_imputed'] = True
     
-    # H2H features: impute with 0.5 - fully vectorized
+    # H2H features: use more advanced imputation strategy instead of 0.5
     for col in h2h_features:
         col_name = f'{player_type}_{col}'
         if col_name in result_chunk.columns:
             mask = result_chunk[col_name].isna()
             if mask.any():
-                result_chunk.loc[mask, col_name] = 0.5
+                # For h2h features, we keep track of the fact they were imputed
                 result_chunk.loc[mask, f'{col_name}_imputed'] = True
+                
+                # Instead of defaulting to 0.5, we'll use a smarter approach:
+                # 1. For win percentage features, use player's overall win rate as a proxy
+                if 'win_pct' in col:
+                    # Look up player's relevant win rate for each missing value
+                    for idx in result_chunk[mask].index:
+                        player_id = result_chunk.loc[idx, f'{player_type}_id']
+                        match_date = result_chunk.loc[idx, 'tourney_date']
+                        
+                        # Get player's overall win rate
+                        win_rate_col = 'win_rate_10'  # Use 10-match window as default
+                        
+                        # For surface-specific h2h features, use surface-specific win rates
+                        if 'hard' in col.lower():
+                            win_rate_col = 'win_rate_Hard_10'
+                        elif 'clay' in col.lower():
+                            win_rate_col = 'win_rate_Clay_10'
+                        elif 'grass' in col.lower():
+                            win_rate_col = 'win_rate_Grass_10'
+                        
+                        # Get player's historical data up to match date
+                        player_history = player_df[(player_df['player_id'] == player_id) & 
+                                                  (player_df['tourney_date'] < match_date)]
+                        
+                        if not player_history.empty and win_rate_col in player_history.columns:
+                            # Use most recent win rate as proxy for h2h
+                            latest_win_rate = player_history.iloc[-1][win_rate_col]
+                            if not pd.isna(latest_win_rate):
+                                result_chunk.loc[idx, col_name] = latest_win_rate
+                                continue
+                        
+                        # If we can't get a player-specific rate, use tour average
+                        if win_rate_col in tour_win_rates:
+                            result_chunk.loc[idx, col_name] = tour_win_rates[win_rate_col]
+                        else:
+                            # As a last resort, use a calculated average (not 0.5)
+                            # Calculate the mean of the non-missing values for this feature
+                            mean_val = result_chunk[col_name].dropna().mean()
+                            if not pd.isna(mean_val):
+                                result_chunk.loc[idx, col_name] = mean_val
+                            else:
+                                # Only if all else fails, use 0.5
+                                result_chunk.loc[idx, col_name] = 0.5
+                else:
+                    # For h2h non-win percentage features (like match count), use 0
+                    result_chunk.loc[mask, col_name] = 0
     
-    # 2. Win rate features - hybrid approach
+    # 2. Win rate features - hybrid approach with proper handling of missing values
     
     # First, identify which features need complex imputation
     complex_imputation_needed = {}
@@ -1278,8 +1328,11 @@ def impute_chunk_optimized(df_chunk: pd.DataFrame,
                     # For general win rates, apply tour average directly (fully vectorized)
                     result_chunk.loc[mask, col_name] = tour_win_rates[col]
             else:
-                # For features without tour averages, default to 0.5 (vectorized)
-                result_chunk.loc[mask, col_name] = 0.5
+                # Don't default to 0.5, instead use average of non-missing values
+                mean_val = result_chunk[col_name].dropna().mean()
+                if pd.isna(mean_val):
+                    # Use tour-wide average for this category if available
+                    result_chunk.loc[mask, col_name] = tour_win_rates.get(col, np.nan)
     
     # 3. Process complex imputations only where needed
     for col, mask in complex_imputation_needed.items():
@@ -1836,6 +1889,8 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
     high_missing_cols = missing_pct[missing_pct > 0.5].index.tolist()
     if high_missing_cols:
         print(f"Warning: Features with >50% missing values may reduce model quality: {high_missing_cols}")
+        # Don't remove these columns - XGBoost can handle missing values effectively
+        print("These columns will be kept as XGBoost has special handling for missing values")
     
     # 1. Calculate feature reliability weights
     # These can be used in sample_weight parameter in XGBoost to give less weight to samples with imputed values
@@ -1877,9 +1932,12 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
             # Reliability weight formula: 1.0 for no imputation, decreasing as more features are imputed
             # We use a sigmoid function to ensure weights remain positive but decrease with more imputation
             df['reliability_weight'] = 1.0 - (df['imputed_key_pct'] * 0.5)
+            
+            print(f"Reliability weights range: {df['reliability_weight'].min():.4f} to {df['reliability_weight'].max():.4f}")
     
     # 2. Handle categorical features (surface, tourney_level)
-    # XGBoost handles categorical features automatically, but we need to ensure they're properly encoded
+    # XGBoost handles categorical features automatically with enable_categorical=True
+    # but we need to ensure they're properly encoded
     
     for cat_col in ['surface', 'tourney_level']:
         if cat_col in df.columns:
@@ -1889,15 +1947,22 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
             if not pd.api.types.is_categorical_dtype(df[cat_col]):
                 df[cat_col] = df[cat_col].astype('category')
     
-    # 3. Check for data leakage risk with improved approach
+    # 3. Handle missing values properly
+    missing_summary = df.isna().sum().to_dict()
+    print(f"Missing values summary: {', '.join([f'{k}: {v}' for k, v in missing_summary.items() if v > 0])}")
+    
+    # DO NOT fill missing values - XGBoost handles them natively
+    print("Keeping missing values as NaN - XGBoost has specialized handling for missing values")
+    
+    # 4. Check for data leakage risk with improved approach
     print("Checking for potential data leakage with enhanced method...")
     
-    # 3.1 Ensure strict time-based separation
+    # 4.1 Ensure strict time-based separation
     if 'tourney_date' in df.columns:
         df = df.sort_values('tourney_date').reset_index(drop=True)
         print("DataFrame sorted by tourney_date to enforce temporal order")
     
-    # 3.2 Improved check for post-match statistics that might leak results
+    # 4.2 Improved check for post-match statistics that might leak results
     leakage_keyword_patterns = [
         'result', 'winner', 'loser', 'win', 'loss', 'score', 'games_won',
         'sets_won', 'match_time', 'retirement', 'walkover'
@@ -1956,7 +2021,7 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
     else:
         print("No potential data leakage detected in features")
     
-    # 4. Add feature metadata - create a feature definitions JSON file
+    # 5. Add feature metadata - create a feature definitions JSON file
     feature_metadata = {}
     
     for col in df.columns:
@@ -1983,7 +2048,7 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
     
     print(f"Feature metadata saved to {metadata_path}")
     
-    # 5. Create XGBoost-friendly final feature list
+    # 6. Create XGBoost-friendly final feature list
     # Extract the difference features that will be used for prediction
     # These are features that represent the difference between player stats, excluding metadata columns
     

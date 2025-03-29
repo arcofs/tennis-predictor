@@ -1,0 +1,292 @@
+{
+  "win_rate_5_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_5"
+    ],
+    "imputation_flag": "win_rate_5_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_5"
+  },
+  "win_rate_10_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_10"
+    ],
+    "imputation_flag": "win_rate_10_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_10"
+  },
+  "win_rate_20_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_20"
+    ],
+    "imputation_flag": "win_rate_20_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_20"
+  },
+  "win_rate_30_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_30"
+    ],
+    "imputation_flag": "win_rate_30_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_30"
+  },
+  "win_rate_50_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_50"
+    ],
+    "imputation_flag": "win_rate_50_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_50"
+  },
+  "win_rate_Hard_5_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Hard_5"
+    ],
+    "imputation_flag": "win_rate_Hard_5_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Hard_5"
+  },
+  "win_rate_Hard_10_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Hard_10"
+    ],
+    "imputation_flag": "win_rate_Hard_10_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Hard_10"
+  },
+  "win_rate_Hard_20_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Hard_20"
+    ],
+    "imputation_flag": "win_rate_Hard_20_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Hard_20"
+  },
+  "win_rate_Hard_30_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Hard_30"
+    ],
+    "imputation_flag": "win_rate_Hard_30_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Hard_30"
+  },
+  "win_rate_Hard_50_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Hard_50"
+    ],
+    "imputation_flag": "win_rate_Hard_50_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Hard_50"
+  },
+  "win_rate_Carpet_5_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Carpet_5"
+    ],
+    "imputation_flag": "win_rate_Carpet_5_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Carpet_5"
+  },
+  "win_rate_Carpet_10_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Carpet_10"
+    ],
+    "imputation_flag": "win_rate_Carpet_10_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Carpet_10"
+  },
+  "win_rate_Carpet_20_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Carpet_20"
+    ],
+    "imputation_flag": "win_rate_Carpet_20_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Carpet_20"
+  },
+  "win_rate_Carpet_30_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Carpet_30"
+    ],
+    "imputation_flag": "win_rate_Carpet_30_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Carpet_30"
+  },
+  "win_rate_Carpet_50_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Carpet_50"
+    ],
+    "imputation_flag": "win_rate_Carpet_50_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Carpet_50"
+  },
+  "win_rate_Clay_5_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Clay_5"
+    ],
+    "imputation_flag": "win_rate_Clay_5_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Clay_5"
+  },
+  "win_rate_Clay_10_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Clay_10"
+    ],
+    "imputation_flag": "win_rate_Clay_10_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Clay_10"
+  },
+  "win_rate_Clay_20_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Clay_20"
+    ],
+    "imputation_flag": "win_rate_Clay_20_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Clay_20"
+  },
+  "win_rate_Clay_30_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Clay_30"
+    ],
+    "imputation_flag": "win_rate_Clay_30_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Clay_30"
+  },
+  "win_rate_Clay_50_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Clay_50"
+    ],
+    "imputation_flag": "win_rate_Clay_50_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Clay_50"
+  },
+  "win_rate_Grass_5_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Grass_5"
+    ],
+    "imputation_flag": "win_rate_Grass_5_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Grass_5"
+  },
+  "win_rate_Grass_10_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Grass_10"
+    ],
+    "imputation_flag": "win_rate_Grass_10_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Grass_10"
+  },
+  "win_rate_Grass_20_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Grass_20"
+    ],
+    "imputation_flag": "win_rate_Grass_20_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Grass_20"
+  },
+  "win_rate_Grass_30_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Grass_30"
+    ],
+    "imputation_flag": "win_rate_Grass_30_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Grass_30"
+  },
+  "win_rate_Grass_50_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "win_rate_Grass_50"
+    ],
+    "imputation_flag": "win_rate_Grass_50_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser win_rate_Grass_50"
+  },
+  "current_win_streak_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "current_win_streak"
+    ],
+    "imputation_flag": "current_win_streak_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser current_win_streak"
+  },
+  "current_loss_streak_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "current_loss_streak"
+    ],
+    "imputation_flag": "current_loss_streak_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser current_loss_streak"
+  },
+  "player_elo_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "player_elo"
+    ],
+    "imputation_flag": "player_elo_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser player_elo"
+  },
+  "elo_diff": {
+    "is_prediction_feature": true,
+    "derived_from": [
+      "elo"
+    ],
+    "imputation_flag": "elo_diff_imputed",
+    "has_missing_values": false,
+    "missing_pct": 0.0,
+    "description": "Difference between winner and loser elo"
+  }
+}

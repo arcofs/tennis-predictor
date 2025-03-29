@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple, Set, Optional
+from typing import Dict, List, Tuple, Set, Optional, Union
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
@@ -16,7 +16,7 @@ from datetime import datetime
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -238,8 +238,24 @@ def prepare_features(match_df: pd.DataFrame, feature_cols: List[str]) -> np.ndar
         if col in feature_cols:
             df[col] = df[col].cat.codes
     
-    # Get the final feature matrix
-    X = df[feature_cols].fillna(0).values
+    # Get the final feature matrix - XGBoost can handle NaN values natively
+    # Don't fill missing values with 0 as this will skew the model
+    X = df[feature_cols].values
+    
+    # Let XGBoost know about our missing values - this is important for its processing
+    # Missing values are indicated as NaN in NumPy arrays
+    has_missing = np.isnan(X).any()
+    if has_missing:
+        logger.info("Dataset contains missing values - XGBoost will handle them internally")
+        
+        # Check for columns with high missingness - these might be problematic
+        missing_by_col = np.isnan(X).mean(axis=0)
+        high_missing_cols = [(feature_cols[i], missing_by_col[i]*100) 
+                             for i in range(len(feature_cols)) 
+                             if missing_by_col[i] > 0.2]
+        
+        if high_missing_cols:
+            logger.warning(f"Features with high missingness (>20%): {high_missing_cols}")
     
     logger.info(f"Prepared {X.shape[1]} features for {X.shape[0]} matches")
     return X
@@ -286,12 +302,18 @@ def predict_matches(
     
     # Prepare feature matrix
     try:
-        # Ensure all features are numeric
+        # Ensure all features are numeric but preserve NaN values
         for col in feature_cols:
-            matches_df[col] = pd.to_numeric(matches_df[col], errors='coerce').fillna(0)
+            if col in matches_df.columns:
+                # Convert to numeric but don't fill NaN values
+                matches_df[col] = pd.to_numeric(matches_df[col], errors='coerce')
         
         X = matches_df[feature_cols].values
         logger.info(f"Feature matrix shape: {X.shape}")
+        
+        # Log percentage of missing values
+        missing_rate = np.isnan(X).mean() * 100
+        logger.info(f"Overall missing value rate: {missing_rate:.2f}%")
     except Exception as e:
         logger.error(f"Error preparing feature matrix: {e}")
         # Fallback to available numeric features
@@ -300,20 +322,45 @@ def predict_matches(
         X = matches_df[numeric_features].values
         feature_cols = numeric_features
     
-    # Scale features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    # Scale features but preserve NaN values
+    # We need to handle NaNs specially for scaling
+    if np.isnan(X).any():
+        # Create a mask of NaN values to preserve them after scaling
+        nan_mask = np.isnan(X)
+        
+        # Replace NaNs with 0 temporarily for scaling
+        X_for_scaling = np.nan_to_num(X, nan=0)
+        
+        # Scale the non-NaN values
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X_for_scaling)
+        
+        # Put the NaNs back where they were
+        X_scaled[nan_mask] = np.nan
+    else:
+        # If no NaNs, proceed with normal scaling
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
     
-    # Make predictions
+    # Make predictions - XGBoost will handle NaN values internally
     try:
+        # XGBoost natively handles missing values
         y_pred_prob = model.predict_proba(X_scaled)[:, 1]
         y_pred = model.predict(X_scaled)
     except Exception as e:
         logger.error(f"Error making predictions: {e}")
-        # Fallback to random predictions
-        logger.warning("Falling back to random predictions")
-        y_pred_prob = np.random.random(len(matches_df))
-        y_pred = (y_pred_prob > 0.5).astype(int)
+        
+        # Try without scaling if that was the issue
+        try:
+            logger.warning("Trying prediction without scaling")
+            y_pred_prob = model.predict_proba(X)[:, 1]
+            y_pred = model.predict(X)
+        except Exception as e2:
+            logger.error(f"Second prediction error: {e2}")
+            # Fallback to random predictions
+            logger.warning("Falling back to random predictions")
+            y_pred_prob = np.random.random(len(matches_df))
+            y_pred = (y_pred_prob > 0.5).astype(int)
     
     # Add predictions to the dataframe
     matches_df['predicted_win_probability'] = y_pred_prob
