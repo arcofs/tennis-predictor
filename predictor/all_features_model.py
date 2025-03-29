@@ -12,6 +12,9 @@ from sklearn.inspection import permutation_importance
 import xgboost as xgb
 import shap
 import logging
+import time
+from datetime import datetime, timedelta
+from tqdm import tqdm  # For progress bars
 from pydantic import BaseModel
 
 # Configure logging
@@ -46,8 +49,8 @@ def detect_gpu_availability() -> bool:
         test_data = np.random.rand(10, 5)
         test_labels = np.random.randint(0, 2, 10)
         
-        # Set up a minimal GPU model
-        test_model = xgb.XGBClassifier(tree_method='gpu_hist', n_estimators=1)
+        # Set up a minimal GPU model with new approach
+        test_model = xgb.XGBClassifier(tree_method='hist', device='cuda', n_estimators=1)
         
         # Try to train it
         test_model.fit(test_data, test_labels)
@@ -59,7 +62,9 @@ def detect_gpu_availability() -> bool:
 
 # Detect GPU availability
 GPU_AVAILABLE = detect_gpu_availability()
-TREE_METHOD = 'gpu_hist' if GPU_AVAILABLE else 'hist'
+# Use modern XGBoost GPU configuration
+TREE_METHOD = 'hist'  # Always use hist for efficiency
+DEVICE = 'cuda' if GPU_AVAILABLE else 'cpu'
 
 class ModelConfig(BaseModel):
     """Configuration for the XGBoost model with anti-overfitting settings"""
@@ -73,6 +78,7 @@ class ModelConfig(BaseModel):
     eval_metric: str = "logloss"
     objective: str = "binary:logistic"
     tree_method: str = TREE_METHOD
+    device: str = DEVICE  # Modern way to specify GPU/CPU
     gamma: float = 0.1
     reg_alpha: float = 0.1
     reg_lambda: float = 1.0
@@ -81,9 +87,41 @@ class ModelConfig(BaseModel):
     missing: float = np.nan
     enable_categorical: bool = True
 
-def load_and_prepare_data() -> Tuple[pd.DataFrame, List[str]]:
+# Class to track overall progress
+class ProgressTracker:
+    def __init__(self, total_steps: int):
+        self.total_steps = total_steps
+        self.current_step = 0
+        self.start_time = time.time()
+        self.step_times = []
+        
+    def update(self, step_name: str):
+        """Update progress after completing a step"""
+        step_time = time.time()
+        if self.current_step > 0:
+            self.step_times.append(step_time - self.start_time - sum(self.step_times))
+        
+        self.current_step += 1
+        progress = (self.current_step / self.total_steps) * 100
+        
+        # Estimate time remaining
+        if len(self.step_times) > 0:
+            avg_step_time = sum(self.step_times) / len(self.step_times)
+            remaining_steps = self.total_steps - self.current_step
+            est_time_remaining = avg_step_time * remaining_steps
+            time_str = str(timedelta(seconds=int(est_time_remaining)))
+        else:
+            time_str = "estimating..."
+        
+        logger.info(f"Progress: {progress:.1f}% - Completed: {self.current_step}/{self.total_steps} - Remaining: {time_str}")
+        logger.info(f"Step completed: {step_name}")
+        
+        return progress
+
+def load_and_prepare_data(progress_tracker: Optional[ProgressTracker] = None) -> Tuple[pd.DataFrame, List[str]]:
     """Load and prepare data for training with all features"""
-    logger.info("Loading data...")
+    step_name = "Loading and preparing data"
+    logger.info(f"Starting: {step_name}...")
     
     # Load the dataset
     df = pd.read_csv(INPUT_FILE)
@@ -114,8 +152,11 @@ def load_and_prepare_data() -> Tuple[pd.DataFrame, List[str]]:
             common_cols.append('reliability_weight')
             logger.info("Using reliability weights for sample importance")
         
-        # Process each match
-        for _, row in df.iterrows():
+        # Show progress for data processing
+        total_matches = len(df)
+        
+        # Process each match with progress bar
+        for idx, row in tqdm(df.iterrows(), total=total_matches, desc="Processing matches"):
             # Extract common features
             common_features = {col: row[col] for col in common_cols if col in row}
             
@@ -169,13 +210,22 @@ def load_and_prepare_data() -> Tuple[pd.DataFrame, List[str]]:
         
         # Create feature differences (player1 - player2)
         # These are more useful for prediction than raw values
-        for p1_col in [col for col in balanced_df.columns if col.startswith('player1_') and col != 'player1_id']:
+        for p1_col in tqdm([col for col in balanced_df.columns if col.startswith('player1_') and col != 'player1_id'], 
+                          desc="Creating difference features"):
             feature_name = p1_col[8:]  # Remove 'player1_' prefix
             p2_col = f'player2_{feature_name}'
             
             if p2_col in balanced_df.columns:
-                diff_col = f'{feature_name}_diff'
-                balanced_df[diff_col] = balanced_df[p1_col] - balanced_df[p2_col]
+                # Check data types to handle boolean features correctly
+                if pd.api.types.is_bool_dtype(balanced_df[p1_col]) or pd.api.types.is_bool_dtype(balanced_df[p2_col]):
+                    # For boolean columns, convert to int before subtraction
+                    diff_col = f'{feature_name}_diff'
+                    balanced_df[diff_col] = balanced_df[p1_col].astype(int) - balanced_df[p2_col].astype(int)
+                else:
+                    # For numeric columns, perform normal subtraction
+                    diff_col = f'{feature_name}_diff'
+                    balanced_df[diff_col] = balanced_df[p1_col] - balanced_df[p2_col]
+                
                 feature_cols.append(diff_col)
         
         # Get the final dataset
@@ -225,6 +275,10 @@ def load_and_prepare_data() -> Tuple[pd.DataFrame, List[str]]:
     if 'result' in df.columns:
         logger.info(f"Class distribution: {df['result'].value_counts().to_dict()}")
     
+    # Update progress tracker if provided
+    if progress_tracker:
+        progress_tracker.update(step_name)
+        
     return df, feature_cols
 
 def create_time_based_split(df: pd.DataFrame, val_date: str = '2022-01-01', test_date: str = '2023-01-01') -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -292,12 +346,35 @@ def scale_features(X_train: np.ndarray, X_val: np.ndarray, X_test: np.ndarray) -
     return X_train_scaled, X_val_scaled, X_test_scaled
 
 def train_model(X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_val: np.ndarray,
-                feature_names: List[str], sample_weights: Optional[np.ndarray] = None) -> Tuple[xgb.XGBClassifier, Dict]:
+                feature_names: List[str], sample_weights: Optional[np.ndarray] = None,
+                progress_tracker: Optional[ProgressTracker] = None) -> Tuple[xgb.XGBClassifier, Dict]:
     """Train the XGBoost model with anti-overfitting configuration."""
-    logger.info("Training final model...")
+    step_name = "Training model"
+    logger.info(f"Starting: {step_name}...")
     
     # Use anti-overfitting configuration
     config = ModelConfig()
+    
+    # Create a callback to track training progress
+    class TrainingProgressCallback(xgb.callback.TrainingCallback):
+        def __init__(self, total_rounds):
+            self.total_rounds = total_rounds
+            self.start_time = time.time()
+            
+        def after_iteration(self, model, epoch, evals_log):
+            if epoch % 10 == 0:  # Update every 10 iterations
+                elapsed = time.time() - self.start_time
+                progress = (epoch + 1) / self.total_rounds * 100
+                est_total_time = elapsed / (epoch + 1) * self.total_rounds
+                est_remaining = est_total_time - elapsed
+                
+                logger.info(f"Training progress: {progress:.1f}% - Iteration {epoch+1}/{self.total_rounds} - "
+                          f"Remaining: {timedelta(seconds=int(est_remaining))}")
+            return False  # Return False to continue training
+    
+    # Create the progress callback
+    progress_callback = TrainingProgressCallback(total_rounds=config.n_estimators)
+    
     model = xgb.XGBClassifier(
         learning_rate=config.learning_rate,
         max_depth=config.max_depth,
@@ -309,13 +386,15 @@ def train_model(X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_v
         eval_metric=config.eval_metric,
         objective=config.objective,
         tree_method=config.tree_method,
+        device=config.device,  # Use device parameter instead of gpu_hist
         gamma=config.gamma,
         reg_alpha=config.reg_alpha,
         reg_lambda=config.reg_lambda,
         random_state=config.random_state,
         n_jobs=config.n_jobs,
         missing=config.missing,
-        enable_categorical=config.enable_categorical
+        enable_categorical=config.enable_categorical,
+        callbacks=[progress_callback]
     )
     
     # Use sample weights if provided
@@ -325,19 +404,23 @@ def train_model(X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_v
             X_train, y_train,
             eval_set=[(X_val, y_val)],
             sample_weight=sample_weights,
-            verbose=True
+            verbose=False  # Set to False since we're using our custom callback
         )
     else:
         model.fit(
             X_train, y_train,
             eval_set=[(X_val, y_val)],
-            verbose=True
+            verbose=False  # Set to False since we're using our custom callback
         )
     
     # Get feature importance
     importance = model.feature_importances_
     feature_importance = dict(zip(feature_names, importance))
     
+    # Update progress tracker if provided
+    if progress_tracker:
+        progress_tracker.update(step_name)
+        
     return model, feature_importance
 
 def evaluate_model(model: xgb.XGBClassifier, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
@@ -413,21 +496,33 @@ def save_training_metrics(metrics: Dict[str, float], feature_importance: Dict[st
 
 def main() -> None:
     """Main function to train the model and analyze results with all features."""
-    logger.info("Starting tennis match prediction model training with all features")
+    # Display start time
+    start_time = time.time()
+    logger.info(f"Starting tennis match prediction model training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Define total steps for progress tracking
+    total_steps = 12  # Total number of major steps in the pipeline
+    tracker = ProgressTracker(total_steps)
     
     # Log GPU/CPU usage
-    logger.info(f"Using {'GPU' if GPU_AVAILABLE else 'CPU'} for XGBoost training (tree_method={TREE_METHOD})")
+    logger.info(f"Using {'GPU' if GPU_AVAILABLE else 'CPU'} for XGBoost training (tree_method={TREE_METHOD}, device={DEVICE})")
     
     # 1. Load and prepare data
-    df, feature_cols = load_and_prepare_data()
+    df, feature_cols = load_and_prepare_data(tracker)
     
     # 2. Create time-based split with separate validation set
+    step_name = "Creating time-based data split"
+    logger.info(f"Starting: {step_name}...")
     train_df, val_df, test_df = create_time_based_split(df)
+    tracker.update(step_name)
     
     # 3. Prepare features
+    step_name = "Preparing features"
+    logger.info(f"Starting: {step_name}...")
     X_train, y_train = prepare_features(train_df, feature_cols)
     X_val, y_val = prepare_features(val_df, feature_cols)
     X_test, y_test = prepare_features(test_df, feature_cols)
+    tracker.update(step_name)
     
     # Extract sample weights if available
     sample_weights_train = None
@@ -436,58 +531,90 @@ def main() -> None:
         sample_weights_train = train_df['reliability_weight'].values
     
     # 4. Scale features
+    step_name = "Scaling features"
+    logger.info(f"Starting: {step_name}...")
     X_train_scaled, X_val_scaled, X_test_scaled = scale_features(X_train, X_val, X_test)
+    tracker.update(step_name)
     
     # 5. Analyze feature correlations to detect potentially redundant features
-    logger.info("Analyzing feature correlations...")
+    step_name = "Analyzing feature correlations"
+    logger.info(f"Starting: {step_name}...")
     
     # Convert to DataFrame for correlation analysis, handling NaN values
     feature_df = pd.DataFrame(X_train_scaled, columns=feature_cols)
+    tracker.update(step_name)
     
     # 6. Train model with all features
-    logger.info("Training model with all features...")
     model, feature_importance = train_model(
         X_train_scaled, y_train, 
         X_val_scaled, y_val,
         feature_cols,
-        sample_weights_train
+        sample_weights_train,
+        tracker
     )
     
     # 7. Evaluate model
-    logger.info("Evaluating model on test set...")
+    step_name = "Evaluating model"
+    logger.info(f"Starting: {step_name}...")
     metrics = evaluate_model(model, X_test_scaled, y_test)
     
     logger.info("Model performance metrics:")
     for metric, value in metrics.items():
         logger.info(f"{metric}: {value:.4f}")
+    tracker.update(step_name)
     
     # 8. Calculate permutation importance for more stable feature importance
-    logger.info("Calculating permutation feature importance...")
+    step_name = "Calculating permutation importance"
+    logger.info(f"Starting: {step_name}...")
+    
+    # Use tqdm to show progress for permutation importance calculation
+    n_repeats = 10
     perm_importance = permutation_importance(
         model, X_test_scaled, y_test,
-        n_repeats=10,
+        n_repeats=n_repeats,
         random_state=42
     )
     
     perm_importance_values = perm_importance.importances_mean
     perm_feature_importance = dict(zip(feature_cols, perm_importance_values))
+    tracker.update(step_name)
     
     # 9. Plot feature importance
+    step_name = "Plotting feature importance"
+    logger.info(f"Starting: {step_name}...")
     plot_feature_importance(perm_feature_importance, FEATURE_IMPORTANCE_PLOT)
+    tracker.update(step_name)
     
     # 10. Analyze SHAP values
+    step_name = "Analyzing SHAP values"
+    logger.info(f"Starting: {step_name}...")
     analyze_shap_values(model, X_test_scaled, feature_cols, SHAP_PLOT)
+    tracker.update(step_name)
     
     # 11. Save results
+    step_name = "Saving results"
+    logger.info(f"Starting: {step_name}...")
     save_training_metrics(metrics, perm_feature_importance, TRAINING_METRICS)
+    tracker.update(step_name)
     
     # 12. Save model
+    step_name = "Saving model"
+    logger.info(f"Starting: {step_name}...")
     model.save_model(MODEL_FILE)
+    tracker.update(step_name)
+    
+    # Display completion information
+    total_time = time.time() - start_time
+    hours, remainder = divmod(total_time, 3600)
+    minutes, seconds = divmod(remainder, 60)
     
     logger.info(f"Model saved to: {MODEL_FILE}")
     logger.info(f"Feature importance plot saved to: {FEATURE_IMPORTANCE_PLOT}")
     logger.info(f"SHAP values plot saved to: {SHAP_PLOT}")
     logger.info(f"Training metrics saved to: {TRAINING_METRICS}")
+    
+    # Print total execution time
+    logger.info(f"Total execution time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
     
     # 13. Print top 20 most important features
     top_features = sorted(perm_feature_importance.items(), key=lambda x: x[1], reverse=True)[:20]
