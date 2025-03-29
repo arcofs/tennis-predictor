@@ -103,12 +103,13 @@ CLEANED_DATA_DIR = DATA_DIR / "cleaned"
 MODELS_DIR = BASE_DIR / "models"
 OUTPUT_DIR = BASE_DIR / "predictor" / "output"
 
-# Create output directory if it doesn't exist
+# Create all necessary directories
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(CLEANED_DATA_DIR, exist_ok=True)
+os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Input and output files
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = PROJECT_ROOT / "data"
 INPUT_FILE = DATA_DIR / "cleaned" / "cleaned_dataset_with_elo.csv"
 OUTPUT_FILE = DATA_DIR / "enhanced_features_v2.csv"  # Direct in data directory
 
@@ -181,6 +182,10 @@ NUM_CORES = multiprocessing.cpu_count()
 NUM_THREADS = max(1, NUM_CORES - 1)  # Leave one core free for system
 CHUNK_SIZE = 10000  # Size of chunks for parallel processing
 
+# Add automatic scaling for very high-core systems
+MAX_USABLE_CORES = min(NUM_CORES, 120)  # Cap at 64 cores to prevent overhead on very large systems
+print(f"System has {NUM_CORES} cores, using {MAX_USABLE_CORES} for processing")
+
 def parallel_process_chunk(chunk_df: pd.DataFrame, func: callable) -> pd.DataFrame:
     """
     Process a chunk of data in parallel.
@@ -207,10 +212,10 @@ def parallel_process_dataframe(df: pd.DataFrame, func: callable, desc: str) -> p
         Processed DataFrame
     """
     # Split DataFrame into chunks
-    chunks = np.array_split(df, NUM_CORES)
+    chunks = np.array_split(df, MAX_USABLE_CORES)
     
     # Process chunks in parallel
-    with ProcessPoolExecutor(max_workers=NUM_CORES) as executor:
+    with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
         process_chunk = partial(parallel_process_chunk, func=func)
         results = list(tqdm(
             executor.map(process_chunk, chunks),
@@ -431,11 +436,11 @@ def calculate_elo_features(df: pd.DataFrame) -> pd.DataFrame:
     print(f"Processing matches with surfaces: {unique_surfaces}")
     
     # Process matches in parallel chunks
-    chunks = np.array_split(df, NUM_CORES)
+    chunks = np.array_split(df, MAX_USABLE_CORES)
     all_changes = []
     all_surface_changes = {surface: [] for surface in surface_elos}
     
-    with ProcessPoolExecutor(max_workers=NUM_CORES) as executor:
+    with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
         process_chunk_partial = partial(
             process_chunk,
             player_elos=player_elos,
@@ -883,6 +888,49 @@ def calculate_physical_features(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def process_matches_parallel(df_chunk: pd.DataFrame, player_df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFrame:
+    """
+    Process a chunk of matches to extract player features in parallel.
+    
+    Args:
+        df_chunk: DataFrame chunk with matches to process
+        player_df: DataFrame with player features
+        feature_cols: List of feature columns to extract
+        
+    Returns:
+        DataFrame with features for matches in chunk
+    """
+    result_chunk = df_chunk.copy()
+    
+    # Initialize feature columns
+    for col in feature_cols:
+        result_chunk[f'winner_{col}'] = None
+        result_chunk[f'loser_{col}'] = None
+        result_chunk[f'winner_{col}_imputed'] = False
+        result_chunk[f'loser_{col}_imputed'] = False
+        
+    # Process each match in the chunk
+    for idx, row in result_chunk.iterrows():
+        # Get features for winner
+        winner_mask = (player_df['player_id'] == row['winner_id']) & (player_df['tourney_date'] <= row['tourney_date'])
+        if winner_mask.any():
+            winner_features = player_df.loc[winner_mask].iloc[-1]
+            
+            for col in feature_cols:
+                if col in winner_features:
+                    result_chunk.loc[idx, f'winner_{col}'] = winner_features[col]
+        
+        # Get features for loser
+        loser_mask = (player_df['player_id'] == row['loser_id']) & (player_df['tourney_date'] <= row['tourney_date'])
+        if loser_mask.any():
+            loser_features = player_df.loc[loser_mask].iloc[-1]
+            
+            for col in feature_cols:
+                if col in loser_features:
+                    result_chunk.loc[idx, f'loser_{col}'] = loser_features[col]
+    
+    return result_chunk
+
 def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert player-level features back to match-level format for prediction.
@@ -970,46 +1018,24 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     
     print(f"Using {len(feature_cols)} features: {feature_cols[:5]}..." if len(feature_cols) > 5 else f"Using {len(feature_cols)} features: {feature_cols}")
     
-    total_matches = len(match_df)
+    # Improved parallel processing for match features
+    print(f"Processing {len(match_df)} matches with parallel processing using {MAX_USABLE_CORES} cores")
     
-    # Create new column dictionaries to avoid fragmentation
-    winner_cols = {}
-    loser_cols = {}
-    winner_imputed_cols = {}
-    loser_imputed_cols = {}
+    # Split the dataframe into chunks for parallel processing
+    chunks = np.array_split(match_df, MAX_USABLE_CORES)
+    results = []
     
-    # Initialize columns for each feature
-    for col in feature_cols:
-        winner_cols[f'winner_{col}'] = None
-        loser_cols[f'loser_{col}'] = None
-        winner_imputed_cols[f'winner_{col}_imputed'] = False
-        loser_imputed_cols[f'loser_{col}_imputed'] = False
+    # Process chunks in parallel
+    with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
+        process_func = partial(process_matches_parallel, player_df=player_df, feature_cols=feature_cols)
+        results = list(tqdm(
+            executor.map(process_func, chunks),
+            total=len(chunks),
+            desc="Processing match features in parallel"
+        ))
     
-    # Add all columns at once to avoid fragmentation
-    match_df = match_df.assign(**winner_cols)
-    match_df = match_df.assign(**loser_cols)
-    match_df = match_df.assign(**winner_imputed_cols)
-    match_df = match_df.assign(**loser_imputed_cols)
-    
-    # Process each match
-    for idx, row in tqdm(match_df.iterrows(), total=total_matches, desc="Creating prediction features"):
-        # Get features for winner
-        winner_mask = (player_df['player_id'] == row['winner_id']) & (player_df['tourney_date'] <= row['tourney_date'])
-        if winner_mask.any():
-            winner_features = player_df.loc[winner_mask].iloc[-1]
-            
-            for col in feature_cols:
-                if col in winner_features:
-                    match_df.loc[idx, f'winner_{col}'] = winner_features[col]
-        
-        # Get features for loser
-        loser_mask = (player_df['player_id'] == row['loser_id']) & (player_df['tourney_date'] <= row['tourney_date'])
-        if loser_mask.any():
-            loser_features = player_df.loc[loser_mask].iloc[-1]
-            
-            for col in feature_cols:
-                if col in loser_features:
-                    match_df.loc[idx, f'loser_{col}'] = loser_features[col]
+    # Combine the processed chunks
+    match_df = pd.concat(results, ignore_index=True)
     
     # Calculate tour averages for different surfaces and time windows for better imputation
     print("Calculating tour averages for improved imputation...")
@@ -1128,20 +1154,22 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
         
         return None
     
-    # Impute missing values with appropriate strategies for each feature type
-    for player in ['winner', 'loser']:
+    # Process imputation in parallel chunks for better performance
+    def impute_chunk(df_chunk, player_type, features_by_type):
+        win_rate_features, elo_features, streak_features, h2h_features = features_by_type
+        
         # 1. For win rate features: use sophisticated imputation
         for col in win_rate_features:
-            col_name = f'{player}_{col}'
-            impute_mask = match_df[col_name].isna()
+            col_name = f'{player_type}_{col}'
+            impute_mask = df_chunk[col_name].isna()
             
             if impute_mask.any():
-                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
+                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
                 
                 # Process each missing value with custom imputation logic
-                for idx in match_df[impute_mask].index:
-                    player_id = match_df.loc[idx, f'{player}_id']
-                    match_date = match_df.loc[idx, 'tourney_date']
+                for idx in df_chunk[impute_mask].index:
+                    player_id = df_chunk.loc[idx, f'{player_type}_id']
+                    match_date = df_chunk.loc[idx, 'tourney_date']
                     
                     # STRATEGY 1: If it's a surface-specific win rate, try related surfaces first
                     if '_' in col and not col.startswith('win_rate_'):  # Surface-specific (e.g., win_rate_Clay_5)
@@ -1153,65 +1181,116 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
                             # First try to use player's win rates from related surfaces
                             related_rate = get_related_surface_rates(player_id, surface, match_date, window)
                             if related_rate is not None:
-                                match_df.loc[idx, col_name] = related_rate
+                                df_chunk.loc[idx, col_name] = related_rate
                                 continue
                     
                     # STRATEGY 2: Use player's Elo tier-based win rate if available
                     player_tier = get_player_tier(player_id, match_date)
                     if player_tier is not None and (col, player_tier) in tier_win_rates:
-                        match_df.loc[idx, col_name] = tier_win_rates[(col, player_tier)]
+                        df_chunk.loc[idx, col_name] = tier_win_rates[(col, player_tier)]
                         continue
                     
                     # STRATEGY 3: For surface-specific rates, use overall tour average for that surface
                     if col in surface_tour_win_rates:
-                        match_df.loc[idx, col_name] = surface_tour_win_rates[col]
+                        df_chunk.loc[idx, col_name] = surface_tour_win_rates[col]
                         continue
                     
                     # STRATEGY 4: Use tour average for the time window
                     if col in tour_win_rates:
-                        match_df.loc[idx, col_name] = tour_win_rates[col]
+                        df_chunk.loc[idx, col_name] = tour_win_rates[col]
                         continue
                     
                     # FALLBACK: Use 0.5 if all else fails
-                    match_df.loc[idx, col_name] = 0.5
+                    df_chunk.loc[idx, col_name] = 0.5
             
         # 2. For Elo features: impute with starting Elo (1500)
         for col in elo_features:
-            col_name = f'{player}_{col}'
-            if col_name in match_df.columns:
-                impute_mask = match_df[col_name].isna()
-                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
-                match_df.loc[impute_mask, col_name] = 1500.0
+            col_name = f'{player_type}_{col}'
+            if col_name in df_chunk.columns:
+                impute_mask = df_chunk[col_name].isna()
+                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+                df_chunk.loc[impute_mask, col_name] = 1500.0
         
         # 3. For streak features: impute with 0 (no streak)
         for col in streak_features:
-            col_name = f'{player}_{col}'
-            if col_name in match_df.columns:
-                impute_mask = match_df[col_name].isna()
-                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
-                match_df.loc[impute_mask, col_name] = 0
+            col_name = f'{player_type}_{col}'
+            if col_name in df_chunk.columns:
+                impute_mask = df_chunk[col_name].isna()
+                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+                df_chunk.loc[impute_mask, col_name] = 0
         
         # 4. For H2H features: impute with 0.5 (no prior H2H information)
         for col in h2h_features:
-            col_name = f'{player}_{col}'
-            if col_name in match_df.columns:
-                impute_mask = match_df[col_name].isna()
-                match_df.loc[impute_mask, f'{col_name}_imputed'] = True
-                match_df.loc[impute_mask, col_name] = 0.5
+            col_name = f'{player_type}_{col}'
+            if col_name in df_chunk.columns:
+                impute_mask = df_chunk[col_name].isna()
+                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+                df_chunk.loc[impute_mask, col_name] = 0.5
+                
+        return df_chunk
+    
+    # Split into chunks for parallel imputation
+    chunks = np.array_split(match_df, MAX_USABLE_CORES)
+    features_by_type = (win_rate_features, elo_features, streak_features, h2h_features)
+    
+    # Process winner features in parallel
+    print("Imputing winner features in parallel...")
+    with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
+        impute_winner = partial(impute_chunk, player_type='winner', features_by_type=features_by_type)
+        winner_results = list(tqdm(
+            executor.map(impute_winner, chunks),
+            total=len(chunks),
+            desc="Imputing winner features"
+        ))
+    
+    # Combine winner results
+    match_df = pd.concat(winner_results, ignore_index=True)
+    
+    # Process loser features in parallel
+    print("Imputing loser features in parallel...")
+    chunks = np.array_split(match_df, MAX_USABLE_CORES)
+    with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
+        impute_loser = partial(impute_chunk, player_type='loser', features_by_type=features_by_type)
+        loser_results = list(tqdm(
+            executor.map(impute_loser, chunks),
+            total=len(chunks),
+            desc="Imputing loser features"
+        ))
+    
+    # Combine loser results
+    match_df = pd.concat(loser_results, ignore_index=True)
     
     # Calculate feature differences (winner - loser)
     print("Calculating feature differences...")
-    for col in feature_cols:
-        winner_col = f'winner_{col}'
-        loser_col = f'loser_{col}'
-        diff_col = f'{col}_diff'
-        
-        # Calculate diff only when both columns exist
-        if winner_col in match_df.columns and loser_col in match_df.columns:
-            match_df[diff_col] = match_df[winner_col] - match_df[loser_col]
+    
+    # Define function for parallel diff calculation
+    def calculate_diffs(chunk_df, feature_cols):
+        for col in feature_cols:
+            winner_col = f'winner_{col}'
+            loser_col = f'loser_{col}'
+            diff_col = f'{col}_diff'
             
-            # Add imputation flag for diff column - True if either player value was imputed
-            match_df[f'{diff_col}_imputed'] = match_df[f'winner_{col}_imputed'] | match_df[f'loser_{col}_imputed']
+            # Calculate diff only when both columns exist
+            if winner_col in chunk_df.columns and loser_col in chunk_df.columns:
+                chunk_df[diff_col] = chunk_df[winner_col] - chunk_df[loser_col]
+                
+                # Add imputation flag for diff column - True if either player value was imputed
+                chunk_df[f'{diff_col}_imputed'] = chunk_df[f'winner_{col}_imputed'] | chunk_df[f'loser_{col}_imputed']
+        
+        return chunk_df
+    
+    # Calculate differences in parallel
+    chunks = np.array_split(match_df, MAX_USABLE_CORES)
+    with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
+        calc_diffs = partial(calculate_diffs, feature_cols=feature_cols)
+        diff_results = list(tqdm(
+            executor.map(calc_diffs, chunks),
+            total=len(chunks),
+            desc="Calculating feature differences"
+        ))
+    
+    # Combine diff results
+    match_df = pd.concat(diff_results, ignore_index=True)
     
     # Add Elo difference directly
     if 'winner_elo' in original_df.columns and 'loser_elo' in original_df.columns:
@@ -1300,12 +1379,21 @@ def main() -> None:
     start_time = time.time()
     
     print(f"Starting focused feature generation process")
-    print(f"Using {NUM_CORES} CPU cores")
+    print(f"System has {NUM_CORES} cores, using {MAX_USABLE_CORES} for parallel processing")
     print(f"GPU acceleration: {'Enabled' if USE_GPU else 'Disabled'}")
     print("=" * 80)
     
+    # Print paths being used
+    print(f"Running in {'Google Colab' if is_colab() else 'local environment'}")
+    print(f"Base directory: {BASE_DIR}")
+    print(f"Data directory: {DATA_DIR}")
+    print(f"Output directory: {OUTPUT_DIR}")
+    print(f"Input file: {INPUT_FILE}")
+    print(f"Output file: {OUTPUT_FILE}")
+    print("=" * 80)
+    
     # 1. Load data
-    print(f"[Step 1/{NUM_CORES}] Loading data - 0% complete")
+    print(f"[Step 1/{MAX_USABLE_CORES}] Loading data - 0% complete")
     df = load_data()
     
     # Check if dataset is empty, if so exit gracefully
@@ -1315,47 +1403,47 @@ def main() -> None:
         print("Feature generation completed with 0 matches.")
         return
         
-    print(f"Completed step 1/{NUM_CORES} - 10% complete")
+    print(f"Completed step 1/{MAX_USABLE_CORES} - 10% complete")
     print("-" * 80)
     
     # 2. Calculate Elo features
-    print(f"[Step 2/{NUM_CORES}] Calculating Elo features - 10% complete")
+    print(f"[Step 2/{MAX_USABLE_CORES}] Calculating Elo features - 10% complete")
     df = calculate_elo_features(df)
-    print(f"Completed step 2/{NUM_CORES} - 20% complete")
+    print(f"Completed step 2/{MAX_USABLE_CORES} - 20% complete")
     print("-" * 80)
     
     # 3. Calculate physical features
-    print(f"[Step 3/{NUM_CORES}] Calculating physical features - 20% complete")
+    print(f"[Step 3/{MAX_USABLE_CORES}] Calculating physical features - 20% complete")
     df = calculate_physical_features(df)
-    print(f"Completed step 3/{NUM_CORES} - 30% complete")
+    print(f"Completed step 3/{MAX_USABLE_CORES} - 30% complete")
     print("-" * 80)
     
     # 4. Calculate H2H features
-    print(f"[Step 4/{NUM_CORES}] Calculating H2H features - 30% complete")
+    print(f"[Step 4/{MAX_USABLE_CORES}] Calculating H2H features - 30% complete")
     df = calculate_head_to_head_features(df)
-    print(f"Completed step 4/{NUM_CORES} - 40% complete")
+    print(f"Completed step 4/{MAX_USABLE_CORES} - 40% complete")
     print("-" * 80)
     
     # 5. Preprocess for player-level features
-    print(f"[Step 5/{NUM_CORES}] Preprocessing for player-level features - 40% complete")
+    print(f"[Step 5/{MAX_USABLE_CORES}] Preprocessing for player-level features - 40% complete")
     player_df = preprocess_for_features(df)
-    print(f"Completed step 5/{NUM_CORES} - 50% complete")
+    print(f"Completed step 5/{MAX_USABLE_CORES} - 50% complete")
     print("-" * 80)
     
     # 6. Generate rolling features - only surface and win rate features
-    print(f"[Step 6/{NUM_CORES}] Generating rolling features - 50% complete")
+    print(f"[Step 6/{MAX_USABLE_CORES}] Generating rolling features - 50% complete")
     player_df = generate_rolling_features(player_df)
-    print(f"Completed step 6/{NUM_CORES} - 70% complete")
+    print(f"Completed step 6/{MAX_USABLE_CORES} - 70% complete")
     print("-" * 80)
     
     # 7. Convert back to match prediction format - only surface, Elo, and win rate features
-    print(f"[Step 7/{NUM_CORES}] Converting to match prediction format - 70% complete")
+    print(f"[Step 7/{MAX_USABLE_CORES}] Converting to match prediction format - 70% complete")
     match_df = convert_to_match_prediction_format(player_df, df)
-    print(f"Completed step 7/{NUM_CORES} - 80% complete")
+    print(f"Completed step 7/{MAX_USABLE_CORES} - 80% complete")
     print("-" * 80)
     
     # 8. Combine all features
-    print(f"[Step 8/{NUM_CORES}] Combining all features - 80% complete")
+    print(f"[Step 8/{MAX_USABLE_CORES}] Combining all features - 80% complete")
     print("Combining all features...")
     
     # Make sure df.index and match_df.index don't clash
@@ -1372,26 +1460,29 @@ def main() -> None:
     final_df = match_df
     
     # XGBoost preparation
-    print(f"[Step 9/{NUM_CORES}] Preparing features for XGBoost - 85% complete")
+    print(f"[Step 9/{MAX_USABLE_CORES}] Preparing features for XGBoost - 85% complete")
     
     # 9. Calculate feature reliability weights and add XGBoost metadata
     final_df = prepare_features_for_xgboost(final_df)
-    print(f"Completed step 9/{NUM_CORES} - 90% complete")
+    print(f"Completed step 9/{MAX_USABLE_CORES} - 90% complete")
     print("-" * 80)
     
     # 10. Optimize memory usage
-    print(f"[Step 10/{NUM_CORES}] Optimizing memory usage - 90% complete")
+    print(f"[Step 10/{MAX_USABLE_CORES}] Optimizing memory usage - 90% complete")
     final_df = optimize_dtypes(final_df)
-    print(f"Completed step 10/{NUM_CORES} - 95% complete")
+    print(f"Completed step 10/{MAX_USABLE_CORES} - 95% complete")
     print("-" * 80)
     
     # 11. Save to output file
-    print(f"[Step 11/{NUM_CORES}] Saving to output file - 95% complete")
+    print(f"[Step 11/{MAX_USABLE_CORES}] Saving to output file - 95% complete")
     print(f"Saving focused features to {OUTPUT_FILE}...")
-    # Make sure directory exists
+    
+    # Make sure output directory exists
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+    
+    # Save the dataframe to CSV
     final_df.to_csv(OUTPUT_FILE, index=False)
-    print(f"Completed step 11/{NUM_CORES} - 100% complete")
+    print(f"Completed step 11/{MAX_USABLE_CORES} - 100% complete")
     print("=" * 80)
     
     end_time = time.time()
@@ -1528,7 +1619,7 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
     
     # Save feature metadata to JSON file
     import json
-    metadata_path = os.path.join(OUTPUT_DIR, "feature_metadata.json")
+    metadata_path = OUTPUT_DIR / "feature_metadata.json"
     with open(metadata_path, 'w') as f:
         json.dump(feature_metadata, f, indent=2)
     
