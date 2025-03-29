@@ -902,13 +902,12 @@ def process_matches_parallel(df_chunk: pd.DataFrame, player_df: pd.DataFrame, fe
     """
     result_chunk = df_chunk.copy()
     
-    # Initialize feature columns
-    for col in feature_cols:
-        result_chunk[f'winner_{col}'] = None
-        result_chunk[f'loser_{col}'] = None
-        result_chunk[f'winner_{col}_imputed'] = False
-        result_chunk[f'loser_{col}_imputed'] = False
-        
+    # Create dictionaries to store all the columns we'll add, avoiding fragmentation
+    winner_features_dict = {f'winner_{col}': np.full(len(result_chunk), None) for col in feature_cols}
+    loser_features_dict = {f'loser_{col}': np.full(len(result_chunk), None) for col in feature_cols}
+    winner_imputed_dict = {f'winner_{col}_imputed': np.full(len(result_chunk), False) for col in feature_cols}
+    loser_imputed_dict = {f'loser_{col}_imputed': np.full(len(result_chunk), False) for col in feature_cols}
+    
     # Process each match in the chunk
     for idx, row in result_chunk.iterrows():
         # Get features for winner
@@ -918,7 +917,7 @@ def process_matches_parallel(df_chunk: pd.DataFrame, player_df: pd.DataFrame, fe
             
             for col in feature_cols:
                 if col in winner_features:
-                    result_chunk.loc[idx, f'winner_{col}'] = winner_features[col]
+                    winner_features_dict[f'winner_{col}'][idx - result_chunk.index[0]] = winner_features[col]
         
         # Get features for loser
         loser_mask = (player_df['player_id'] == row['loser_id']) & (player_df['tourney_date'] <= row['tourney_date'])
@@ -927,7 +926,16 @@ def process_matches_parallel(df_chunk: pd.DataFrame, player_df: pd.DataFrame, fe
             
             for col in feature_cols:
                 if col in loser_features:
-                    result_chunk.loc[idx, f'loser_{col}'] = loser_features[col]
+                    loser_features_dict[f'loser_{col}'][idx - result_chunk.index[0]] = loser_features[col]
+    
+    # Combine all feature dictionaries
+    all_features = {**winner_features_dict, **loser_features_dict, **winner_imputed_dict, **loser_imputed_dict}
+    
+    # Add all columns at once to avoid fragmentation
+    feature_df = pd.DataFrame(all_features, index=result_chunk.index)
+    
+    # Concatenate with the original chunk
+    result_chunk = pd.concat([result_chunk, feature_df], axis=1)
     
     return result_chunk
 
