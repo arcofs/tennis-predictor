@@ -939,6 +939,202 @@ def process_matches_parallel(df_chunk: pd.DataFrame, player_df: pd.DataFrame, fe
     
     return result_chunk
 
+def get_related_surface_rates(player_df: pd.DataFrame, player_id: int, target_surface: str, match_date, window: int) -> Optional[float]:
+    """
+    Get a player's win rate on related surfaces.
+    
+    Args:
+        player_df: DataFrame with player data
+        player_id: Player ID
+        target_surface: Target surface
+        match_date: Match date
+        window: Window size
+        
+    Returns:
+        Related surface win rate or None
+    """
+    player_matches = player_df[(player_df['player_id'] == player_id) & 
+                               (player_df['tourney_date'] <= match_date)]
+    
+    if player_matches.empty:
+        return None
+    
+    # Map of related surfaces (by similarity)
+    surface_map = {
+        'Hard': ['Carpet', 'Grass', 'Clay'],  # Most similar to least
+        'Clay': ['Carpet', 'Hard', 'Grass'],
+        'Grass': ['Carpet', 'Hard', 'Clay'],
+        'Carpet': ['Hard', 'Grass', 'Clay']
+    }
+    
+    # If target surface not in map, return None
+    if target_surface not in surface_map:
+        return None
+    
+    # Check if player has win rates for related surfaces
+    related_surfaces = surface_map[target_surface]
+    
+    for surface in related_surfaces:
+        surface_col = f'win_rate_{surface}_{window}'
+        if surface_col in player_matches.columns and not player_matches[surface_col].isna().all():
+            # Return the most recent non-NaN value
+            for idx in range(len(player_matches)-1, -1, -1):
+                value = player_matches.iloc[idx][surface_col]
+                if not pd.isna(value):
+                    return value
+    
+    return None
+
+def get_player_tier(player_df: pd.DataFrame, elo_quantiles: List[float], player_id: int, match_date) -> Optional[int]:
+    """
+    Find player's ranking tier based on Elo.
+    
+    Args:
+        player_df: DataFrame with player data
+        elo_quantiles: List of Elo quantiles
+        player_id: Player ID
+        match_date: Match date
+        
+    Returns:
+        Player tier (0-4) or None
+    """
+    player_matches = player_df[(player_df['player_id'] == player_id) & 
+                               (player_df['tourney_date'] <= match_date)]
+    
+    if player_matches.empty or 'player_elo' not in player_matches.columns:
+        return None
+    
+    player_elo = player_matches.iloc[-1]['player_elo']
+    
+    # Determine tier based on Elo
+    for i, (lower, upper) in enumerate(zip([0] + elo_quantiles, elo_quantiles + [float('inf')])):
+        if lower < player_elo <= upper:
+            return i
+    
+    return None
+
+def impute_chunk(df_chunk: pd.DataFrame, 
+                 player_type: str, 
+                 features_by_type: Tuple, 
+                 player_df: pd.DataFrame, 
+                 elo_quantiles: List[float],
+                 tier_win_rates: Dict, 
+                 surface_tour_win_rates: Dict, 
+                 tour_win_rates: Dict) -> pd.DataFrame:
+    """
+    Process a chunk for imputation.
+    
+    Args:
+        df_chunk: DataFrame chunk
+        player_type: Type of player (winner/loser)
+        features_by_type: Features grouped by type
+        player_df: Player dataframe
+        elo_quantiles: Elo quantiles for tiers
+        tier_win_rates: Win rates by tier
+        surface_tour_win_rates: Surface-specific tour averages
+        tour_win_rates: Overall tour averages
+        
+    Returns:
+        Imputed DataFrame chunk
+    """
+    win_rate_features, elo_features, streak_features, h2h_features = features_by_type
+    
+    # 1. For win rate features: use sophisticated imputation
+    for col in win_rate_features:
+        col_name = f'{player_type}_{col}'
+        impute_mask = df_chunk[col_name].isna()
+        
+        if impute_mask.any():
+            df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+            
+            # Process each missing value with custom imputation logic
+            for idx in df_chunk[impute_mask].index:
+                player_id = df_chunk.loc[idx, f'{player_type}_id']
+                match_date = df_chunk.loc[idx, 'tourney_date']
+                
+                # STRATEGY 1: If it's a surface-specific win rate, try related surfaces first
+                if '_' in col and not col.startswith('win_rate_'):  # Surface-specific (e.g., win_rate_Clay_5)
+                    parts = col.split('_')
+                    if len(parts) >= 3:
+                        surface = parts[1]
+                        window = int(parts[2])
+                        
+                        # First try to use player's win rates from related surfaces
+                        related_rate = get_related_surface_rates(player_df, player_id, surface, match_date, window)
+                        if related_rate is not None:
+                            df_chunk.loc[idx, col_name] = related_rate
+                            continue
+                
+                # STRATEGY 2: Use player's Elo tier-based win rate if available
+                player_tier = get_player_tier(player_df, elo_quantiles, player_id, match_date)
+                if player_tier is not None and (col, player_tier) in tier_win_rates:
+                    df_chunk.loc[idx, col_name] = tier_win_rates[(col, player_tier)]
+                    continue
+                
+                # STRATEGY 3: For surface-specific rates, use overall tour average for that surface
+                if col in surface_tour_win_rates:
+                    df_chunk.loc[idx, col_name] = surface_tour_win_rates[col]
+                    continue
+                
+                # STRATEGY 4: Use tour average for the time window
+                if col in tour_win_rates:
+                    df_chunk.loc[idx, col_name] = tour_win_rates[col]
+                    continue
+                
+                # FALLBACK: Use 0.5 if all else fails
+                df_chunk.loc[idx, col_name] = 0.5
+        
+    # 2. For Elo features: impute with starting Elo (1500)
+    for col in elo_features:
+        col_name = f'{player_type}_{col}'
+        if col_name in df_chunk.columns:
+            impute_mask = df_chunk[col_name].isna()
+            df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+            df_chunk.loc[impute_mask, col_name] = 1500.0
+    
+    # 3. For streak features: impute with 0 (no streak)
+    for col in streak_features:
+        col_name = f'{player_type}_{col}'
+        if col_name in df_chunk.columns:
+            impute_mask = df_chunk[col_name].isna()
+            df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+            df_chunk.loc[impute_mask, col_name] = 0
+    
+    # 4. For H2H features: impute with 0.5 (no prior H2H information)
+    for col in h2h_features:
+        col_name = f'{player_type}_{col}'
+        if col_name in df_chunk.columns:
+            impute_mask = df_chunk[col_name].isna()
+            df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
+            df_chunk.loc[impute_mask, col_name] = 0.5
+            
+    return df_chunk
+
+def calculate_diffs(chunk_df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFrame:
+    """
+    Calculate feature differences between winner and loser.
+    
+    Args:
+        chunk_df: DataFrame chunk
+        feature_cols: Feature columns to process
+        
+    Returns:
+        DataFrame with calculated differences
+    """
+    for col in feature_cols:
+        winner_col = f'winner_{col}'
+        loser_col = f'loser_{col}'
+        diff_col = f'{col}_diff'
+        
+        # Calculate diff only when both columns exist
+        if winner_col in chunk_df.columns and loser_col in chunk_df.columns:
+            chunk_df[diff_col] = chunk_df[winner_col] - chunk_df[loser_col]
+            
+            # Add imputation flag for diff column - True if either player value was imputed
+            chunk_df[f'{diff_col}_imputed'] = chunk_df[f'winner_{col}_imputed'] | chunk_df[f'loser_{col}_imputed']
+    
+    return chunk_df
+
 def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert player-level features back to match-level format for prediction.
@@ -1073,12 +1269,14 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     print("Calculating player ranking tiers for rank-based imputation...")
     
     # Use Elo as a proxy for ranking
+    elo_quantiles = []
+    tier_win_rates = {}
+    
     if 'player_elo' in player_df.columns:
         # Create 5 ranking tiers based on Elo
         elo_quantiles = player_df['player_elo'].quantile([0.2, 0.4, 0.6, 0.8]).tolist()
         
         # Tier win rates for different windows
-        tier_win_rates = {}
         for i, (lower, upper) in enumerate(zip([0] + elo_quantiles, elo_quantiles + [float('inf')])):
             tier_mask = (player_df['player_elo'] > lower) & (player_df['player_elo'] <= upper)
             
@@ -1111,132 +1309,6 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     streak_features = [col for col in feature_cols if 'streak' in col]
     h2h_features = [col for col in feature_cols if 'h2h' in col]
     
-    # Helper function to find player's ranking tier based on Elo
-    def get_player_tier(player_id, match_date):
-        player_matches = player_df[(player_df['player_id'] == player_id) & 
-                                   (player_df['tourney_date'] <= match_date)]
-        
-        if player_matches.empty or 'player_elo' not in player_matches.columns:
-            return None
-        
-        player_elo = player_matches.iloc[-1]['player_elo']
-        
-        # Determine tier based on Elo
-        for i, (lower, upper) in enumerate(zip([0] + elo_quantiles, elo_quantiles + [float('inf')])):
-            if lower < player_elo <= upper:
-                return i
-        
-        return None
-    
-    # Helper function to get related surface win rates
-    def get_related_surface_rates(player_id, target_surface, match_date, window):
-        player_matches = player_df[(player_df['player_id'] == player_id) & 
-                                   (player_df['tourney_date'] <= match_date)]
-        
-        if player_matches.empty:
-            return None
-        
-        # Map of related surfaces (by similarity)
-        surface_map = {
-            'Hard': ['Carpet', 'Grass', 'Clay'],  # Most similar to least
-            'Clay': ['Carpet', 'Hard', 'Grass'],
-            'Grass': ['Carpet', 'Hard', 'Clay'],
-            'Carpet': ['Hard', 'Grass', 'Clay']
-        }
-        
-        # If target surface not in map, return None
-        if target_surface not in surface_map:
-            return None
-        
-        # Check if player has win rates for related surfaces
-        related_surfaces = surface_map[target_surface]
-        
-        for surface in related_surfaces:
-            surface_col = f'win_rate_{surface}_{window}'
-            if surface_col in player_matches.columns and not player_matches[surface_col].isna().all():
-                # Return the most recent non-NaN value
-                for idx in range(len(player_matches)-1, -1, -1):
-                    value = player_matches.iloc[idx][surface_col]
-                    if not pd.isna(value):
-                        return value
-        
-        return None
-    
-    # Process imputation in parallel chunks for better performance
-    def impute_chunk(df_chunk, player_type, features_by_type):
-        win_rate_features, elo_features, streak_features, h2h_features = features_by_type
-        
-        # 1. For win rate features: use sophisticated imputation
-        for col in win_rate_features:
-            col_name = f'{player_type}_{col}'
-            impute_mask = df_chunk[col_name].isna()
-            
-            if impute_mask.any():
-                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
-                
-                # Process each missing value with custom imputation logic
-                for idx in df_chunk[impute_mask].index:
-                    player_id = df_chunk.loc[idx, f'{player_type}_id']
-                    match_date = df_chunk.loc[idx, 'tourney_date']
-                    
-                    # STRATEGY 1: If it's a surface-specific win rate, try related surfaces first
-                    if '_' in col and not col.startswith('win_rate_'):  # Surface-specific (e.g., win_rate_Clay_5)
-                        parts = col.split('_')
-                        if len(parts) >= 3:
-                            surface = parts[1]
-                            window = int(parts[2])
-                            
-                            # First try to use player's win rates from related surfaces
-                            related_rate = get_related_surface_rates(player_id, surface, match_date, window)
-                            if related_rate is not None:
-                                df_chunk.loc[idx, col_name] = related_rate
-                                continue
-                    
-                    # STRATEGY 2: Use player's Elo tier-based win rate if available
-                    player_tier = get_player_tier(player_id, match_date)
-                    if player_tier is not None and (col, player_tier) in tier_win_rates:
-                        df_chunk.loc[idx, col_name] = tier_win_rates[(col, player_tier)]
-                        continue
-                    
-                    # STRATEGY 3: For surface-specific rates, use overall tour average for that surface
-                    if col in surface_tour_win_rates:
-                        df_chunk.loc[idx, col_name] = surface_tour_win_rates[col]
-                        continue
-                    
-                    # STRATEGY 4: Use tour average for the time window
-                    if col in tour_win_rates:
-                        df_chunk.loc[idx, col_name] = tour_win_rates[col]
-                        continue
-                    
-                    # FALLBACK: Use 0.5 if all else fails
-                    df_chunk.loc[idx, col_name] = 0.5
-            
-        # 2. For Elo features: impute with starting Elo (1500)
-        for col in elo_features:
-            col_name = f'{player_type}_{col}'
-            if col_name in df_chunk.columns:
-                impute_mask = df_chunk[col_name].isna()
-                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
-                df_chunk.loc[impute_mask, col_name] = 1500.0
-        
-        # 3. For streak features: impute with 0 (no streak)
-        for col in streak_features:
-            col_name = f'{player_type}_{col}'
-            if col_name in df_chunk.columns:
-                impute_mask = df_chunk[col_name].isna()
-                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
-                df_chunk.loc[impute_mask, col_name] = 0
-        
-        # 4. For H2H features: impute with 0.5 (no prior H2H information)
-        for col in h2h_features:
-            col_name = f'{player_type}_{col}'
-            if col_name in df_chunk.columns:
-                impute_mask = df_chunk[col_name].isna()
-                df_chunk.loc[impute_mask, f'{col_name}_imputed'] = True
-                df_chunk.loc[impute_mask, col_name] = 0.5
-                
-        return df_chunk
-    
     # Split into chunks for parallel imputation
     chunks = np.array_split(match_df, MAX_USABLE_CORES)
     features_by_type = (win_rate_features, elo_features, streak_features, h2h_features)
@@ -1244,7 +1316,16 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     # Process winner features in parallel
     print("Imputing winner features in parallel...")
     with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
-        impute_winner = partial(impute_chunk, player_type='winner', features_by_type=features_by_type)
+        impute_winner = partial(
+            impute_chunk, 
+            player_type='winner', 
+            features_by_type=features_by_type,
+            player_df=player_df,
+            elo_quantiles=elo_quantiles,
+            tier_win_rates=tier_win_rates,
+            surface_tour_win_rates=surface_tour_win_rates,
+            tour_win_rates=tour_win_rates
+        )
         winner_results = list(tqdm(
             executor.map(impute_winner, chunks),
             total=len(chunks),
@@ -1258,7 +1339,16 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     print("Imputing loser features in parallel...")
     chunks = np.array_split(match_df, MAX_USABLE_CORES)
     with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
-        impute_loser = partial(impute_chunk, player_type='loser', features_by_type=features_by_type)
+        impute_loser = partial(
+            impute_chunk, 
+            player_type='loser', 
+            features_by_type=features_by_type,
+            player_df=player_df,
+            elo_quantiles=elo_quantiles,
+            tier_win_rates=tier_win_rates,
+            surface_tour_win_rates=surface_tour_win_rates,
+            tour_win_rates=tour_win_rates
+        )
         loser_results = list(tqdm(
             executor.map(impute_loser, chunks),
             total=len(chunks),
@@ -1271,28 +1361,12 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     # Calculate feature differences (winner - loser)
     print("Calculating feature differences...")
     
-    # Define function for parallel diff calculation
-    def calculate_diffs(chunk_df, feature_cols):
-        for col in feature_cols:
-            winner_col = f'winner_{col}'
-            loser_col = f'loser_{col}'
-            diff_col = f'{col}_diff'
-            
-            # Calculate diff only when both columns exist
-            if winner_col in chunk_df.columns and loser_col in chunk_df.columns:
-                chunk_df[diff_col] = chunk_df[winner_col] - chunk_df[loser_col]
-                
-                # Add imputation flag for diff column - True if either player value was imputed
-                chunk_df[f'{diff_col}_imputed'] = chunk_df[f'winner_{col}_imputed'] | chunk_df[f'loser_{col}_imputed']
-        
-        return chunk_df
-    
     # Calculate differences in parallel
     chunks = np.array_split(match_df, MAX_USABLE_CORES)
     with ProcessPoolExecutor(max_workers=MAX_USABLE_CORES) as executor:
-        calc_diffs = partial(calculate_diffs, feature_cols=feature_cols)
+        calc_diffs_partial = partial(calculate_diffs, feature_cols=feature_cols)
         diff_results = list(tqdm(
-            executor.map(calc_diffs, chunks),
+            executor.map(calc_diffs_partial, chunks),
             total=len(chunks),
             desc="Calculating feature differences"
         ))
