@@ -235,25 +235,35 @@ def predict_matches(model: xgb.XGBClassifier, df: pd.DataFrame, feature_cols: Li
         logger.info(f"Using {len(available_features)} available features")
         feature_cols = available_features
     
+    # DEBUG: Check for zero or constant values in features
+    logger.info("=== FEATURE ANALYSIS ===")
+    for i, feature in enumerate(feature_cols[:10]):  # Analyze first 10 features
+        unique_values = df[feature].nunique()
+        min_val = df[feature].min()
+        max_val = df[feature].max()
+        mean_val = df[feature].mean()
+        null_pct = (df[feature].isnull().sum() / len(df)) * 100
+        logger.info(f"Feature '{feature}': unique values={unique_values}, min={min_val}, max={max_val}, mean={mean_val:.4f}, null={null_pct:.2f}%")
+    
     # Prepare feature matrix - keep NaN values for XGBoost
     X = df[feature_cols].values
     
-    # Scale features while preserving NaN values
-    scaler = StandardScaler()
-    X_scaled = X.copy()
+    # Check feature array for issues
+    logger.info(f"Feature matrix shape: {X.shape}")
+    logger.info(f"Non-finite values in feature matrix: {np.sum(~np.isfinite(X))}")
     
-    # Only scale non-missing values
-    non_missing_mask = ~np.isnan(X)
-    if np.any(non_missing_mask):
-        X_temp = X.copy()
-        X_temp[~non_missing_mask] = 0  # Temporarily replace NaNs with 0
-        X_scaled_temp = scaler.fit_transform(X_temp)
-        X_scaled = X_scaled_temp.copy()
-        X_scaled[~non_missing_mask] = np.nan  # Put NaNs back
+    # === Do not scale features (to match training) ===
+    # Make predictions (test direct prediction without scaling)
+    logger.info("Making predictions without scaling...")
+    y_prob = model.predict_proba(X)[:, 1]
     
-    # Make predictions
-    y_prob = model.predict_proba(X_scaled)[:, 1]
+    # Debug the prediction distribution
+    logger.info(f"Prediction probabilities min: {y_prob.min():.6f}, max: {y_prob.max():.6f}, mean: {y_prob.mean():.6f}")
+    logger.info(f"Prediction distribution: \n{np.histogram(y_prob, bins=10)[0]}")
+    
+    # Count predictions by threshold
     y_pred = (y_prob > 0.5).astype(int)
+    logger.info(f"Predictions: 0s={np.sum(y_pred==0)}, 1s={np.sum(y_pred==1)}")
     
     # Add predictions to DataFrame
     df['predicted_probability'] = y_prob
@@ -271,11 +281,22 @@ def predict_matches(model: xgb.XGBClassifier, df: pd.DataFrame, feature_cols: Li
         accuracy = df['correct'].mean()
         logger.info(f"Overall prediction accuracy: {accuracy:.4f}")
         
+        # Calculate accuracy by probability range
+        logger.info("Accuracy by prediction confidence:")
+        bins = [0, 0.1, 0.2, 0.3, 0.4, 0.45, 0.55, 0.6, 0.7, 0.8, 0.9, 1.0]
+        df['prob_bin'] = pd.cut(df['predicted_probability'], bins=bins)
+        bin_accuracy = df.groupby('prob_bin')['correct'].agg(['mean', 'count'])
+        logger.info(f"\n{bin_accuracy}")
+        
         # Calculate accuracy by surface if available
         if 'surface' in df.columns:
             surface_accuracy = df.groupby('surface')['correct'].mean()
             for surface, acc in surface_accuracy.items():
                 logger.info(f"Accuracy on {surface}: {acc:.4f}")
+    
+    # Check for balanced results by player position (player1/2)
+    player1_win_pct = df[df['player1_id'] == df['predicted_winner']].shape[0] / df.shape[0]
+    logger.info(f"Percentage of predictions where player1 wins: {player1_win_pct:.4f}")
     
     return df
 
@@ -322,16 +343,20 @@ def plot_prediction_analysis(df: pd.DataFrame) -> None:
     Args:
         df: DataFrame with predictions
     """
-    if 'correct' not in df.columns:
+    # Make sure we have the necessary columns for plotting
+    if 'match_winner_correct' not in df.columns and 'correct' not in df.columns:
         logger.warning("No accuracy data available for plotting")
         return
+    
+    # Use match_winner_correct if available, otherwise use correct
+    correct_col = 'match_winner_correct' if 'match_winner_correct' in df.columns else 'correct'
     
     # Plot accuracy by surface
     if 'surface' in df.columns:
         logger.info("Plotting accuracy by surface...")
         
         plt.figure(figsize=(12, 6))
-        surface_accuracy = df.groupby('surface')['correct'].mean()
+        surface_accuracy = df.groupby('surface')[correct_col].mean()
         surface_counts = df.groupby('surface').size()
         
         # Plot as bar chart
@@ -351,18 +376,23 @@ def plot_prediction_analysis(df: pd.DataFrame) -> None:
     
     # Plot confusion matrix
     logger.info("Plotting confusion matrix...")
-    plt.figure(figsize=(8, 6))
-    cm = confusion_matrix(df['result'], df['predicted_result'])
     
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-               xticklabels=['Player 2 Wins', 'Player 1 Wins'],
-               yticklabels=['Player 2 Wins', 'Player 1 Wins'])
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.title('Confusion Matrix')
-    plt.tight_layout()
-    plt.savefig(CONFUSION_MATRIX_PATH)
-    plt.close()
+    # Only plot the confusion matrix if we have expected results
+    if 'expected_result' in df.columns and 'predicted_result' in df.columns:
+        plt.figure(figsize=(8, 6))
+        cm = confusion_matrix(df['expected_result'], df['predicted_result'])
+        
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                   xticklabels=['Player 2 Wins', 'Player 1 Wins'],
+                   yticklabels=['Player 2 Wins', 'Player 1 Wins'])
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
+        plt.title('Confusion Matrix')
+        plt.tight_layout()
+        plt.savefig(CONFUSION_MATRIX_PATH)
+        plt.close()
+    else:
+        logger.warning("Cannot plot confusion matrix: missing expected or predicted results")
 
 def predict_upcoming_match(model: xgb.XGBClassifier, player1_id: int, player2_id: int, 
                           surface: str, feature_dict: Dict = None) -> Dict:
@@ -393,26 +423,30 @@ def predict_upcoming_match(model: xgb.XGBClassifier, player1_id: int, player2_id
         for feature, value in feature_dict.items():
             match_df[feature] = [value]
     
-    # Minimal required features if not provided
-    if feature_dict is None or len(feature_dict) < 5:
-        logger.warning("No or insufficient features provided. Using minimal feature set.")
-        
-        # Use these minimal default features based on what we found most important
-        match_df['player_elo_diff'] = 0  # Neutral (would need to get from elsewhere)
-        match_df['elo_diff'] = 0  # Neutral
-        match_df['win_rate_5_diff'] = 0  # Neutral
-        match_df['current_win_streak_diff'] = 0  # Neutral
-        match_df['current_loss_streak_diff'] = 0  # Neutral
-    
-    # Get feature columns
-    feature_cols = [col for col in match_df.columns 
-                   if col.endswith('_diff') and col != 'player1_id' and col != 'player2_id' and col != 'surface']
-    
-    # Make prediction
-    X = match_df[feature_cols].values
-    
+    # For prediction, we need to ensure we have exactly the same features
+    # that the model was trained with. Let's get the required features from the model.
     try:
-        # Predict with raw features (no scaling for single prediction)
+        # Get feature count from model
+        n_features = model.n_features_in_
+        logger.info(f"Model requires {n_features} features")
+        
+        # Get a sample from the dataset to extract feature names
+        data_path = DATA_DIR / "enhanced_features_v2.csv"
+        sample_df = pd.read_csv(data_path, nrows=10)
+        
+        # Generate features for the sample
+        sample_df_processed, all_feature_cols = generate_difference_features(sample_df)
+        
+        # Generate placeholder features for prediction
+        for feature in all_feature_cols:
+            if feature not in match_df.columns:
+                match_df[feature] = 0.0  # Default value
+        
+        # Make prediction
+        feature_cols = all_feature_cols
+        X = match_df[feature_cols].values
+        
+        # Predict with raw features - XGBoost handles missing values
         y_prob = model.predict_proba(X)[:, 1][0]
         winner_id = player1_id if y_prob > 0.5 else player2_id
         
@@ -446,26 +480,109 @@ def main():
         # 1. Load the model
         model = load_model()
         
+        # DEBUG: Print model info
+        logger.info(f"Model info - feature count: {model.n_features_in_}")
+        
         # 2. Load match data
         data_path = DATA_DIR / "enhanced_features_v2.csv"
-        df = load_matches(data_path)
+        df = pd.read_csv(data_path)
         
-        # 3. Generate features
-        df_with_features, feature_cols = generate_difference_features(df)
+        # Convert date column to datetime for time-based split
+        if 'tourney_date' in df.columns:
+            df['tourney_date'] = pd.to_datetime(df['tourney_date'])
+            
+        # Use only test data (from 2023-01-01 onwards) for predictions
+        # This ensures we're predicting on data not seen during training
+        test_date = '2023-01-01'
+        test_df = df[df['tourney_date'] >= pd.to_datetime(test_date)].copy()
+        logger.info(f"Using {len(test_df)} matches from {test_date} onwards for prediction")
         
-        # 4. Make predictions
-        predictions_df = predict_matches(model, df_with_features, feature_cols)
+        # Standardize surface names
+        if 'surface' in test_df.columns:
+            test_df['surface'] = test_df['surface'].apply(verify_surface_name)
         
-        # 5. Plot analysis
-        plot_prediction_analysis(predictions_df)
+        # NOTE: For proper evaluation, we need to do both perspectives
+        # This is because the model might perform better on one perspective than the other
+        if 'winner_id' in test_df.columns and 'loser_id' in test_df.columns:
+            # Create both perspectives
+            # Original perspective (winner as player1)
+            winner_perspective = test_df.copy()
+            winner_perspective['player1_id'] = winner_perspective['winner_id'] 
+            winner_perspective['player2_id'] = winner_perspective['loser_id']
+            winner_perspective['expected_winner'] = winner_perspective['winner_id']
+            winner_perspective['perspective'] = 'winner_perspective'
+            winner_perspective['expected_result'] = 1  # We expect player1 to win
+            
+            # Flipped perspective (loser as player1)
+            loser_perspective = test_df.copy()
+            loser_perspective['player1_id'] = loser_perspective['loser_id']
+            loser_perspective['player2_id'] = loser_perspective['winner_id']
+            loser_perspective['expected_winner'] = loser_perspective['winner_id'] 
+            loser_perspective['perspective'] = 'loser_perspective'
+            loser_perspective['expected_result'] = 0  # We expect player1 to lose
+            
+            # Combine perspectives for complete evaluation
+            evaluation_df = pd.concat([winner_perspective, loser_perspective])
+            
+            # Generate features for full evaluation dataset
+            logger.info(f"Prepared {len(evaluation_df)} matches for evaluation (both perspectives)")
+            evaluation_df_features, eval_feature_cols = generate_difference_features(evaluation_df)
+            
+            # Make predictions on full evaluation dataset
+            predictions_df = predict_matches(model, evaluation_df_features, eval_feature_cols)
+            
+            # Calculate evaluation metrics for winner perspective
+            winner_preds = predictions_df[predictions_df['perspective'] == 'winner_perspective'].copy()
+            winner_preds['correct'] = (winner_preds['predicted_result'] == winner_preds['expected_result'])
+            winner_accuracy = winner_preds['correct'].mean()
+            logger.info(f"Winner perspective accuracy: {winner_accuracy:.4f}")
+            
+            # Calculate evaluation metrics for loser perspective
+            loser_preds = predictions_df[predictions_df['perspective'] == 'loser_perspective'].copy()
+            loser_preds['correct'] = (loser_preds['predicted_result'] == loser_preds['expected_result'])
+            loser_accuracy = loser_preds['correct'].mean()
+            logger.info(f"Loser perspective accuracy: {loser_accuracy:.4f}")
+            
+            # Calculate match-level accuracy (did we predict the correct winner regardless of perspective)
+            predictions_df['match_winner_correct'] = (
+                predictions_df['predicted_winner'] == predictions_df['expected_winner']
+            )
+            match_accuracy = predictions_df['match_winner_correct'].mean()
+            logger.info(f"Overall match winner accuracy: {match_accuracy:.4f}")
+            
+            # Copy match_winner_correct to the winner_preds DataFrame
+            match_ids = predictions_df[['winner_id', 'loser_id', 'match_winner_correct']]
+            winner_preds = winner_preds.merge(
+                match_ids[['winner_id', 'loser_id', 'match_winner_correct']],
+                on=['winner_id', 'loser_id'],
+                how='left'
+            )
+            
+            # Calculate surface-specific accuracies
+            if 'surface' in predictions_df.columns:
+                surface_accuracy = predictions_df.groupby('surface')['match_winner_correct'].mean()
+                logger.info("Accuracy by surface:")
+                for surface, acc in surface_accuracy.items():
+                    count = len(predictions_df[predictions_df['surface'] == surface]) // 2
+                    logger.info(f"  {surface}: {acc:.4f} (n={count})")
+            
+            # Plot accuracy by prediction confidence band
+            logger.info("Plotting analysis...")
+            plot_prediction_analysis(predictions_df)
+            
+            # Save predictions to CSV
+            save_predictions(predictions_df, RESULTS_PATH)
+            
+            # Also save a simplified version with one row per match
+            match_summary = winner_preds[['tourney_date', 'surface', 'winner_id', 'loser_id', 
+                               'predicted_winner', 'predicted_probability', 'match_winner_correct']]
+            
+            match_summary.to_csv(OUTPUT_DIR / "match_prediction_summary.csv", index=False)
+            logger.info(f"Saved match prediction summary to {OUTPUT_DIR / 'match_prediction_summary.csv'}")
         
-        # 6. Save predictions
-        save_predictions(predictions_df, RESULTS_PATH)
-        
-        # 7. Sample prediction for a specific match
-        # Example: Predict a match between two players
-        sample_player1_id = 104925  # Replace with real player ID
-        sample_player2_id = 105657  # Replace with real player ID
+        # Sample prediction for a specific match
+        sample_player1_id = 104925
+        sample_player2_id = 105657 
         sample_result = predict_upcoming_match(
             model, 
             sample_player1_id, 
@@ -474,10 +591,26 @@ def main():
         )
         
         logger.info(f"Sample match prediction: {sample_result}")
+        
+        # Example of predicting from opposite perspective
+        logger.info("\nPredicting same match from opposite perspective:")
+        flipped_result = predict_upcoming_match(
+            model,
+            sample_player2_id,  # Swapped player order
+            sample_player1_id,
+            SURFACE_HARD
+        )
+        
+        logger.info(f"Flipped perspective prediction: {flipped_result}")
+        p1_probability = sample_result['player1_win_probability']
+        p2_probability = flipped_result['player2_win_probability']
+        logger.info(f"Probability check - should be close to equal: {p1_probability:.4f} vs {1-p2_probability:.4f}")
+        
         logger.info("Tennis match prediction completed successfully")
         
     except Exception as e:
         logger.error(f"Error running prediction: {e}")
+        raise
 
 if __name__ == "__main__":
     main() 
