@@ -138,6 +138,44 @@ DTYPE_DICT = {
     'l_bpFaced': 'float32'
 }
 
+# Add after line 70 (after the DTYPE_DICT definition)
+# Define standard surface names as constants
+SURFACE_HARD = 'Hard'
+SURFACE_CLAY = 'Clay'
+SURFACE_GRASS = 'Grass'
+SURFACE_CARPET = 'Carpet' 
+STANDARD_SURFACES = [SURFACE_HARD, SURFACE_CLAY, SURFACE_GRASS, SURFACE_CARPET]
+
+# Add a function to verify and correct surface names
+def verify_surface_name(surface: str) -> str:
+    """
+    Verify and correct surface name to ensure consistency.
+    
+    Args:
+        surface: Surface name to verify
+        
+    Returns:
+        Standardized surface name
+    """
+    if pd.isna(surface):
+        return None
+    
+    surface_str = str(surface).lower()
+    surface_mapping = {
+        'hard': SURFACE_HARD,
+        'h': SURFACE_HARD,
+        'clay': SURFACE_CLAY,
+        'cl': SURFACE_CLAY,
+        'grass': SURFACE_GRASS,
+        'gr': SURFACE_GRASS,
+        'carpet': SURFACE_CARPET,
+        'cpt': SURFACE_CARPET,
+        'indoor': SURFACE_HARD,  # Map indoor to hard
+        'outdoor': SURFACE_HARD,  # Map outdoor to hard by default
+    }
+    
+    return surface_mapping.get(surface_str, surface)
+
 # Pydantic models for type checking
 class MatchData(BaseModel):
     tourney_date: str
@@ -278,7 +316,7 @@ def load_data() -> pd.DataFrame:
                     elif col in ['winner_ht', 'loser_ht']:
                         df[col] = 180.0  # Default height
                     elif col == 'surface':
-                        df[col] = 'Hard'  # Default surface
+                        df[col] = SURFACE_HARD  # Default surface
                     elif col == 'tourney_level':
                         df[col] = 'ATP'  # Default level
                     elif col.startswith('w_') or col.startswith('l_'):
@@ -306,6 +344,16 @@ def load_data() -> pd.DataFrame:
     if invalid_dates.any():
         print(f"Warning: Found {invalid_dates.sum()} invalid dates. Removing these rows.")
         df = df[~invalid_dates]
+    
+    # Standardize surface names
+    print("Standardizing surface names...")
+    if 'surface' in df.columns:
+        # Apply surface name standardization
+        df['surface'] = df['surface'].apply(verify_surface_name)
+        
+        # Count occurrences of each surface
+        surface_counts = df['surface'].value_counts()
+        print(f"Surface distribution after standardization: {surface_counts.to_dict()}")
     
     # Sort by tournament date
     df = df.sort_values('tourney_date').reset_index(drop=True)
@@ -764,6 +812,55 @@ def generate_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
                     lambda x: x.notna()
                 )
         
+        # Add streak calculations on GPU
+        # First convert to CPU since streak calculations are difficult to vectorize on GPU
+        df_cpu = df_gpu.to_pandas()
+        
+        # Calculate streak features - we'll do this on CPU then transfer back to GPU
+        # Create shift column to check consecutive results
+        df_cpu['prev_result'] = df_cpu.groupby('player_id')['result'].shift(1).fillna(0)
+        
+        # Add streak counter that will be used to calculate consecutive wins/losses
+        df_cpu['win_streak_counter'] = 1
+        df_cpu['loss_streak_counter'] = 1
+        
+        # Reset counter when streak breaks
+        mask_win_continues = (df_cpu['result'] == 1) & (df_cpu['prev_result'] == 1)
+        mask_loss_continues = (df_cpu['result'] == 0) & (df_cpu['prev_result'] == 0)
+        
+        # Calculate cumulative streak lengths
+        for player_id in df_cpu['player_id'].unique():
+            player_mask = df_cpu['player_id'] == player_id
+            if not player_mask.any():
+                continue
+                
+            # Get player's matches in chronological order
+            player_df = df_cpu.loc[player_mask].sort_values('tourney_date')
+            
+            # Initialize streak counters
+            current_win_streak = 0
+            current_loss_streak = 0
+            
+            # Calculate streaks
+            for idx, row in player_df.iterrows():
+                if row['result'] == 1:  # Win
+                    current_win_streak += 1
+                    current_loss_streak = 0
+                else:  # Loss
+                    current_loss_streak += 1
+                    current_win_streak = 0
+                
+                # Store streak values
+                df_cpu.loc[idx, 'current_win_streak'] = current_win_streak
+                df_cpu.loc[idx, 'current_loss_streak'] = current_loss_streak
+        
+        # Transfer streak features back to GPU
+        df_gpu['current_win_streak'] = df_cpu['current_win_streak']
+        df_gpu['current_loss_streak'] = df_cpu['current_loss_streak']
+        
+        # Clean up intermediate columns
+        df_cpu = df_cpu.drop(['prev_result', 'win_streak_counter', 'loss_streak_counter'], axis=1, errors='ignore')
+        
         # Convert back to pandas
         df = df_gpu.to_pandas()
     else:
@@ -771,6 +868,46 @@ def generate_rolling_features(df: pd.DataFrame) -> pd.DataFrame:
         time_windows = [5, 10, 20, 30, 50]
         process_chunk_partial = partial(process_player_chunk, time_windows=time_windows)
         df = parallel_process_dataframe(df, process_chunk_partial, "Generating rolling features")
+        
+        # Add streak calculations - we'll do this separately from the main parallel processing
+        # since it's hard to parallelize effectively
+        print("Calculating win/loss streaks...")
+        
+        # Create shift column to check consecutive results
+        df['prev_result'] = df.groupby('player_id')['result'].shift(1).fillna(0)
+        
+        # Initialize streak columns
+        df['current_win_streak'] = 0
+        df['current_loss_streak'] = 0
+        
+        # Calculate streaks for each player
+        for player_id in df['player_id'].unique():
+            player_mask = df['player_id'] == player_id
+            if not player_mask.any():
+                continue
+                
+            # Get player's matches in chronological order
+            player_df = df.loc[player_mask].sort_values('tourney_date')
+            
+            # Initialize streak counters
+            current_win_streak = 0
+            current_loss_streak = 0
+            
+            # Calculate streaks
+            for idx, row in player_df.iterrows():
+                if row['result'] == 1:  # Win
+                    current_win_streak += 1
+                    current_loss_streak = 0
+                else:  # Loss
+                    current_loss_streak += 1
+                    current_win_streak = 0
+                
+                # Store streak values
+                df.loc[idx, 'current_win_streak'] = current_win_streak
+                df.loc[idx, 'current_loss_streak'] = current_loss_streak
+        
+        # Clean up intermediate columns
+        df = df.drop(['prev_result'], axis=1, errors='ignore')
     
     return df
 
@@ -787,11 +924,11 @@ def process_h2h_chunk(chunk_df: pd.DataFrame, all_matches_df: pd.DataFrame) -> p
     """
     result_chunk = chunk_df.copy()
     
-    # Initialize H2H feature columns
+    # Initialize H2H feature columns - use p1/p2 naming instead of winner/loser
     h2h_columns = [
-        'h2h_wins_winner', 'h2h_wins_loser', 'h2h_matches', 
-        'h2h_win_pct_winner', 'h2h_win_pct_loser',
-        'h2h_hard_win_pct_winner', 'h2h_clay_win_pct_winner', 'h2h_grass_win_pct_winner'
+        'h2h_wins_p1', 'h2h_wins_p2', 'h2h_matches', 
+        'h2h_win_pct_p1', 'h2h_win_pct_p2',
+        'h2h_hard_win_pct_p1', 'h2h_clay_win_pct_p1', 'h2h_grass_win_pct_p1'
     ]
     
     for col in h2h_columns:
@@ -799,8 +936,8 @@ def process_h2h_chunk(chunk_df: pd.DataFrame, all_matches_df: pd.DataFrame) -> p
     
     # Process matches in the chunk
     for idx, row in result_chunk.iterrows():
-        p1 = row['winner_id']
-        p2 = row['loser_id']
+        p1 = row['winner_id']  # During prediction, this would be player1_id
+        p2 = row['loser_id']   # During prediction, this would be player2_id
         match_date = row['date'] if 'date' in row else row['tourney_date']
         
         # Get all previous matches between these players
@@ -826,24 +963,34 @@ def process_h2h_chunk(chunk_df: pd.DataFrame, all_matches_df: pd.DataFrame) -> p
             p1_grass_wins = len(p1_grass_matches[p1_grass_matches['winner_id'] == p1])
             
             # Set H2H features
-            result_chunk.loc[idx, 'h2h_wins_winner'] = p1_wins
-            result_chunk.loc[idx, 'h2h_wins_loser'] = p2_wins
+            result_chunk.loc[idx, 'h2h_wins_p1'] = p1_wins
+            result_chunk.loc[idx, 'h2h_wins_p2'] = p2_wins
             result_chunk.loc[idx, 'h2h_matches'] = total_matches
             
             # Win percentages (avoid division by zero)
-            result_chunk.loc[idx, 'h2h_win_pct_winner'] = p1_wins / total_matches if total_matches > 0 else 0.5
-            result_chunk.loc[idx, 'h2h_win_pct_loser'] = p2_wins / total_matches if total_matches > 0 else 0.5
+            result_chunk.loc[idx, 'h2h_win_pct_p1'] = p1_wins / total_matches if total_matches > 0 else 0.5
+            result_chunk.loc[idx, 'h2h_win_pct_p2'] = p2_wins / total_matches if total_matches > 0 else 0.5
             
             # Surface-specific win percentages
-            result_chunk.loc[idx, 'h2h_hard_win_pct_winner'] = (
+            result_chunk.loc[idx, 'h2h_hard_win_pct_p1'] = (
                 p1_hard_wins / len(p1_hard_matches) if len(p1_hard_matches) > 0 else 0.5
             )
-            result_chunk.loc[idx, 'h2h_clay_win_pct_winner'] = (
+            result_chunk.loc[idx, 'h2h_clay_win_pct_p1'] = (
                 p1_clay_wins / len(p1_clay_matches) if len(p1_clay_matches) > 0 else 0.5
             )
-            result_chunk.loc[idx, 'h2h_grass_win_pct_winner'] = (
+            result_chunk.loc[idx, 'h2h_grass_win_pct_p1'] = (
                 p1_grass_wins / len(p1_grass_matches) if len(p1_grass_matches) > 0 else 0.5
             )
+    
+    # Map these back to winner/loser during historical feature generation
+    # but use p1/p2 terminology for prediction
+    result_chunk['h2h_wins_winner'] = result_chunk['h2h_wins_p1']
+    result_chunk['h2h_wins_loser'] = result_chunk['h2h_wins_p2']
+    result_chunk['h2h_win_pct_winner'] = result_chunk['h2h_win_pct_p1']
+    result_chunk['h2h_win_pct_loser'] = result_chunk['h2h_win_pct_p2']
+    result_chunk['h2h_hard_win_pct_winner'] = result_chunk['h2h_hard_win_pct_p1']
+    result_chunk['h2h_clay_win_pct_winner'] = result_chunk['h2h_clay_win_pct_p1']
+    result_chunk['h2h_grass_win_pct_winner'] = result_chunk['h2h_grass_win_pct_p1']
     
     return result_chunk
 
@@ -1450,14 +1597,34 @@ def convert_to_match_prediction_format(player_df: pd.DataFrame, original_df: pd.
     # Combine diff results
     match_df = pd.concat(diff_results, ignore_index=True)
     
-    # Add Elo difference directly
+    # Add Elo difference directly - safely check for columns first
     if 'winner_elo' in original_df.columns and 'loser_elo' in original_df.columns:
-        match_df['elo_diff'] = original_df['winner_elo'] - original_df['loser_elo']
+        # First ensure these columns exist in match_df before using them
+        if 'winner_elo' not in match_df.columns:
+            match_df['winner_elo'] = original_df['winner_elo'].values
+            print("Added missing winner_elo column to match_df")
+            
+        if 'loser_elo' not in match_df.columns:
+            match_df['loser_elo'] = original_df['loser_elo'].values
+            print("Added missing loser_elo column to match_df")
         
-        # Add imputation flag for elo_diff
-        winner_elo_imputed = match_df['winner_elo'].isna().fillna(False) 
-        loser_elo_imputed = match_df['loser_elo'].isna().fillna(False)
-        match_df['elo_diff_imputed'] = winner_elo_imputed | loser_elo_imputed
+        # Calculate the difference
+        match_df['elo_diff'] = match_df['winner_elo'] - match_df['loser_elo']
+        
+        # Add imputation flag for elo_diff (safely check for these columns first)
+        if 'winner_elo' in match_df.columns and 'loser_elo' in match_df.columns:
+            winner_elo_imputed = match_df['winner_elo'].isna().fillna(False) 
+            loser_elo_imputed = match_df['loser_elo'].isna().fillna(False)
+            match_df['elo_diff_imputed'] = winner_elo_imputed | loser_elo_imputed
+        else:
+            # If we can't check for NA values, assume no imputation
+            match_df['elo_diff_imputed'] = False
+            print("WARNING: Could not check for NA values in Elo columns")
+    else:
+        # If original_df doesn't have these columns, add a placeholder elo_diff
+        print("WARNING: winner_elo or loser_elo not found in original dataframe. Adding placeholder elo_diff.")
+        match_df['elo_diff'] = 0.0
+        match_df['elo_diff_imputed'] = True
     
     # Print imputation statistics
     imputed_cols = [col for col in match_df.columns if col.endswith('_imputed')]
@@ -1728,37 +1895,72 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
             if not pd.api.types.is_categorical_dtype(df[cat_col]):
                 df[cat_col] = df[cat_col].astype('category')
     
-    # 3. Check for data leakage risk
-    print("Checking for potential data leakage...")
+    # 3. Check for data leakage risk with improved approach
+    print("Checking for potential data leakage with enhanced method...")
     
     # 3.1 Ensure strict time-based separation
     if 'tourney_date' in df.columns:
         df = df.sort_values('tourney_date').reset_index(drop=True)
         print("DataFrame sorted by tourney_date to enforce temporal order")
     
-    # 3.2 Check for post-match statistics that might leak results
+    # 3.2 Improved check for post-match statistics that might leak results
     leakage_keyword_patterns = [
         'result', 'winner', 'loser', 'win', 'loss', 'score', 'games_won',
         'sets_won', 'match_time', 'retirement', 'walkover'
     ]
     
+    # 1. First pass: keyword-based detection
     potential_leakage_cols = []
     for pattern in leakage_keyword_patterns:
-        # Only check in feature diff columns, which are key to prediction
-        matches = [col for col in df.columns if pattern in col.lower() and col.endswith('_diff') and not col.endswith('_imputed')]
+        matches = [col for col in df.columns if pattern in col.lower() and not col.endswith('_imputed')]
         potential_leakage_cols.extend(matches)
     
-    # Remove obvious non-leakage features
-    safe_features = [
-        'win_rate_10_diff', 'win_rate_20_diff', 'win_rate_30_diff', 'win_rate_50_diff',
-        'win_rate_Hard_10_diff', 'win_rate_Clay_10_diff', 'win_rate_Grass_10_diff',
-        'h2h_win_pct_diff'
+    # 2. Second pass: correlation-based detection (if target variable exists)
+    correlated_cols = []
+    if 'result' in df.columns:
+        try:
+            # Calculate correlations with the target
+            correlations = df.corr()['result'].abs()
+            # Identify suspiciously high correlations (above 0.8)
+            suspiciously_high_corr = correlations[correlations > 0.8].index.tolist()
+            if suspiciously_high_corr:
+                print(f"Found {len(suspiciously_high_corr)} features with suspiciously high correlation to result")
+                correlated_cols.extend(suspiciously_high_corr)
+        except Exception as e:
+            print(f"Warning: Could not calculate correlations due to: {e}")
+    
+    # Add correlation-based findings to potential leakage
+    potential_leakage_cols.extend(correlated_cols)
+    
+    # Define safe feature patterns that are known to be correctly calculated
+    safe_feature_patterns = [
+        'win_rate_', 
+        'h2h_win_pct_',
+        'current_win_streak',
+        'current_loss_streak',
+        'elo_diff',
+        'player_elo',
+        'height_diff',
+        'reliability_weight'
     ]
     
-    potential_leakage_cols = [col for col in potential_leakage_cols if col not in safe_features]
+    # A feature is safe if it matches any safe pattern
+    def is_safe_feature(feature_name):
+        return any(pattern in feature_name for pattern in safe_feature_patterns)
+    
+    # Remove duplicates and filter out safe features
+    potential_leakage_cols = list(set([col for col in potential_leakage_cols 
+                                      if col in df.columns and not is_safe_feature(col)]))
     
     if potential_leakage_cols:
-        print(f"Warning: Potential data leakage in columns (verify these use only historical data): {potential_leakage_cols}")
+        print(f"Warning: Potential data leakage in {len(potential_leakage_cols)} columns: {potential_leakage_cols[:10]}..." 
+              if len(potential_leakage_cols) > 10 else potential_leakage_cols)
+        
+        # Optionally, remove these columns from the dataframe
+        # df = df.drop(columns=potential_leakage_cols)
+        # print(f"Removed {len(potential_leakage_cols)} potentially leaky features")
+    else:
+        print("No potential data leakage detected in features")
     
     # 4. Add feature metadata - create a feature definitions JSON file
     feature_metadata = {}

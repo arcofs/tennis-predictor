@@ -315,21 +315,21 @@ def load_and_prepare_data() -> Tuple[pd.DataFrame, List[str]]:
     
     return df, feature_cols
 
-def create_time_based_split(df: pd.DataFrame, test_size: float = 0.2, val_size: float = 0.15) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Create a time-based split of the data with validation set."""
-    # Calculate split points
-    total_len = len(df)
-    test_idx = int(total_len * (1 - test_size))
-    val_idx = int(test_idx * (1 - val_size))
+def create_time_based_split(df: pd.DataFrame, val_date: str = '2022-01-01', test_date: str = '2023-01-01') -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Create a time-based split of the data with validation set using explicit dates."""
+    # Convert dates to datetime if they aren't already
+    if not pd.api.types.is_datetime64_dtype(df['tourney_date']):
+        df['tourney_date'] = pd.to_datetime(df['tourney_date'])
     
-    # Split the data
-    train_df = df.iloc[:val_idx]
-    val_df = df.iloc[val_idx:test_idx]
-    test_df = df.iloc[test_idx:]
+    # Split the data by date
+    train_df = df[df['tourney_date'] < pd.to_datetime(val_date)]
+    val_df = df[(df['tourney_date'] >= pd.to_datetime(val_date)) & 
+                (df['tourney_date'] < pd.to_datetime(test_date))]
+    test_df = df[df['tourney_date'] >= pd.to_datetime(test_date)]
     
-    logger.info(f"Training set: {len(train_df)} matches ({train_df['tourney_date'].min()} to {train_df['tourney_date'].max()})")
-    logger.info(f"Validation set: {len(val_df)} matches ({val_df['tourney_date'].min()} to {val_df['tourney_date'].max()})")
-    logger.info(f"Test set: {len(test_df)} matches ({test_df['tourney_date'].min()} to {test_df['tourney_date'].max()})")
+    logger.info(f"Training set: {len(train_df)} matches ({train_df['tourney_date'].min().date()} to {train_df['tourney_date'].max().date()})")
+    logger.info(f"Validation set: {len(val_df)} matches ({val_df['tourney_date'].min().date()} to {val_df['tourney_date'].max().date()})")
+    logger.info(f"Test set: {len(test_df)} matches ({test_df['tourney_date'].min().date()} to {test_df['tourney_date'].max().date()})")
     
     return train_df, val_df, test_df
 

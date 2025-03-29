@@ -36,6 +36,42 @@ ACCURACY_BY_YEAR_PATH = OUTPUT_DIR / "accuracy_by_year.png"
 # Create output directory if it doesn't exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# Import the surface constants and verification function
+# Add after imports
+try:
+    from predictor.generate_features import (
+        SURFACE_HARD, SURFACE_CLAY, SURFACE_GRASS, SURFACE_CARPET,
+        STANDARD_SURFACES, verify_surface_name
+    )
+except ImportError:
+    # Define them here as fallback
+    SURFACE_HARD = 'Hard'
+    SURFACE_CLAY = 'Clay'
+    SURFACE_GRASS = 'Grass'
+    SURFACE_CARPET = 'Carpet'
+    STANDARD_SURFACES = [SURFACE_HARD, SURFACE_CLAY, SURFACE_GRASS, SURFACE_CARPET]
+    
+    def verify_surface_name(surface: str) -> str:
+        """Verify and correct surface name to ensure consistency."""
+        if pd.isna(surface):
+            return None
+        
+        surface_str = str(surface).lower()
+        surface_mapping = {
+            'hard': SURFACE_HARD,
+            'h': SURFACE_HARD,
+            'clay': SURFACE_CLAY,
+            'cl': SURFACE_CLAY,
+            'grass': SURFACE_GRASS,
+            'gr': SURFACE_GRASS,
+            'carpet': SURFACE_CARPET,
+            'cpt': SURFACE_CARPET,
+            'indoor': SURFACE_HARD,  # Map indoor to hard
+            'outdoor': SURFACE_HARD,  # Map outdoor to hard by default
+        }
+        
+        return surface_mapping.get(surface_str, surface)
+
 def load_model() -> xgb.XGBClassifier:
     """Load the trained XGBoost model."""
     logger.info(f"Loading model from {MODEL_PATH}...")
@@ -124,128 +160,89 @@ def load_test_data(
         logger.error(f"Error loading data: {e}")
         raise
 
-def prepare_prediction_data(
-    df: pd.DataFrame
-) -> Tuple[pd.DataFrame, List[str]]:
+def prepare_features(match_df: pd.DataFrame, feature_cols: List[str]) -> np.ndarray:
     """
-    Prepare data for prediction by transforming each match into a player1 vs player2 format.
-    For real prediction, we don't know the outcome, so we carefully avoid data leakage.
+    Prepare features for prediction.
     
     Args:
-        df: DataFrame with raw match data
+        match_df: DataFrame with match data
+        feature_cols: List of feature columns to use
         
     Returns:
-        Tuple of (prepared dataframe, feature columns)
+        numpy array with features
     """
-    logger.info("Preparing data for prediction...")
+    logger.info("Preparing features for prediction...")
     
-    # We need to create a format where each row is a match with player1 vs player2
-    # We'll create features for each player and their differences
-    # For this test, player1 will be the winner and player2 will be the loser
-    # But we'll hide the match outcome from the model
+    # Make a copy to avoid modifying the original
+    df = match_df.copy()
     
-    # Identify player-specific features
-    winner_cols = [col for col in df.columns if col.startswith('winner_') and col != 'winner_id']
-    loser_cols = [col for col in df.columns if col.startswith('loser_') and col != 'loser_id']
+    # Map H2H features from p1/p2 to player1/player2 format if needed
+    h2h_mapping = {
+        'h2h_wins_p1': 'h2h_wins_player1',
+        'h2h_wins_p2': 'h2h_wins_player2',
+        'h2h_win_pct_p1': 'h2h_win_pct_player1',
+        'h2h_win_pct_p2': 'h2h_win_pct_player2',
+        'h2h_hard_win_pct_p1': 'h2h_hard_win_pct_player1',
+        'h2h_clay_win_pct_p1': 'h2h_clay_win_pct_player1',
+        'h2h_grass_win_pct_p1': 'h2h_grass_win_pct_player1'
+    }
     
-    # Convert numeric columns to float
-    for col in winner_cols + loser_cols:
-        if col in df.columns:
-            try:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-            except Exception as e:
-                logger.warning(f"Could not convert column {col} to numeric: {e}")
+    # Rename any h2h columns that use p1/p2 format
+    for old_col, new_col in h2h_mapping.items():
+        if old_col in df.columns:
+            df[new_col] = df[old_col]
     
-    # Create a list to store transformed matches
-    matches = []
+    # Make sure all feature columns exist
+    missing_cols = [col for col in feature_cols if col not in df.columns]
+    if missing_cols:
+        logger.warning(f"Missing {len(missing_cols)} feature columns: {missing_cols[:5]}...")
+        # Add missing columns with zeros
+        for col in missing_cols:
+            df[col] = 0.0
     
-    # Columns to keep from original dataset
-    common_cols = ['tourney_date', 'surface', 'tourney_level']
+    # Calculate difference features if necessary
+    if 'player1_elo' in df.columns and 'player2_elo' in df.columns and 'elo_diff' in feature_cols:
+        df['elo_diff'] = df['player1_elo'] - df['player2_elo']
+        logger.info("Calculated elo_diff feature")
     
-    # Process each match
-    for _, row in df.iterrows():
-        # Extract common features
-        common_features = {col: row[col] for col in common_cols if col in row}
-        
-        # Create match features (hiding the actual outcome)
-        match_features = {}
-        
-        # Add player features
-        for col in winner_cols:
-            feature_name = col.replace('winner_', 'player1_')
-            match_features[feature_name] = row[col]
-        
-        for col in loser_cols:
-            feature_name = col.replace('loser_', 'player2_')
-            match_features[feature_name] = row[col]
-        
-        # Add player IDs
-        match_features['player1_id'] = row['winner_id'] if 'winner_id' in row else 0
-        match_features['player2_id'] = row['loser_id'] if 'loser_id' in row else 0
-        
-        # Store the actual outcome (hidden from the model)
-        match_features['actual_winner'] = 'player1'  # In this case, player1 is always the winner
-        
-        # Store player names if available
-        if 'winner_name' in row:
-            match_features['player1_name'] = row['winner_name']
-        if 'loser_name' in row:
-            match_features['player2_name'] = row['loser_name']
-            
-        # Add any other useful metadata
-        if 'tourney_name' in row:
-            match_features['tourney_name'] = row['tourney_name']
-        if 'round' in row:
-            match_features['round'] = row['round']
-        
-        # Combine with common features
-        match_features.update(common_features)
-        matches.append(match_features)
+    # Create similar difference features for other relevant pairs
+    diff_pairs = [
+        ('player1_win_rate_10', 'player2_win_rate_10', 'win_rate_10_diff'),
+        ('player1_current_win_streak', 'player2_current_win_streak', 'current_win_streak_diff'),
+        ('player1_current_loss_streak', 'player2_current_loss_streak', 'current_loss_streak_diff')
+    ]
     
-    # Create a dataframe from the processed matches
-    matches_df = pd.DataFrame(matches)
+    for col1, col2, diff_col in diff_pairs:
+        if col1 in df.columns and col2 in df.columns and diff_col in feature_cols:
+            df[diff_col] = df[col1] - df[col2]
+            logger.info(f"Calculated {diff_col} feature")
     
-    # Convert columns to numeric where appropriate
-    numeric_cols = []
-    for col in matches_df.columns:
-        # Skip certain non-numeric columns
-        if col in ['tourney_date', 'surface', 'tourney_level', 'actual_winner', 'player1_name', 'player2_name', 'tourney_name', 'round']:
-            continue
-        
-        # Try to convert to numeric
-        try:
-            matches_df[col] = pd.to_numeric(matches_df[col], errors='coerce')
-            numeric_cols.append(col)
-        except Exception as e:
-            logger.warning(f"Could not convert column {col} to numeric: {e}")
+    # Surface-specific features
+    for surface in STANDARD_SURFACES:
+        win_rate_col = f'win_rate_{surface}_10_diff'
+        if win_rate_col in feature_cols:
+            p1_col = f'player1_win_rate_{surface}_10'
+            p2_col = f'player2_win_rate_{surface}_10'
+            if p1_col in df.columns and p2_col in df.columns:
+                df[win_rate_col] = df[p1_col] - df[p2_col]
+                logger.info(f"Calculated {win_rate_col} feature")
     
-    # Create feature differences (player1 - player2)
-    feature_cols = []
-    for p1_col in [col for col in matches_df.columns if col.startswith('player1_') and col != 'player1_id' and col != 'player1_name']:
-        feature_name = p1_col[8:]  # Remove 'player1_' prefix
-        p2_col = f'player2_{feature_name}'
-        
-        if p2_col in matches_df.columns:
-            # Make sure both columns are numeric
-            try:
-                matches_df[p1_col] = pd.to_numeric(matches_df[p1_col], errors='coerce')
-                matches_df[p2_col] = pd.to_numeric(matches_df[p2_col], errors='coerce')
-                
-                # Create the difference feature
-                diff_col = f'{feature_name}_diff'
-                matches_df[diff_col] = matches_df[p1_col] - matches_df[p2_col]
-                feature_cols.append(diff_col)
-            except Exception as e:
-                logger.warning(f"Skipping difference calculation for {p1_col}/{p2_col}: {e}")
+    # H2H difference
+    if 'h2h_win_pct_diff' in feature_cols:
+        if 'h2h_win_pct_player1' in df.columns and 'h2h_win_pct_player2' in df.columns:
+            df['h2h_win_pct_diff'] = df['h2h_win_pct_player1'] - df['h2h_win_pct_player2']
+            logger.info("Calculated h2h_win_pct_diff feature")
     
-    # Fill NA values
-    matches_df = matches_df.fillna(0)
+    # Convert categorical variables
+    for col in df.select_dtypes(include=['category']).columns:
+        if col in feature_cols:
+            df[col] = df[col].cat.codes
     
-    # Log the prepared data
-    logger.info(f"Prepared {len(matches_df)} matches for prediction")
-    logger.info(f"Using {len(feature_cols)} features: {feature_cols[:5]}...")
+    # Get the final feature matrix
+    X = df[feature_cols].fillna(0).values
     
-    return matches_df, feature_cols
+    logger.info(f"Prepared {X.shape[1]} features for {X.shape[0]} matches")
+    return X
 
 def predict_matches(
     model: xgb.XGBClassifier,
@@ -543,6 +540,61 @@ def check_column_types(df: pd.DataFrame) -> None:
                         logger.warning(f"  {col} has non-numeric values: {samples}")
         except Exception as e:
             logger.error(f"Error checking column {col}: {e}")
+
+def load_prediction_data(file_path: str) -> pd.DataFrame:
+    """
+    Load data for prediction from a CSV file.
+    
+    Args:
+        file_path: Path to the CSV file
+        
+    Returns:
+        DataFrame with data for prediction
+    """
+    logger.info(f"Loading prediction data from {file_path}...")
+    
+    try:
+        df = pd.read_csv(file_path)
+        logger.info(f"Loaded {len(df)} matches from {file_path}")
+        
+        # Convert date columns
+        if 'tourney_date' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['tourney_date']):
+            df['tourney_date'] = pd.to_datetime(df['tourney_date'], errors='coerce')
+            
+        # Standardize surface names
+        if 'surface' in df.columns:
+            df['surface'] = df['surface'].apply(verify_surface_name)
+            logger.info(f"Surface distribution: {df['surface'].value_counts().to_dict()}")
+            
+        # Check for required columns
+        required_columns = ['player1_id', 'player2_id']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            # See if we have winner/loser columns instead of player1/player2
+            player_mapping = {
+                'winner_id': 'player1_id',
+                'loser_id': 'player2_id',
+                'winner_name': 'player1_name',
+                'loser_name': 'player2_name'
+            }
+            
+            for old_col, new_col in player_mapping.items():
+                if old_col in df.columns and new_col not in df.columns:
+                    df[new_col] = df[old_col]
+                    logger.info(f"Mapped {old_col} to {new_col}")
+            
+            # Check if we still have missing columns
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                logger.error(f"Missing required columns: {missing_columns}")
+                raise ValueError(f"Missing required columns: {missing_columns}")
+        
+        return df
+    
+    except Exception as e:
+        logger.error(f"Error loading prediction data: {e}")
+        raise
 
 # Main function to run prediction and evaluation
 def main():
