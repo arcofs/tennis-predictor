@@ -1962,12 +1962,16 @@ def prepare_features_for_xgboost(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         if col.endswith('_diff') and not col.endswith('_imputed'):
             # This is a prediction feature
+            has_missing = bool(df[col].isna().any())  # Convert numpy.bool_ to Python bool
+            missing_pct = float(df[col].isna().mean() * 100)  # Convert to float to ensure JSON serialization
+            
+            # Create metadata object with properly serializable types
             feature_metadata[col] = {
                 'is_prediction_feature': True,
                 'derived_from': [col.replace('_diff', '')],
                 'imputation_flag': f"{col}_imputed" if f"{col}_imputed" in df.columns else None,
-                'has_missing_values': df[col].isna().any(),
-                'missing_pct': df[col].isna().mean() * 100,
+                'has_missing_values': has_missing,
+                'missing_pct': missing_pct,
                 'description': f"Difference between winner and loser {col.replace('_diff', '')}"
             }
     
