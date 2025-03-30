@@ -11,9 +11,15 @@ from pydantic import BaseModel
 import multiprocessing as mp
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import psycopg2
+import psycopg2.extras
 
 # Configure number of CPU cores to use (set to -1 to use all cores)
 N_CORES = 120  # Change this value to limit the number of cores used
+
+# Configure batch sizes
+PROCESSING_BATCH_SIZE = 10000  # Size of batches for parallel processing
+DB_BATCH_SIZE = 50000  # Size of batches for database updates
 
 # Get actual number of cores to use
 N_CORES = mp.cpu_count() if N_CORES == -1 else min(N_CORES, mp.cpu_count())
@@ -205,6 +211,77 @@ def process_match_batch(batch_data: List[dict], calculator: EloCalculator) -> Li
         })
     return updates
 
+def update_batch(engine: create_engine, updates: list) -> None:
+    """Update a batch of matches with their Elo ratings using psycopg2 fast executemany"""
+    try:
+        # Extract connection parameters from SQLAlchemy engine
+        params = engine.url.translate_connect_args()
+        database = params['database']
+        user = params['username']
+        password = params['password']
+        host = params['host']
+        port = params.get('port', 5432)
+
+        # Connect using psycopg2 for faster bulk updates
+        with psycopg2.connect(
+            dbname=database,
+            user=user,
+            password=password,
+            host=host,
+            port=port
+        ) as conn:
+            with conn.cursor() as cur:
+                # Create temporary table
+                cur.execute("""
+                    CREATE TEMP TABLE temp_updates (
+                        id INTEGER PRIMARY KEY,
+                        winner_elo FLOAT,
+                        loser_elo FLOAT,
+                        winner_matches INTEGER,
+                        loser_matches INTEGER
+                    )
+                """)
+
+                # Prepare data for bulk insert
+                data = [(
+                    update['id'],
+                    update['winner_elo'],
+                    update['loser_elo'],
+                    update['winner_matches'],
+                    update['loser_matches']
+                ) for update in updates]
+
+                # Fast bulk insert using execute_values
+                psycopg2.extras.execute_values(
+                    cur,
+                    """
+                    INSERT INTO temp_updates (id, winner_elo, loser_elo, winner_matches, loser_matches)
+                    VALUES %s
+                    """,
+                    data,
+                    page_size=1000
+                )
+
+                # Bulk update using JOIN
+                cur.execute("""
+                    UPDATE matches m
+                    SET 
+                        winner_elo = t.winner_elo,
+                        loser_elo = t.loser_elo,
+                        winner_matches = t.winner_matches,
+                        loser_matches = t.loser_matches
+                    FROM temp_updates t
+                    WHERE m.id = t.id
+                """)
+
+                # Clean up
+                cur.execute("DROP TABLE temp_updates")
+                conn.commit()
+
+    except Exception as e:
+        logger.error(f"Error updating batch: {str(e)}")
+        raise
+
 def calculate_and_update_elo_ratings() -> None:
     """Main function to calculate and update Elo ratings"""
     try:
@@ -218,6 +295,8 @@ def calculate_and_update_elo_ratings() -> None:
         database_url = validate_database_url(database_url)
         logger.info(f"Using database URL with dialect: {database_url.split('://')[0]}")
         logger.info(f"Using {N_CORES} CPU cores for processing")
+        logger.info(f"Processing batch size: {PROCESSING_BATCH_SIZE}")
+        logger.info(f"Database batch size: {DB_BATCH_SIZE}")
 
         # Create database engine
         engine = create_engine(database_url)
@@ -225,8 +304,10 @@ def calculate_and_update_elo_ratings() -> None:
         # Add Elo columns
         add_elo_columns(engine)
 
-        # Load matches ordered by date
-        query = """
+        # Load matches in chunks to handle large datasets
+        chunk_size = PROCESSING_BATCH_SIZE * N_CORES
+        chunks = pd.read_sql(
+            """
             SELECT 
                 id,
                 tournament_date,
@@ -236,77 +317,62 @@ def calculate_and_update_elo_ratings() -> None:
             FROM matches 
             WHERE winner_id IS NOT NULL 
             AND loser_id IS NOT NULL
+            AND winner_elo IS NULL
             ORDER BY tournament_date ASC
-        """
-        
-        df = pd.read_sql(query, engine)
-        df['tournament_date'] = pd.to_datetime(df['tournament_date'])
-        total_matches = len(df)
-        
-        # Initialize Elo calculator
-        calculator = EloCalculator(initial_rating=1500.0)
-        
-        # Convert DataFrame to list of dictionaries for parallel processing
-        matches = df.to_dict('records')
-        
-        # Process matches in parallel with progress bar
-        batch_size = max(1000, total_matches // (N_CORES * 10))  # Adjust batch size based on total matches
-        batches = [matches[i:i + batch_size] for i in range(0, len(matches), batch_size)]
-        
+            """,
+            engine,
+            chunksize=chunk_size
+        )
+
+        total_processed = 0
         all_updates = []
-        with tqdm(total=total_matches, desc="Processing matches") as pbar:
-            with ProcessPoolExecutor(max_workers=N_CORES) as executor:
-                # Submit all batches to the process pool
-                future_to_batch = {
-                    executor.submit(process_match_batch, batch, calculator): batch 
-                    for batch in batches
-                }
-                
-                # Process completed batches and update progress
-                for future in as_completed(future_to_batch):
-                    batch = future_to_batch[future]
-                    try:
-                        batch_updates = future.result()
-                        all_updates.extend(batch_updates)
-                        pbar.update(len(batch))
-                    except Exception as e:
-                        logger.error(f"Error processing batch: {str(e)}")
-                        raise
-        
-        # Update database with all processed matches
-        logger.info("Updating database with processed matches...")
-        with tqdm(total=len(all_updates), desc="Updating database") as pbar:
-            for i in range(0, len(all_updates), batch_size):
-                batch = all_updates[i:i + batch_size]
-                update_batch(engine, batch)
-                pbar.update(len(batch))
-        
-        logger.info(f"Successfully updated {total_matches} matches with Elo ratings")
+        calculator = EloCalculator(initial_rating=1500.0)
+
+        for chunk_df in chunks:
+            if len(chunk_df) == 0:
+                continue
+
+            chunk_df['tournament_date'] = pd.to_datetime(chunk_df['tournament_date'])
+            matches = chunk_df.to_dict('records')
+            
+            # Process chunk in parallel
+            batches = [matches[i:i + PROCESSING_BATCH_SIZE] for i in range(0, len(matches), PROCESSING_BATCH_SIZE)]
+            
+            chunk_updates = []
+            with tqdm(total=len(matches), desc=f"Processing chunk {total_processed+1}-{total_processed+len(matches)}") as pbar:
+                with ProcessPoolExecutor(max_workers=N_CORES) as executor:
+                    future_to_batch = {
+                        executor.submit(process_match_batch, batch, calculator): batch 
+                        for batch in batches
+                    }
+                    
+                    for future in as_completed(future_to_batch):
+                        try:
+                            batch_updates = future.result()
+                            chunk_updates.extend(batch_updates)
+                            pbar.update(len(future_to_batch[future]))
+                        except Exception as e:
+                            logger.error(f"Error processing batch: {str(e)}")
+                            raise
+
+            # Update database when we have enough updates
+            all_updates.extend(chunk_updates)
+            if len(all_updates) >= DB_BATCH_SIZE:
+                logger.info(f"Updating database with {len(all_updates)} matches...")
+                update_batch(engine, all_updates)
+                total_processed += len(all_updates)
+                all_updates = []
+
+        # Update remaining matches
+        if all_updates:
+            logger.info(f"Updating database with remaining {len(all_updates)} matches...")
+            update_batch(engine, all_updates)
+            total_processed += len(all_updates)
+
+        logger.info(f"Successfully updated {total_processed} matches with Elo ratings")
 
     except Exception as e:
         logger.error(f"Error in calculate_and_update_elo_ratings: {str(e)}")
-        raise
-
-def update_batch(engine: create_engine, updates: list) -> None:
-    """Update a batch of matches with their Elo ratings"""
-    try:
-        with engine.connect() as conn:
-            for update in updates:
-                conn.execute(
-                    text("""
-                        UPDATE matches 
-                        SET 
-                            winner_elo = :winner_elo,
-                            loser_elo = :loser_elo,
-                            winner_matches = :winner_matches,
-                            loser_matches = :loser_matches
-                        WHERE id = :id
-                    """),
-                    update
-                )
-            conn.commit()
-    except Exception as e:
-        logger.error(f"Error updating batch: {str(e)}")
         raise
 
 if __name__ == "__main__":
