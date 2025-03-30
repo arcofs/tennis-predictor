@@ -183,16 +183,16 @@ def calculate_win_rates(df: pd.DataFrame) -> pd.DataFrame:
     matches = []
     
     # Process matches chronologically with progress bar
-    for idx, row in tqdm(df.sort_values('tourney_date').iterrows(), 
+    for idx, row in tqdm(df.sort_values('tournament_date').iterrows(), 
                           total=len(df), 
                           desc="Processing matches for win rates", 
                           unit="match"):
         # Process winner
         winner_dict = {
-            'match_id': idx,
+            'match_id': row['match_id'],
             'player_id': row['winner_id'],
             'opponent_id': row['loser_id'],
-            'tourney_date': row['tourney_date'],
+            'tournament_date': row['tournament_date'],
             'surface': row['surface'],
             'result': 1  # 1 means win
         }
@@ -200,10 +200,10 @@ def calculate_win_rates(df: pd.DataFrame) -> pd.DataFrame:
         
         # Process loser
         loser_dict = {
-            'match_id': idx,
+            'match_id': row['match_id'],
             'player_id': row['loser_id'],
             'opponent_id': row['winner_id'],
-            'tourney_date': row['tourney_date'], 
+            'tournament_date': row['tournament_date'], 
             'surface': row['surface'],
             'result': 0  # 0 means loss
         }
@@ -213,7 +213,7 @@ def calculate_win_rates(df: pd.DataFrame) -> pd.DataFrame:
     player_df = pd.DataFrame(matches)
     
     # Sort by player and date
-    player_df = player_df.sort_values(['player_id', 'tourney_date'])
+    player_df = player_df.sort_values(['player_id', 'tournament_date'])
     
     # Calculate overall win rates over different windows
     time_windows = [5]  # Focus on recent 5 matches as indicated by feature importance
@@ -332,7 +332,7 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
     matches = []
     
     # Process each match chronologically with progress bar
-    for idx, row in tqdm(df.sort_values('tourney_date').iterrows(), 
+    for idx, row in tqdm(df.sort_values('tournament_date').iterrows(), 
                           total=len(df), 
                           desc="Processing matches for serve/return stats", 
                           unit="match"):
@@ -342,10 +342,10 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
         
         # Process winner's serve and return stats
         winner_dict = {
-            'match_id': idx,
+            'match_id': row['match_id'],
             'player_id': row['winner_id'],
             'opponent_id': row['loser_id'],
-            'tourney_date': row['tourney_date'],
+            'tournament_date': row['tournament_date'],
             'surface': row['surface']
         }
         
@@ -400,10 +400,10 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
         
         # Process loser's serve and return stats
         loser_dict = {
-            'match_id': idx,
+            'match_id': row['match_id'],
             'player_id': row['loser_id'],
             'opponent_id': row['winner_id'],
-            'tourney_date': row['tourney_date'],
+            'tournament_date': row['tournament_date'],
             'surface': row['surface']
         }
         
@@ -460,7 +460,7 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
     player_stats_df = pd.DataFrame(matches)
     
     # Sort by player and date
-    player_stats_df = player_stats_df.sort_values(['player_id', 'tourney_date'])
+    player_stats_df = player_stats_df.sort_values(['player_id', 'tournament_date'])
     
     return player_stats_df
 
@@ -625,29 +625,29 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
     
     features = []
     for idx, match in batch_df.iterrows():
-        match_date = match['tourney_date']
+        match_date = match['tournament_date']
         winner_id = match['winner_id']
         loser_id = match['loser_id']
         surface = match['surface']
         
         # Get player win/loss stats just before this match (exclude the current match)
         winner_prev = player_df[(player_df['player_id'] == winner_id) & 
-                              (player_df['tourney_date'] < match_date)]
+                              (player_df['tournament_date'] < match_date)]
         
         loser_prev = player_df[(player_df['player_id'] == loser_id) & 
-                             (player_df['tourney_date'] < match_date)]
+                             (player_df['tournament_date'] < match_date)]
         
         # Get player serve/return stats just before this match
         winner_sr_prev = serve_return_df[(serve_return_df['player_id'] == winner_id) & 
-                                      (serve_return_df['tourney_date'] < match_date)]
+                                      (serve_return_df['tournament_date'] < match_date)]
         
         loser_sr_prev = serve_return_df[(serve_return_df['player_id'] == loser_id) & 
-                                     (serve_return_df['tourney_date'] < match_date)]
+                                     (serve_return_df['tournament_date'] < match_date)]
         
         # Initialize match features
         match_features = {
             'match_id': idx,
-            'tourney_date': match_date,
+            'tournament_date': match_date,
             'surface': surface,
             'winner_id': winner_id,
             'loser_id': loser_id,
@@ -750,7 +750,7 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     match_df = df.copy()
     
     # Sort by date to ensure chronological processing
-    match_df = match_df.sort_values('tourney_date').reset_index(drop=True)
+    match_df = match_df.sort_values('tournament_date').reset_index(drop=True)
     
     # Split the data into chunks for parallel processing
     chunk_size = max(1, len(match_df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
@@ -778,7 +778,7 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     features_df = pd.DataFrame(all_features)
     
     # Sort by date
-    features_df = features_df.sort_values('tourney_date').reset_index(drop=True)
+    features_df = features_df.sort_values('tournament_date').reset_index(drop=True)
     
     return features_df
 
@@ -801,7 +801,7 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
         surface = row['surface']
         match_dict = {
             'match_id': row['match_id'],
-            'tourney_date': row['tourney_date'],
+            'tournament_date': row['tournament_date'],
             'surface': surface,
             'player1_id': row['winner_id'],
             'player2_id': row['loser_id'],
@@ -867,7 +867,7 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
         surface = row['surface']
         match_dict = {
             'match_id': row['match_id'],
-            'tourney_date': row['tourney_date'],
+            'tournament_date': row['tournament_date'],
             'surface': surface,
             'player1_id': row['loser_id'],
             'player2_id': row['winner_id'], 
@@ -979,7 +979,7 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
     symmetric_df = pd.DataFrame(all_matches)
     
     # Sort by date and match_id
-    symmetric_df = symmetric_df.sort_values(['tourney_date', 'match_id']).reset_index(drop=True)
+    symmetric_df = symmetric_df.sort_values(['tournament_date', 'match_id']).reset_index(drop=True)
     
     return symmetric_df
 
@@ -1028,13 +1028,13 @@ def main():
     
     # Print feature statistics
     logger.info(f"Total matches: {len(df)}")
-    logger.info(f"Total features: {len(symmetric_df.columns) - 6}")  # Exclude match_id, tourney_date, player1_id, player2_id, surface, result
+    logger.info(f"Total features: {len(symmetric_df.columns) - 6}")  # Exclude match_id, tournament_date, player1_id, player2_id, surface, result
     
     # Print example features for a match
     if not symmetric_df.empty:
         example = symmetric_df.iloc[0].to_dict()
         feature_example = {k: v for k, v in example.items() 
-                         if k not in ['match_id', 'tourney_date', 'player1_id', 'player2_id', 'surface', 'result']}
+                         if k not in ['match_id', 'tournament_date', 'player1_id', 'player2_id', 'surface', 'result']}
         logger.info(f"Example features: {feature_example}")
     
     elapsed_time = time.time() - start_time
