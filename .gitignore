@@ -15,3 +15,5 @@ data/cleaned/combined_matches.csv
 /data/v9
 /data/v10
 /data/v11
+# Large output files
+/predictor/output/v3/
