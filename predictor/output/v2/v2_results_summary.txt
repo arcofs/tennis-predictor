@@ -1,0 +1,14 @@
+Tennis Match Prediction Results Summary (v2)
+==================================================
+
+Overall Metrics:
+----------------------------------------
+Perspective-level accuracy: 0.6539
+Match-level accuracy: 1.0000
+
+Metrics by Surface:
+----------------------------------------
+Hard: 0.6536 (n=28492)
+Clay: 0.6546 (n=24452)
+Grass: 0.6547 (n=2682)
+Carpet: 0.5714 (n=98)

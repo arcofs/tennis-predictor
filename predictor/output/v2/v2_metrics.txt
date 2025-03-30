@@ -1,0 +1,25 @@
+Tennis Match Prediction Model v2
+==================================================
+
+Training Metrics:
+----------------------------------------
+accuracy: 0.6539
+precision: 0.6539
+recall: 0.6540
+f1: 0.6540
+auc_roc: 0.7141
+
+Feature Importance:
+----------------------------------------
+player_elo_diff: 0.550609
+win_rate_5_diff: 0.128131
+win_rate_Clay_overall_diff: 0.120438
+win_rate_Hard_overall_diff: 0.099253
+win_rate_Clay_5_diff: 0.025864
+win_rate_Grass_overall_diff: 0.017010
+win_streak_diff: 0.015277
+loss_streak_diff: 0.011531
+win_rate_Carpet_overall_diff: 0.010348
+win_rate_Grass_5_diff: 0.008292
+win_rate_Carpet_5_diff: 0.006979
+win_rate_Hard_5_diff: 0.006269
