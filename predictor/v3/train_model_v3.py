@@ -25,13 +25,15 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 DATA_DIR = PROJECT_ROOT / "data"
 OUTPUT_DIR = PROJECT_ROOT / "predictor" / "output" / "v3"
+MODELS_DIR = PROJECT_ROOT / "models" / "v3"
 
-# Create output directory if it doesn't exist
+# Create output directories if they don't exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(MODELS_DIR, exist_ok=True)
 
 # File paths
 INPUT_FILE = DATA_DIR / "v3" / "features_v3.csv"
-MODEL_OUTPUT = OUTPUT_DIR / "tennis_model_v3.json"
+MODEL_OUTPUT = MODELS_DIR / "tennis_model_v3.json"
 METRICS_OUTPUT = OUTPUT_DIR / "metrics_v3.json"
 PLOTS_DIR = OUTPUT_DIR / "plots"
 
@@ -41,21 +43,23 @@ os.makedirs(PLOTS_DIR, exist_ok=True)
 # Constants
 SEED = 42
 TEST_SIZE = 0.2
-SURFACES = ['hard', 'clay', 'grass']
+SURFACES = ['Hard', 'Clay', 'Grass', 'Carpet']
 
 # XGBoost model parameters
 MODEL_PARAMS = {
     'objective': 'binary:logistic',
     'eval_metric': 'logloss',
-    'eta': 0.05,
-    'max_depth': 5,
+    'eta': 0.03,  # Lower learning rate for better stability
+    'max_depth': 6,  # Slightly increased depth for more complex patterns
     'subsample': 0.8,
     'colsample_bytree': 0.8,
     'min_child_weight': 1,
     'gamma': 0.1,
     'scale_pos_weight': 1,
     'seed': SEED,
-    'verbosity': 0
+    'verbosity': 0,
+    'reg_alpha': 0.1,  # Light L1 regularization
+    'reg_lambda': 1.0   # L2 regularization 
 }
 
 # Define serve and return feature names
@@ -70,7 +74,14 @@ SERVE_RETURN_FEATURES = [
     'bp_conversion_pct_5_diff'
 ]
 
-# Surface-specific serve and return features will be dynamically generated
+# Raw player features
+RAW_PLAYER_FEATURES = [
+    'win_rate_5',
+    'win_streak',
+    'loss_streak'
+]
+
+# Surface-specific features will be dynamically generated for each surface
 
 
 class ProgressTracker:
@@ -176,15 +187,22 @@ def create_time_based_split(df: pd.DataFrame, test_size: float = 0.2,
     # Sort by date
     df = df.sort_values(by='tourney_date').reset_index(drop=True)
     
-    # Calculate split index
+    # Calculate split index - use the most recent matches for testing
     split_idx = int(len(df) * (1 - test_size))
     
     # Split data
     train_df = df.iloc[:split_idx].copy()
     test_df = df.iloc[split_idx:].copy()
     
-    logger.info(f"Train set: {len(train_df)} matches from {train_df['tourney_date'].min()} to {train_df['tourney_date'].max()}")
-    logger.info(f"Test set: {len(test_df)} matches from {test_df['tourney_date'].min()} to {test_df['tourney_date'].max()}")
+    # Calculate date ranges
+    train_start = train_df['tourney_date'].min().strftime('%Y-%m-%d')
+    train_end = train_df['tourney_date'].max().strftime('%Y-%m-%d')
+    test_start = test_df['tourney_date'].min().strftime('%Y-%m-%d')
+    test_end = test_df['tourney_date'].max().strftime('%Y-%m-%d')
+    
+    logger.info(f"Train set: {len(train_df)} matches from {train_start} to {train_end}")
+    logger.info(f"Test set: {len(test_df)} matches from {test_start} to {test_end}")
+    logger.info(f"Using the most recent {test_size*100:.1f}% of matches for testing")
     
     if progress_tracker:
         progress_tracker.update("Time-based split complete")
@@ -220,8 +238,44 @@ def get_feature_columns(df: pd.DataFrame, progress_tracker: Optional[ProgressTra
             if surface_feature in df.columns:
                 surface_specific_features.append(surface_feature)
     
-    # Ensure all surface-specific features are included
-    for feature in surface_specific_features:
+    # Generate list of surface-specific win rate features
+    for surface in SURFACES:
+        # Most recent win rate on specific surface
+        surface_win_rate = f"win_rate_{surface}_5_diff"
+        if surface_win_rate in df.columns and surface_win_rate not in feature_cols:
+            surface_specific_features.append(surface_win_rate)
+        
+        # Overall win rate on specific surface
+        surface_overall_win_rate = f"win_rate_{surface}_overall_diff"
+        if surface_overall_win_rate in df.columns and surface_overall_win_rate not in feature_cols:
+            surface_specific_features.append(surface_overall_win_rate)
+    
+    # Generate list of raw player features (for both player1 and player2)
+    raw_player_features = []
+    for feature in RAW_PLAYER_FEATURES:
+        player1_feature = f"player1_{feature}"
+        player2_feature = f"player2_{feature}"
+        
+        if player1_feature in df.columns and player1_feature not in feature_cols:
+            raw_player_features.append(player1_feature)
+        
+        if player2_feature in df.columns and player2_feature not in feature_cols:
+            raw_player_features.append(player2_feature)
+    
+    # Generate raw player serve/return features
+    for feature in SERVE_RETURN_FEATURES:
+        base_feature = feature.split('_diff')[0]
+        player1_feature = f"player1_{base_feature}"
+        player2_feature = f"player2_{base_feature}"
+        
+        if player1_feature in df.columns and player1_feature not in feature_cols:
+            raw_player_features.append(player1_feature)
+        
+        if player2_feature in df.columns and player2_feature not in feature_cols:
+            raw_player_features.append(player2_feature)
+    
+    # Ensure all surface-specific and raw player features are included
+    for feature in surface_specific_features + raw_player_features:
         if feature not in feature_cols:
             feature_cols.append(feature)
     
@@ -298,12 +352,22 @@ def train_model(X_train: np.ndarray, y_train: np.ndarray,
     """
     logger.info("Training XGBoost model")
     
-    # Create DMatrix
-    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_cols)
+    # Create validation set for early stopping
+    val_size = 0.1  # Use 10% of training data for validation
+    X_train_final, X_val, y_train_final, y_val = train_test_split(
+        X_train, y_train, test_size=val_size, random_state=SEED, stratify=y_train
+    )
+    
+    # Create DMatrix objects
+    dtrain = xgb.DMatrix(X_train_final, label=y_train_final, feature_names=feature_cols)
+    dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_cols)
+    
+    # Create watchlist for evaluation
+    watchlist = [(dtrain, 'train'), (dval, 'eval')]
     
     # Set up training parameters
-    num_rounds = 1000
-    early_stopping_rounds = 50
+    num_rounds = 2000  # Increased from 1000
+    early_stopping_rounds = 100  # Increased from 50
     
     # Train model with progress tracking
     progress_callback = XGBoostProgressCallback(num_rounds)
@@ -312,8 +376,15 @@ def train_model(X_train: np.ndarray, y_train: np.ndarray,
         params,
         dtrain,
         num_boost_round=num_rounds,
-        callbacks=[progress_callback]
+        evals=watchlist,
+        early_stopping_rounds=early_stopping_rounds,
+        callbacks=[progress_callback],
+        verbose_eval=10  # Print evaluation metrics every 10 rounds
     )
+    
+    # Get actual number of trees used
+    best_iteration = model.best_iteration if hasattr(model, 'best_iteration') else num_rounds
+    logger.info(f"Model training complete. Used {best_iteration} boosting rounds.")
     
     # Get feature importances
     importance_scores = model.get_score(importance_type='gain')
@@ -322,7 +393,7 @@ def train_model(X_train: np.ndarray, y_train: np.ndarray,
     # Sort importances
     importances = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
     
-    logger.info(f"Top 5 important features: {list(importances.keys())[:5]}")
+    logger.info(f"Top 10 important features: {list(importances.keys())[:10]}")
     
     if progress_tracker:
         progress_tracker.update("Model training complete")
@@ -397,6 +468,35 @@ def evaluate_model(model: xgb.Booster, X_test: np.ndarray, y_test: np.ndarray,
                 logger.info(f"  Precision: {precision_surface:.4f}")
                 logger.info(f"  Recall: {recall_surface:.4f}")
                 logger.info(f"  F1 Score: {f1_surface:.4f}")
+        else:
+            logger.info(f"No test samples for {surface} surface")
+    
+    # Calculate metrics by confidence range
+    confidence_bins = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    confidence_metrics = []
+    
+    for i in range(len(confidence_bins) - 1):
+        lower = confidence_bins[i]
+        upper = confidence_bins[i + 1]
+        
+        # Find predictions in this confidence range (from both sides of 0.5)
+        mask = (
+            ((y_pred_proba >= lower) & (y_pred_proba < upper)) | 
+            ((y_pred_proba <= (1 - lower)) & (y_pred_proba > (1 - upper)))
+        )
+        
+        if sum(mask) > 0:
+            bin_acc = accuracy_score(y_test[mask], y_pred[mask])
+            
+            confidence_metrics.append({
+                'confidence_range': f"{lower:.1f}-{upper:.1f}",
+                'accuracy': bin_acc,
+                'count': sum(mask),
+                'percentage': sum(mask) / len(y_test) * 100
+            })
+            
+            logger.info(f"Accuracy for confidence {lower:.1f}-{upper:.1f}: {bin_acc:.4f} " 
+                      f"(n={sum(mask)}, {sum(mask) / len(y_test) * 100:.1f}%)")
     
     # Compile all metrics
     metrics = {
@@ -407,7 +507,8 @@ def evaluate_model(model: xgb.Booster, X_test: np.ndarray, y_test: np.ndarray,
             'f1': f1,
             'count': len(y_test)
         },
-        'by_surface': surface_metrics
+        'by_surface': surface_metrics,
+        'by_confidence': confidence_metrics
     }
     
     if progress_tracker:

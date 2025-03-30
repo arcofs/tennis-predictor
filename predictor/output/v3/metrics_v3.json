@@ -1,0 +1,78 @@
+{
+  "overall": {
+    "accuracy": 0.6581991015363232,
+    "precision": 0.6582894606138869,
+    "recall": 0.6579136779926038,
+    "f1": 0.6581015156593304,
+    "count": 80582
+  },
+  "by_surface": {
+    "Hard": {
+      "accuracy": 0.6596041329515747,
+      "precision": 0.660298089426828,
+      "recall": 0.6574046409720148,
+      "f1": 0.6588481884419602,
+      "count": 40165
+    },
+    "Clay": {
+      "accuracy": 0.6568483877207041,
+      "precision": 0.655970108247706,
+      "recall": 0.6597038019451813,
+      "f1": 0.6578316572530651,
+      "count": 36191
+    },
+    "Grass": {
+      "accuracy": 0.658560794044665,
+      "precision": 0.6617721518987342,
+      "recall": 0.6486352357320099,
+      "f1": 0.6551378446115288,
+      "count": 4030
+    },
+    "Carpet": {
+      "accuracy": 0.6122448979591837,
+      "precision": 0.61,
+      "recall": 0.6224489795918368,
+      "f1": 0.6161616161616161,
+      "count": 196
+    }
+  },
+  "by_confidence": [
+    {
+      "confidence_range": "0.5-0.6",
+      "accuracy": 0.5501589544330625,
+      "count": 28310,
+      "percentage": 35.13191531607555
+    },
+    {
+      "confidence_range": "0.6-0.7",
+      "accuracy": 0.6359532203972826,
+      "count": 23258,
+      "percentage": 28.862525129681565
+    },
+    {
+      "confidence_range": "0.7-0.8",
+      "accuracy": 0.7318390804597701,
+      "count": 17400,
+      "percentage": 21.592911568340323
+    },
+    {
+      "confidence_range": "0.8-0.9",
+      "accuracy": 0.8314899962719026,
+      "count": 8047,
+      "percentage": 9.986101114392792
+    },
+    {
+      "confidence_range": "0.9-1.0",
+      "accuracy": 0.9105691056910569,
+      "count": 3567,
+      "percentage": 4.426546871509767
+    }
+  ],
+  "player_position_bias": {
+    "player_position_consistency_pct": 97.56503177124702,
+    "consistent_predictions": 39307,
+    "inconsistent_predictions": 981,
+    "total_matches": 40288
+  },
+  "timestamp": "2025-03-30T13:58:38.777540"
+}

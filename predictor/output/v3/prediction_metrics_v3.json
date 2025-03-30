@@ -1,0 +1,67 @@
+{
+  "overall": {
+    "accuracy": 0.658174282097739,
+    "precision": 0.6582561402637396,
+    "recall": 0.6578803673368081,
+    "f1": 0.658068200156411,
+    "count": 80582
+  },
+  "by_surface": {
+    "Hard": {
+      "accuracy": 0.6595458619659397,
+      "count": 40164
+    },
+    "Clay": {
+      "accuracy": 0.6568578691423519,
+      "count": 36192
+    },
+    "Grass": {
+      "accuracy": 0.658560794044665,
+      "count": 4030
+    },
+    "Carpet": {
+      "accuracy": 0.6122448979591837,
+      "count": 196
+    }
+  },
+  "by_confidence": [
+    {
+      "confidence_range": "0.5-0.6",
+      "accuracy": 0.5501924367077433,
+      "count": 28321,
+      "percentage": 35.145566007296914
+    },
+    {
+      "confidence_range": "0.6-0.7",
+      "accuracy": 0.6358125537403267,
+      "count": 23260,
+      "percentage": 28.865007073539996
+    },
+    {
+      "confidence_range": "0.7-0.8",
+      "accuracy": 0.7319611337894555,
+      "count": 17393,
+      "percentage": 21.58422476483582
+    },
+    {
+      "confidence_range": "0.8-0.9",
+      "accuracy": 0.8316757831924416,
+      "count": 8044,
+      "percentage": 9.982378198605147
+    },
+    {
+      "confidence_range": "0.9-1.0",
+      "accuracy": 0.9104938271604939,
+      "count": 3564,
+      "percentage": 4.422823955722121
+    }
+  ],
+  "match_level": {
+    "match_level_accuracy": 0.6703484908657665,
+    "prediction_consistency_pct": 97.56006751389992,
+    "consistent_predictions": 39305,
+    "inconsistent_predictions": 983,
+    "total_matches": 40288
+  },
+  "timestamp": "2025-03-30T14:07:12.546284"
+}
