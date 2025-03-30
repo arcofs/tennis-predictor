@@ -1,4 +1,5 @@
 .venv
+.env
 /data/raw
 /data/cleaned/combined_matches.csv
 # Large data files
@@ -16,4 +17,12 @@ data/cleaned/combined_matches.csv
 /data/v10
 /data/v11
 # Large output files
+/predictor/output/v2/
 /predictor/output/v3/
+/predictor/output/v4/
+/predictor/output/v5/
+/predictor/output/v6/
+/predictor/output/v7/
+/predictor/output/v8/
+/predictor/output/v9/
+/predictor/output/v10/
