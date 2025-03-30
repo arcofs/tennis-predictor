@@ -15,7 +15,7 @@ import psycopg2
 import psycopg2.extras
 
 # Configure number of CPU cores to use (set to -1 to use all cores)
-N_CORES = 120  # Change this value to limit the number of cores used
+N_CORES = 7  # Change this value to limit the number of cores used
 
 # Configure batch sizes
 PROCESSING_BATCH_SIZE = 10000  # Size of batches for parallel processing
