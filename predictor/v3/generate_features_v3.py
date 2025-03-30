@@ -1127,53 +1127,77 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
             'player1_bp_conversion_pct_5', 'player2_bp_conversion_pct_5'
         ]
         
+        # Create a copy of the dataframe to avoid modifying the original
+        df = symmetric_df.copy()
+        
         # Convert tournament_date to datetime if it's not already
-        symmetric_df['tournament_date'] = pd.to_datetime(symmetric_df['tournament_date'])
+        df['tournament_date'] = pd.to_datetime(df['tournament_date'])
         
-        # Convert integer columns to int64 to handle larger numbers
-        int_columns = ['match_id', 'player1_id', 'player2_id', 'result', 
-                      'win_streak_diff', 'loss_streak_diff',
-                      'player1_win_streak', 'player2_win_streak',
-                      'player1_loss_streak', 'player2_loss_streak']
+        # Define column types and fill values
+        integer_columns = {
+            'match_id': 0,
+            'player1_id': 0,
+            'player2_id': 0,
+            'result': 0,
+            'win_streak_diff': 0,
+            'loss_streak_diff': 0,
+            'player1_win_streak': 0,
+            'player2_win_streak': 0,
+            'player1_loss_streak': 0,
+            'player2_loss_streak': 0
+        }
         
-        for col in int_columns:
-            if col in symmetric_df.columns:
-                symmetric_df[col] = symmetric_df[col].astype('int64')
+        float_columns = [col for col in columns if col not in integer_columns.keys() and col not in ['surface', 'tournament_date']]
         
-        # Convert float columns to float64 for precision
-        float_columns = [col for col in columns if col not in int_columns + ['surface', 'tournament_date']]
+        # Handle integer columns - fill NaN with defaults and convert
+        for col, default_value in integer_columns.items():
+            if col in df.columns:
+                df[col] = df[col].fillna(default_value).astype('int64')
+        
+        # Handle float columns - fill NaN with 0 and convert to float64
         for col in float_columns:
-            if col in symmetric_df.columns:
-                symmetric_df[col] = symmetric_df[col].astype('float64')
+            if col in df.columns:
+                df[col] = df[col].fillna(0.0).astype('float64')
+        
+        # Ensure surface is a string
+        if 'surface' in df.columns:
+            df['surface'] = df['surface'].fillna('Unknown')
         
         # Process in batches
-        total_rows = len(symmetric_df)
+        total_rows = len(df)
         with conn.cursor() as cur:
             for start_idx in tqdm(range(0, total_rows, DB_BATCH_SIZE), desc="Saving features to database"):
                 end_idx = min(start_idx + DB_BATCH_SIZE, total_rows)
-                batch_df = symmetric_df.iloc[start_idx:end_idx]
+                batch_df = df.iloc[start_idx:end_idx]
                 
-                # Convert DataFrame to list of tuples
-                values = [tuple(x) for x in batch_df[columns].values]
-                
-                # Insert batch using execute_values
-                execute_values(
-                    cur,
-                    f"""
-                    INSERT INTO match_features (
-                        {', '.join(columns)}
-                    ) VALUES %s
-                    ON CONFLICT (match_id) DO UPDATE SET
-                        {', '.join(f"{col} = EXCLUDED.{col}" for col in columns if col != 'match_id')}
-                    """,
-                    values,
-                    page_size=DB_PAGE_SIZE
-                )
-                
-                # Commit after each batch
-                conn.commit()
-                
-                logger.info(f"Processed {end_idx}/{total_rows} rows")
+                try:
+                    # Convert DataFrame to list of tuples
+                    values = [tuple(x) for x in batch_df[columns].values]
+                    
+                    # Insert batch using execute_values
+                    execute_values(
+                        cur,
+                        f"""
+                        INSERT INTO match_features (
+                            {', '.join(columns)}
+                        ) VALUES %s
+                        ON CONFLICT (match_id) DO UPDATE SET
+                            {', '.join(f"{col} = EXCLUDED.{col}" for col in columns if col != 'match_id')}
+                        """,
+                        values,
+                        page_size=DB_PAGE_SIZE
+                    )
+                    
+                    # Commit after each batch
+                    conn.commit()
+                    
+                    logger.info(f"Processed {end_idx}/{total_rows} rows")
+                    
+                except Exception as e:
+                    logger.error(f"Error in batch {start_idx}-{end_idx}: {str(e)}")
+                    logger.error(f"First row of problematic batch: {batch_df.iloc[0].to_dict()}")
+                    conn.rollback()
+                    raise
         
         logger.info("Successfully saved all features to database")
         
