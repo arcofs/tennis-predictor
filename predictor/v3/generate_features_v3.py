@@ -9,6 +9,8 @@ from tqdm import tqdm
 import time
 import multiprocessing
 from functools import partial
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
 
 # Multiprocessing settings
 # Set to 0 to use all available cores, or specify a number to limit the cores used
@@ -50,54 +52,110 @@ SURFACE_GRASS = 'Grass'
 SURFACE_CARPET = 'Carpet'
 STANDARD_SURFACES = [SURFACE_HARD, SURFACE_CLAY, SURFACE_GRASS, SURFACE_CARPET]
 
-# Columns for serve and return stats
+# Updated column mappings for database
 SERVE_COLS = {
-    'winner': ['w_ace', 'w_df', 'w_svpt', 'w_1stIn', 'w_1stWon', 'w_2ndWon', 'w_SvGms', 'w_bpSaved', 'w_bpFaced'],
-    'loser': ['l_ace', 'l_df', 'l_svpt', 'l_1stIn', 'l_1stWon', 'l_2ndWon', 'l_SvGms', 'l_bpSaved', 'l_bpFaced']
+    'winner': ['winner_aces', 'winner_double_faults', 'winner_serve_points', 'winner_first_serves_in', 
+               'winner_first_serve_points_won', 'winner_second_serve_points_won', 'winner_service_games', 
+               'winner_break_points_saved', 'winner_break_points_faced'],
+    'loser': ['loser_aces', 'loser_double_faults', 'loser_serve_points', 'loser_first_serves_in', 
+              'loser_first_serve_points_won', 'loser_second_serve_points_won', 'loser_service_games', 
+              'loser_break_points_saved', 'loser_break_points_faced']
 }
 
-# Serve and return stats columns
-SERVE_STATS_COLUMNS = ['w_ace', 'w_df', 'w_svpt', 'w_1stIn', 'w_1stWon', 'w_2ndWon', 'w_SvGms', 'w_bpSaved', 'w_bpFaced']
-RETURN_STATS_COLUMNS = ['l_ace', 'l_df', 'l_svpt', 'l_1stIn', 'l_1stWon', 'l_2ndWon', 'l_SvGms', 'l_bpSaved', 'l_bpFaced']
+# Updated serve and return stats columns for database
+SERVE_STATS_COLUMNS = SERVE_COLS['winner']
+RETURN_STATS_COLUMNS = SERVE_COLS['loser']
 
-def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
-    """
-    Load the tennis match dataset.
+def get_database_connection() -> create_engine:
+    """Create database connection using environment variables"""
+    load_dotenv()
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        raise ValueError("DATABASE_URL not found in environment variables")
     
-    Args:
-        file_path: Path to the input CSV file
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    return create_engine(database_url)
+
+def load_data() -> pd.DataFrame:
+    """
+    Load the tennis match dataset from the database.
     
     Returns:
         DataFrame with tennis match data
     """
-    logger.info(f"Loading data from {file_path}")
-    df = pd.read_csv(file_path)
+    logger.info("Loading data from database")
+    engine = get_database_connection()
+    
+    query = """
+        SELECT 
+            id as match_id,
+            tournament_date,
+            tournament_id,
+            tournament_name,
+            surface,
+            tournament_level,
+            winner_id,
+            winner_name,
+            winner_hand,
+            winner_height_cm,
+            winner_country_code,
+            winner_age,
+            loser_id,
+            loser_name,
+            loser_hand,
+            loser_height_cm,
+            loser_country_code,
+            loser_age,
+            winner_aces,
+            winner_double_faults,
+            winner_serve_points,
+            winner_first_serves_in,
+            winner_first_serve_points_won,
+            winner_second_serve_points_won,
+            winner_service_games,
+            winner_break_points_saved,
+            winner_break_points_faced,
+            loser_aces,
+            loser_double_faults,
+            loser_serve_points,
+            loser_first_serves_in,
+            loser_first_serve_points_won,
+            loser_second_serve_points_won,
+            loser_service_games,
+            loser_break_points_saved,
+            loser_break_points_faced,
+            winner_elo,
+            loser_elo,
+            winner_matches,
+            loser_matches
+        FROM matches
+        WHERE winner_id IS NOT NULL 
+        AND loser_id IS NOT NULL
+        ORDER BY tournament_date ASC
+    """
+    
+    df = pd.read_sql(query, engine)
     
     # Convert date columns to datetime
-    if 'tourney_date' in df.columns:
-        df['tourney_date'] = pd.to_datetime(df['tourney_date'])
-    
-    # Sort by date
-    df = df.sort_values(by='tourney_date').reset_index(drop=True)
-    
-    # Create a unique match identifier
-    df['match_id'] = df.index
+    df['tournament_date'] = pd.to_datetime(df['tournament_date'])
     
     # Standardize surface types
     if 'surface' in df.columns:
         # First convert to lowercase
         df['surface'] = df['surface'].str.lower()
         
-        # Map non-standard surfaces to standard ones (keeping lowercase for now)
+        # Map non-standard surfaces to standard ones
         surface_mapping = {
-            'carpet': 'carpet',  # Keep carpet as a separate category like in v2
+            'carpet': 'carpet',
             'hard court': 'hard',
             'clay court': 'clay',
             'grass court': 'grass'
         }
         df['surface'] = df['surface'].map(lambda x: surface_mapping.get(x, x))
         
-        # Now convert to title case with standard surface names
+        # Convert to title case with standard surface names
         df['surface'] = df['surface'].replace({
             'hard': SURFACE_HARD,
             'clay': SURFACE_CLAY,
@@ -105,19 +163,7 @@ def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
             'carpet': SURFACE_CARPET
         })
     
-    # Make sure necessary serve stats columns exist
-    for player_type in ['winner', 'loser']:
-        for col in SERVE_COLS[player_type]:
-            if col not in df.columns:
-                df[col] = np.nan
-    
-    # Make sure data types are correct for serve stats
-    serve_stats_cols = SERVE_COLS['winner'] + SERVE_COLS['loser']
-    for col in serve_stats_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-    
-    logger.info(f"Loaded {len(df)} matches from {len(df['tourney_id'].unique())} tournaments")
+    logger.info(f"Loaded {len(df)} matches from {len(df['tournament_id'].unique())} tournaments")
     
     return df
 
@@ -292,7 +338,7 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
                           unit="match"):
         
         # Check if serve stats are available for this match
-        has_serve_stats = not pd.isna(row['w_svpt']) and row['w_svpt'] > 0
+        has_serve_stats = not pd.isna(row['winner_serve_points']) and row['winner_serve_points'] > 0
         
         # Process winner's serve and return stats
         winner_dict = {
@@ -306,49 +352,49 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
         # Add serve stats for winner
         if has_serve_stats:
             # Basic serve stats directly from dataset
-            winner_dict['aces'] = row['w_ace']
-            winner_dict['double_faults'] = row['w_df']
-            winner_dict['serve_points'] = row['w_svpt']
-            winner_dict['first_serves_in'] = row['w_1stIn']
-            winner_dict['first_serve_points_won'] = row['w_1stWon']
-            winner_dict['second_serve_points_won'] = row['w_2ndWon']
-            winner_dict['service_games'] = row['w_SvGms']
-            winner_dict['break_points_saved'] = row['w_bpSaved']
-            winner_dict['break_points_faced'] = row['w_bpFaced']
+            winner_dict['aces'] = row['winner_aces']
+            winner_dict['double_faults'] = row['winner_double_faults']
+            winner_dict['serve_points'] = row['winner_serve_points']
+            winner_dict['first_serves_in'] = row['winner_first_serves_in']
+            winner_dict['first_serve_points_won'] = row['winner_first_serve_points_won']
+            winner_dict['second_serve_points_won'] = row['winner_second_serve_points_won']
+            winner_dict['service_games'] = row['winner_service_games']
+            winner_dict['break_points_saved'] = row['winner_break_points_saved']
+            winner_dict['break_points_faced'] = row['winner_break_points_faced']
             
             # Calculate derived serve metrics
             # 1. First serve percentage
-            winner_dict['first_serve_pct'] = row['w_1stIn'] / row['w_svpt'] if row['w_svpt'] > 0 else np.nan
+            winner_dict['first_serve_pct'] = row['winner_first_serves_in'] / row['winner_serve_points'] if row['winner_serve_points'] > 0 else np.nan
             
             # 2. First serve win percentage
-            winner_dict['first_serve_win_pct'] = row['w_1stWon'] / row['w_1stIn'] if row['w_1stIn'] > 0 else np.nan
+            winner_dict['first_serve_win_pct'] = row['winner_first_serve_points_won'] / row['winner_first_serves_in'] if row['winner_first_serves_in'] > 0 else np.nan
             
             # 3. Second serve win percentage
-            second_serves = row['w_svpt'] - row['w_1stIn'] if row['w_svpt'] > 0 else 0
-            winner_dict['second_serve_win_pct'] = row['w_2ndWon'] / second_serves if second_serves > 0 else np.nan
+            second_serves = row['winner_serve_points'] - row['winner_first_serves_in'] if row['winner_serve_points'] > 0 else 0
+            winner_dict['second_serve_win_pct'] = row['winner_second_serve_points_won'] / second_serves if second_serves > 0 else np.nan
             
             # 4. Service efficiency (overall serve points won percentage)
-            serve_points_won = row['w_1stWon'] + row['w_2ndWon']
-            winner_dict['serve_efficiency'] = serve_points_won / row['w_svpt'] if row['w_svpt'] > 0 else np.nan
+            serve_points_won = row['winner_first_serve_points_won'] + row['winner_second_serve_points_won']
+            winner_dict['serve_efficiency'] = serve_points_won / row['winner_serve_points'] if row['winner_serve_points'] > 0 else np.nan
             
             # 5. Ace percentage
-            winner_dict['ace_pct'] = row['w_ace'] / row['w_svpt'] if row['w_svpt'] > 0 else np.nan
+            winner_dict['ace_pct'] = row['winner_aces'] / row['winner_serve_points'] if row['winner_serve_points'] > 0 else np.nan
             
             # 6. Break points saved percentage
-            winner_dict['bp_saved_pct'] = row['w_bpSaved'] / row['w_bpFaced'] if row['w_bpFaced'] > 0 else np.nan
+            winner_dict['bp_saved_pct'] = row['winner_break_points_saved'] / row['winner_break_points_faced'] if row['winner_break_points_faced'] > 0 else np.nan
             
             # Add return stats for winner (using loser's serve stats)
-            winner_dict['return_points'] = row['l_svpt']
-            winner_dict['return_points_won'] = row['l_svpt'] - (row['l_1stWon'] + row['l_2ndWon']) if row['l_svpt'] > 0 else np.nan
+            winner_dict['return_points'] = row['loser_serve_points']
+            winner_dict['return_points_won'] = row['loser_serve_points'] - (row['loser_first_serve_points_won'] + row['loser_second_serve_points_won']) if row['loser_serve_points'] > 0 else np.nan
             
             # 7. Return efficiency (percentage of opponent's serve points won)
-            winner_dict['return_efficiency'] = winner_dict['return_points_won'] / row['l_svpt'] if row['l_svpt'] > 0 else np.nan
+            winner_dict['return_efficiency'] = winner_dict['return_points_won'] / row['loser_serve_points'] if row['loser_serve_points'] > 0 else np.nan
             
             # 8. Break points converted
-            winner_dict['break_points_converted'] = row['l_bpFaced'] - row['l_bpSaved'] if row['l_bpFaced'] > 0 else 0
+            winner_dict['break_points_converted'] = row['loser_break_points_faced'] - row['loser_break_points_saved'] if row['loser_break_points_faced'] > 0 else 0
             
             # 9. Break point conversion percentage
-            winner_dict['bp_conversion_pct'] = winner_dict['break_points_converted'] / row['l_bpFaced'] if row['l_bpFaced'] > 0 else np.nan
+            winner_dict['bp_conversion_pct'] = winner_dict['break_points_converted'] / row['loser_break_points_faced'] if row['loser_break_points_faced'] > 0 else np.nan
         
         matches.append(winner_dict)
         
@@ -364,49 +410,49 @@ def calculate_serve_return_stats(df: pd.DataFrame) -> pd.DataFrame:
         # Add serve stats for loser
         if has_serve_stats:
             # Basic serve stats directly from dataset
-            loser_dict['aces'] = row['l_ace']
-            loser_dict['double_faults'] = row['l_df']
-            loser_dict['serve_points'] = row['l_svpt']
-            loser_dict['first_serves_in'] = row['l_1stIn']
-            loser_dict['first_serve_points_won'] = row['l_1stWon']
-            loser_dict['second_serve_points_won'] = row['l_2ndWon']
-            loser_dict['service_games'] = row['l_SvGms']
-            loser_dict['break_points_saved'] = row['l_bpSaved']
-            loser_dict['break_points_faced'] = row['l_bpFaced']
+            loser_dict['aces'] = row['loser_aces']
+            loser_dict['double_faults'] = row['loser_double_faults']
+            loser_dict['serve_points'] = row['loser_serve_points']
+            loser_dict['first_serves_in'] = row['loser_first_serves_in']
+            loser_dict['first_serve_points_won'] = row['loser_first_serve_points_won']
+            loser_dict['second_serve_points_won'] = row['loser_second_serve_points_won']
+            loser_dict['service_games'] = row['loser_service_games']
+            loser_dict['break_points_saved'] = row['loser_break_points_saved']
+            loser_dict['break_points_faced'] = row['loser_break_points_faced']
             
             # Calculate derived serve metrics
             # 1. First serve percentage
-            loser_dict['first_serve_pct'] = row['l_1stIn'] / row['l_svpt'] if row['l_svpt'] > 0 else np.nan
+            loser_dict['first_serve_pct'] = row['loser_first_serves_in'] / row['loser_serve_points'] if row['loser_serve_points'] > 0 else np.nan
             
             # 2. First serve win percentage
-            loser_dict['first_serve_win_pct'] = row['l_1stWon'] / row['l_1stIn'] if row['l_1stIn'] > 0 else np.nan
+            loser_dict['first_serve_win_pct'] = row['loser_first_serve_points_won'] / row['loser_first_serves_in'] if row['loser_first_serves_in'] > 0 else np.nan
             
             # 3. Second serve win percentage
-            second_serves = row['l_svpt'] - row['l_1stIn'] if row['l_svpt'] > 0 else 0
-            loser_dict['second_serve_win_pct'] = row['l_2ndWon'] / second_serves if second_serves > 0 else np.nan
+            second_serves = row['loser_serve_points'] - row['loser_first_serves_in'] if row['loser_serve_points'] > 0 else 0
+            loser_dict['second_serve_win_pct'] = row['loser_second_serve_points_won'] / second_serves if second_serves > 0 else np.nan
             
             # 4. Service efficiency (overall serve points won percentage)
-            serve_points_won = row['l_1stWon'] + row['l_2ndWon']
-            loser_dict['serve_efficiency'] = serve_points_won / row['l_svpt'] if row['l_svpt'] > 0 else np.nan
+            serve_points_won = row['loser_first_serve_points_won'] + row['loser_second_serve_points_won']
+            loser_dict['serve_efficiency'] = serve_points_won / row['loser_serve_points'] if row['loser_serve_points'] > 0 else np.nan
             
             # 5. Ace percentage
-            loser_dict['ace_pct'] = row['l_ace'] / row['l_svpt'] if row['l_svpt'] > 0 else np.nan
+            loser_dict['ace_pct'] = row['loser_aces'] / row['loser_serve_points'] if row['loser_serve_points'] > 0 else np.nan
             
             # 6. Break points saved percentage
-            loser_dict['bp_saved_pct'] = row['l_bpSaved'] / row['l_bpFaced'] if row['l_bpFaced'] > 0 else np.nan
+            loser_dict['bp_saved_pct'] = row['loser_break_points_saved'] / row['loser_break_points_faced'] if row['loser_break_points_faced'] > 0 else np.nan
             
             # Add return stats for loser (using winner's serve stats)
-            loser_dict['return_points'] = row['w_svpt']
-            loser_dict['return_points_won'] = row['w_svpt'] - (row['w_1stWon'] + row['w_2ndWon']) if row['w_svpt'] > 0 else np.nan
+            loser_dict['return_points'] = row['winner_serve_points']
+            loser_dict['return_points_won'] = row['winner_serve_points'] - (row['winner_first_serve_points_won'] + row['winner_second_serve_points_won']) if row['winner_serve_points'] > 0 else np.nan
             
             # 7. Return efficiency (percentage of opponent's serve points won)
-            loser_dict['return_efficiency'] = loser_dict['return_points_won'] / row['w_svpt'] if row['w_svpt'] > 0 else np.nan
+            loser_dict['return_efficiency'] = loser_dict['return_points_won'] / row['winner_serve_points'] if row['winner_serve_points'] > 0 else np.nan
             
             # 8. Break points converted
-            loser_dict['break_points_converted'] = row['w_bpFaced'] - row['w_bpSaved'] if row['w_bpFaced'] > 0 else 0
+            loser_dict['break_points_converted'] = row['winner_break_points_faced'] - row['winner_break_points_saved'] if row['winner_break_points_faced'] > 0 else 0
             
             # 9. Break point conversion percentage
-            loser_dict['bp_conversion_pct'] = loser_dict['break_points_converted'] / row['w_bpFaced'] if row['w_bpFaced'] > 0 else np.nan
+            loser_dict['bp_conversion_pct'] = loser_dict['break_points_converted'] / row['winner_break_points_faced'] if row['winner_break_points_faced'] > 0 else np.nan
         
         matches.append(loser_dict)
     
@@ -944,7 +990,7 @@ def main():
     
     # Step 1: Load data
     logger.info("Step 1/5 (0%): Loading data...")
-    df = load_data(INPUT_FILE)
+    df = load_data()
     logger.info(f"Loaded {len(df)} matches")
     progress_tracker.update()
     
