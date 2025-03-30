@@ -11,6 +11,8 @@ import multiprocessing
 from functools import partial
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
+import psycopg2
+from psycopg2.extras import execute_values
 
 # Multiprocessing settings
 # Set to 0 to use all available cores, or specify a number to limit the cores used
@@ -66,6 +68,10 @@ SERVE_COLS = {
 SERVE_STATS_COLUMNS = SERVE_COLS['winner']
 RETURN_STATS_COLUMNS = SERVE_COLS['loser']
 
+# Database settings
+DB_BATCH_SIZE = 10000
+DB_PAGE_SIZE = 1000
+
 def get_database_connection() -> create_engine:
     """Create database connection using environment variables"""
     load_dotenv()
@@ -77,6 +83,97 @@ def get_database_connection() -> create_engine:
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
     return create_engine(database_url)
+
+def get_psycopg2_connection():
+    """Create a psycopg2 connection for efficient batch operations"""
+    load_dotenv()
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        raise ValueError("DATABASE_URL not found in environment variables")
+    
+    return psycopg2.connect(database_url)
+
+def create_features_table(conn):
+    """Create the match_features table if it doesn't exist"""
+    with conn.cursor() as cur:
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS match_features (
+            id SERIAL PRIMARY KEY,
+            match_id INTEGER NOT NULL REFERENCES matches(id),
+            player1_id INTEGER NOT NULL,
+            player2_id INTEGER NOT NULL,
+            surface VARCHAR(50),
+            tournament_date DATE,
+            result INTEGER,
+            player_elo_diff FLOAT,
+            win_rate_5_diff FLOAT,
+            win_streak_diff INTEGER,
+            loss_streak_diff INTEGER,
+            win_rate_Hard_5_diff FLOAT,
+            win_rate_Clay_5_diff FLOAT,
+            win_rate_Grass_5_diff FLOAT,
+            win_rate_Carpet_5_diff FLOAT,
+            win_rate_Hard_overall_diff FLOAT,
+            win_rate_Clay_overall_diff FLOAT,
+            win_rate_Grass_overall_diff FLOAT,
+            win_rate_Carpet_overall_diff FLOAT,
+            serve_efficiency_5_diff FLOAT,
+            first_serve_pct_5_diff FLOAT,
+            first_serve_win_pct_5_diff FLOAT,
+            second_serve_win_pct_5_diff FLOAT,
+            ace_pct_5_diff FLOAT,
+            bp_saved_pct_5_diff FLOAT,
+            return_efficiency_5_diff FLOAT,
+            bp_conversion_pct_5_diff FLOAT,
+            player1_win_rate_5 FLOAT,
+            player2_win_rate_5 FLOAT,
+            player1_win_streak INTEGER,
+            player2_win_streak INTEGER,
+            player1_loss_streak INTEGER,
+            player2_loss_streak INTEGER,
+            player1_win_rate_Hard_5 FLOAT,
+            player2_win_rate_Hard_5 FLOAT,
+            player1_win_rate_Clay_5 FLOAT,
+            player2_win_rate_Clay_5 FLOAT,
+            player1_win_rate_Grass_5 FLOAT,
+            player2_win_rate_Grass_5 FLOAT,
+            player1_win_rate_Carpet_5 FLOAT,
+            player2_win_rate_Carpet_5 FLOAT,
+            player1_win_rate_Hard_overall FLOAT,
+            player2_win_rate_Hard_overall FLOAT,
+            player1_win_rate_Clay_overall FLOAT,
+            player2_win_rate_Clay_overall FLOAT,
+            player1_win_rate_Grass_overall FLOAT,
+            player2_win_rate_Grass_overall FLOAT,
+            player1_win_rate_Carpet_overall FLOAT,
+            player2_win_rate_Carpet_overall FLOAT,
+            player1_serve_efficiency_5 FLOAT,
+            player2_serve_efficiency_5 FLOAT,
+            player1_first_serve_pct_5 FLOAT,
+            player2_first_serve_pct_5 FLOAT,
+            player1_first_serve_win_pct_5 FLOAT,
+            player2_first_serve_win_pct_5 FLOAT,
+            player1_second_serve_win_pct_5 FLOAT,
+            player2_second_serve_win_pct_5 FLOAT,
+            player1_ace_pct_5 FLOAT,
+            player2_ace_pct_5 FLOAT,
+            player1_bp_saved_pct_5 FLOAT,
+            player2_bp_saved_pct_5 FLOAT,
+            player1_return_efficiency_5 FLOAT,
+            player2_return_efficiency_5 FLOAT,
+            player1_bp_conversion_pct_5 FLOAT,
+            player2_bp_conversion_pct_5 FLOAT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        -- Add indexes for faster querying
+        CREATE INDEX IF NOT EXISTS idx_match_features_match_id ON match_features(match_id);
+        CREATE INDEX IF NOT EXISTS idx_match_features_player1_id ON match_features(player1_id);
+        CREATE INDEX IF NOT EXISTS idx_match_features_player2_id ON match_features(player2_id);
+        CREATE INDEX IF NOT EXISTS idx_match_features_tournament_date ON match_features(tournament_date);
+        """)
+        conn.commit()
 
 def load_data() -> pd.DataFrame:
     """
@@ -983,6 +1080,92 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
     
     return symmetric_df
 
+def save_features_to_db(symmetric_df: pd.DataFrame):
+    """
+    Save the generated features to the database in batches.
+    
+    Args:
+        symmetric_df: DataFrame with player-symmetric features
+    """
+    logger.info("Saving features to database...")
+    
+    # Get database connection
+    conn = get_psycopg2_connection()
+    
+    try:
+        # Create the features table if it doesn't exist
+        create_features_table(conn)
+        
+        # Prepare the data for insertion
+        columns = [
+            'match_id', 'player1_id', 'player2_id', 'surface', 'tournament_date', 'result',
+            'player_elo_diff', 'win_rate_5_diff', 'win_streak_diff', 'loss_streak_diff',
+            'win_rate_Hard_5_diff', 'win_rate_Clay_5_diff', 'win_rate_Grass_5_diff', 'win_rate_Carpet_5_diff',
+            'win_rate_Hard_overall_diff', 'win_rate_Clay_overall_diff', 'win_rate_Grass_overall_diff', 'win_rate_Carpet_overall_diff',
+            'serve_efficiency_5_diff', 'first_serve_pct_5_diff', 'first_serve_win_pct_5_diff', 'second_serve_win_pct_5_diff',
+            'ace_pct_5_diff', 'bp_saved_pct_5_diff', 'return_efficiency_5_diff', 'bp_conversion_pct_5_diff',
+            'player1_win_rate_5', 'player2_win_rate_5', 'player1_win_streak', 'player2_win_streak',
+            'player1_loss_streak', 'player2_loss_streak',
+            'player1_win_rate_Hard_5', 'player2_win_rate_Hard_5',
+            'player1_win_rate_Clay_5', 'player2_win_rate_Clay_5',
+            'player1_win_rate_Grass_5', 'player2_win_rate_Grass_5',
+            'player1_win_rate_Carpet_5', 'player2_win_rate_Carpet_5',
+            'player1_win_rate_Hard_overall', 'player2_win_rate_Hard_overall',
+            'player1_win_rate_Clay_overall', 'player2_win_rate_Clay_overall',
+            'player1_win_rate_Grass_overall', 'player2_win_rate_Grass_overall',
+            'player1_win_rate_Carpet_overall', 'player2_win_rate_Carpet_overall',
+            'player1_serve_efficiency_5', 'player2_serve_efficiency_5',
+            'player1_first_serve_pct_5', 'player2_first_serve_pct_5',
+            'player1_first_serve_win_pct_5', 'player2_first_serve_win_pct_5',
+            'player1_second_serve_win_pct_5', 'player2_second_serve_win_pct_5',
+            'player1_ace_pct_5', 'player2_ace_pct_5',
+            'player1_bp_saved_pct_5', 'player2_bp_saved_pct_5',
+            'player1_return_efficiency_5', 'player2_return_efficiency_5',
+            'player1_bp_conversion_pct_5', 'player2_bp_conversion_pct_5'
+        ]
+        
+        # Convert tournament_date to datetime if it's not already
+        symmetric_df['tournament_date'] = pd.to_datetime(symmetric_df['tournament_date'])
+        
+        # Process in batches
+        total_rows = len(symmetric_df)
+        with conn.cursor() as cur:
+            for start_idx in tqdm(range(0, total_rows, DB_BATCH_SIZE), desc="Saving features to database"):
+                end_idx = min(start_idx + DB_BATCH_SIZE, total_rows)
+                batch_df = symmetric_df.iloc[start_idx:end_idx]
+                
+                # Convert DataFrame to list of tuples
+                values = [tuple(x) for x in batch_df[columns].values]
+                
+                # Insert batch using execute_values
+                execute_values(
+                    cur,
+                    f"""
+                    INSERT INTO match_features (
+                        {', '.join(columns)}
+                    ) VALUES %s
+                    ON CONFLICT (match_id) DO UPDATE SET
+                        {', '.join(f"{col} = EXCLUDED.{col}" for col in columns if col != 'match_id')}
+                    """,
+                    values,
+                    page_size=DB_PAGE_SIZE
+                )
+                
+                # Commit after each batch
+                conn.commit()
+                
+                logger.info(f"Processed {end_idx}/{total_rows} rows")
+        
+        logger.info("Successfully saved all features to database")
+        
+    except Exception as e:
+        logger.error(f"Error saving features to database: {str(e)}")
+        conn.rollback()
+        raise
+    
+    finally:
+        conn.close()
+
 def main():
     """Generate features for tennis match prediction."""
     start_time = time.time()
@@ -1013,18 +1196,14 @@ def main():
     logger.info(f"Prepared features for {len(features_df)} matches")
     progress_tracker.update()
     
-    # Step 5: Generate player-symmetric features
-    logger.info(f"Step 5/5 ({progress_tracker.percent_complete}%): Generating symmetric features...")
+    # Step 5: Generate player-symmetric features and save to database
+    logger.info(f"Step 5/5 ({progress_tracker.percent_complete}%): Generating symmetric features and saving to database...")
     symmetric_df = generate_player_symmetric_features(features_df)
     logger.info(f"Generated {len(symmetric_df)} symmetric match features")
+    
+    # Save features to database
+    save_features_to_db(symmetric_df)
     progress_tracker.update()
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-    
-    # Save results
-    symmetric_df.to_csv(OUTPUT_FILE, index=False)
-    logger.info(f"Saved results to {OUTPUT_FILE}")
     
     # Print feature statistics
     logger.info(f"Total matches: {len(df)}")
