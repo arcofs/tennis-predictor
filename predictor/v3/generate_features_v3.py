@@ -41,15 +41,6 @@ INPUT_FILE = CLEANED_DATA_DIR / "cleaned_dataset_with_elo.csv"
 OUTPUT_FILE = OUTPUT_DIR / "features_v3.csv"
 
 # Constants
-STANDARD_SURFACES = ['hard', 'clay', 'grass']
-
-# Columns for serve and return stats
-SERVE_COLS = {
-    'winner': ['w_ace', 'w_df', 'w_svpt', 'w_1stIn', 'w_1stWon', 'w_2ndWon', 'w_SvGms', 'w_bpSaved', 'w_bpFaced'],
-    'loser': ['l_ace', 'l_df', 'l_svpt', 'l_1stIn', 'l_1stWon', 'l_2ndWon', 'l_SvGms', 'l_bpSaved', 'l_bpFaced']
-}
-
-# Rolling window sizes
 ROLLING_WINDOWS = [5, 10]
 
 # Standard surface definitions
@@ -58,6 +49,12 @@ SURFACE_CLAY = 'Clay'
 SURFACE_GRASS = 'Grass'
 SURFACE_CARPET = 'Carpet'
 STANDARD_SURFACES = [SURFACE_HARD, SURFACE_CLAY, SURFACE_GRASS, SURFACE_CARPET]
+
+# Columns for serve and return stats
+SERVE_COLS = {
+    'winner': ['w_ace', 'w_df', 'w_svpt', 'w_1stIn', 'w_1stWon', 'w_2ndWon', 'w_SvGms', 'w_bpSaved', 'w_bpFaced'],
+    'loser': ['l_ace', 'l_df', 'l_svpt', 'l_1stIn', 'l_1stWon', 'l_2ndWon', 'l_SvGms', 'l_bpSaved', 'l_bpFaced']
+}
 
 # Serve and return stats columns
 SERVE_STATS_COLUMNS = ['w_ace', 'w_df', 'w_svpt', 'w_1stIn', 'w_1stWon', 'w_2ndWon', 'w_SvGms', 'w_bpSaved', 'w_bpFaced']
@@ -88,15 +85,25 @@ def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
     
     # Standardize surface types
     if 'surface' in df.columns:
+        # First convert to lowercase
         df['surface'] = df['surface'].str.lower()
-        # Map non-standard surfaces to standard ones
+        
+        # Map non-standard surfaces to standard ones (keeping lowercase for now)
         surface_mapping = {
-            'carpet': 'hard',  # Carpet is most similar to hard
+            'carpet': 'carpet',  # Keep carpet as a separate category like in v2
             'hard court': 'hard',
             'clay court': 'clay',
             'grass court': 'grass'
         }
         df['surface'] = df['surface'].map(lambda x: surface_mapping.get(x, x))
+        
+        # Now convert to title case with standard surface names
+        df['surface'] = df['surface'].replace({
+            'hard': SURFACE_HARD,
+            'clay': SURFACE_CLAY,
+            'grass': SURFACE_GRASS,
+            'carpet': SURFACE_CARPET
+        })
     
     # Make sure necessary serve stats columns exist
     for player_type in ['winner', 'loser']:
