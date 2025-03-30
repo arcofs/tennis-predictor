@@ -96,82 +96,85 @@ def get_psycopg2_connection():
 def create_features_table(conn):
     """Create the match_features table if it doesn't exist"""
     with conn.cursor() as cur:
+        # First drop the existing table if it exists
+        cur.execute("DROP TABLE IF EXISTS match_features;")
+        
         cur.execute("""
-        CREATE TABLE IF NOT EXISTS match_features (
+        CREATE TABLE match_features (
             id SERIAL PRIMARY KEY,
-            match_id INTEGER NOT NULL REFERENCES matches(id),
-            player1_id INTEGER NOT NULL,
-            player2_id INTEGER NOT NULL,
+            match_id BIGINT NOT NULL REFERENCES matches(id),
+            player1_id BIGINT NOT NULL,
+            player2_id BIGINT NOT NULL,
             surface VARCHAR(50),
             tournament_date DATE,
             result INTEGER,
-            player_elo_diff FLOAT,
-            win_rate_5_diff FLOAT,
-            win_streak_diff INTEGER,
-            loss_streak_diff INTEGER,
-            win_rate_Hard_5_diff FLOAT,
-            win_rate_Clay_5_diff FLOAT,
-            win_rate_Grass_5_diff FLOAT,
-            win_rate_Carpet_5_diff FLOAT,
-            win_rate_Hard_overall_diff FLOAT,
-            win_rate_Clay_overall_diff FLOAT,
-            win_rate_Grass_overall_diff FLOAT,
-            win_rate_Carpet_overall_diff FLOAT,
-            serve_efficiency_5_diff FLOAT,
-            first_serve_pct_5_diff FLOAT,
-            first_serve_win_pct_5_diff FLOAT,
-            second_serve_win_pct_5_diff FLOAT,
-            ace_pct_5_diff FLOAT,
-            bp_saved_pct_5_diff FLOAT,
-            return_efficiency_5_diff FLOAT,
-            bp_conversion_pct_5_diff FLOAT,
-            player1_win_rate_5 FLOAT,
-            player2_win_rate_5 FLOAT,
-            player1_win_streak INTEGER,
-            player2_win_streak INTEGER,
-            player1_loss_streak INTEGER,
-            player2_loss_streak INTEGER,
-            player1_win_rate_Hard_5 FLOAT,
-            player2_win_rate_Hard_5 FLOAT,
-            player1_win_rate_Clay_5 FLOAT,
-            player2_win_rate_Clay_5 FLOAT,
-            player1_win_rate_Grass_5 FLOAT,
-            player2_win_rate_Grass_5 FLOAT,
-            player1_win_rate_Carpet_5 FLOAT,
-            player2_win_rate_Carpet_5 FLOAT,
-            player1_win_rate_Hard_overall FLOAT,
-            player2_win_rate_Hard_overall FLOAT,
-            player1_win_rate_Clay_overall FLOAT,
-            player2_win_rate_Clay_overall FLOAT,
-            player1_win_rate_Grass_overall FLOAT,
-            player2_win_rate_Grass_overall FLOAT,
-            player1_win_rate_Carpet_overall FLOAT,
-            player2_win_rate_Carpet_overall FLOAT,
-            player1_serve_efficiency_5 FLOAT,
-            player2_serve_efficiency_5 FLOAT,
-            player1_first_serve_pct_5 FLOAT,
-            player2_first_serve_pct_5 FLOAT,
-            player1_first_serve_win_pct_5 FLOAT,
-            player2_first_serve_win_pct_5 FLOAT,
-            player1_second_serve_win_pct_5 FLOAT,
-            player2_second_serve_win_pct_5 FLOAT,
-            player1_ace_pct_5 FLOAT,
-            player2_ace_pct_5 FLOAT,
-            player1_bp_saved_pct_5 FLOAT,
-            player2_bp_saved_pct_5 FLOAT,
-            player1_return_efficiency_5 FLOAT,
-            player2_return_efficiency_5 FLOAT,
-            player1_bp_conversion_pct_5 FLOAT,
-            player2_bp_conversion_pct_5 FLOAT,
+            player_elo_diff DOUBLE PRECISION,
+            win_rate_5_diff DOUBLE PRECISION,
+            win_streak_diff BIGINT,
+            loss_streak_diff BIGINT,
+            win_rate_Hard_5_diff DOUBLE PRECISION,
+            win_rate_Clay_5_diff DOUBLE PRECISION,
+            win_rate_Grass_5_diff DOUBLE PRECISION,
+            win_rate_Carpet_5_diff DOUBLE PRECISION,
+            win_rate_Hard_overall_diff DOUBLE PRECISION,
+            win_rate_Clay_overall_diff DOUBLE PRECISION,
+            win_rate_Grass_overall_diff DOUBLE PRECISION,
+            win_rate_Carpet_overall_diff DOUBLE PRECISION,
+            serve_efficiency_5_diff DOUBLE PRECISION,
+            first_serve_pct_5_diff DOUBLE PRECISION,
+            first_serve_win_pct_5_diff DOUBLE PRECISION,
+            second_serve_win_pct_5_diff DOUBLE PRECISION,
+            ace_pct_5_diff DOUBLE PRECISION,
+            bp_saved_pct_5_diff DOUBLE PRECISION,
+            return_efficiency_5_diff DOUBLE PRECISION,
+            bp_conversion_pct_5_diff DOUBLE PRECISION,
+            player1_win_rate_5 DOUBLE PRECISION,
+            player2_win_rate_5 DOUBLE PRECISION,
+            player1_win_streak BIGINT,
+            player2_win_streak BIGINT,
+            player1_loss_streak BIGINT,
+            player2_loss_streak BIGINT,
+            player1_win_rate_Hard_5 DOUBLE PRECISION,
+            player2_win_rate_Hard_5 DOUBLE PRECISION,
+            player1_win_rate_Clay_5 DOUBLE PRECISION,
+            player2_win_rate_Clay_5 DOUBLE PRECISION,
+            player1_win_rate_Grass_5 DOUBLE PRECISION,
+            player2_win_rate_Grass_5 DOUBLE PRECISION,
+            player1_win_rate_Carpet_5 DOUBLE PRECISION,
+            player2_win_rate_Carpet_5 DOUBLE PRECISION,
+            player1_win_rate_Hard_overall DOUBLE PRECISION,
+            player2_win_rate_Hard_overall DOUBLE PRECISION,
+            player1_win_rate_Clay_overall DOUBLE PRECISION,
+            player2_win_rate_Clay_overall DOUBLE PRECISION,
+            player1_win_rate_Grass_overall DOUBLE PRECISION,
+            player2_win_rate_Grass_overall DOUBLE PRECISION,
+            player1_win_rate_Carpet_overall DOUBLE PRECISION,
+            player2_win_rate_Carpet_overall DOUBLE PRECISION,
+            player1_serve_efficiency_5 DOUBLE PRECISION,
+            player2_serve_efficiency_5 DOUBLE PRECISION,
+            player1_first_serve_pct_5 DOUBLE PRECISION,
+            player2_first_serve_pct_5 DOUBLE PRECISION,
+            player1_first_serve_win_pct_5 DOUBLE PRECISION,
+            player2_first_serve_win_pct_5 DOUBLE PRECISION,
+            player1_second_serve_win_pct_5 DOUBLE PRECISION,
+            player2_second_serve_win_pct_5 DOUBLE PRECISION,
+            player1_ace_pct_5 DOUBLE PRECISION,
+            player2_ace_pct_5 DOUBLE PRECISION,
+            player1_bp_saved_pct_5 DOUBLE PRECISION,
+            player2_bp_saved_pct_5 DOUBLE PRECISION,
+            player1_return_efficiency_5 DOUBLE PRECISION,
+            player2_return_efficiency_5 DOUBLE PRECISION,
+            player1_bp_conversion_pct_5 DOUBLE PRECISION,
+            player2_bp_conversion_pct_5 DOUBLE PRECISION,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
         
         -- Add indexes for faster querying
-        CREATE INDEX IF NOT EXISTS idx_match_features_match_id ON match_features(match_id);
-        CREATE INDEX IF NOT EXISTS idx_match_features_player1_id ON match_features(player1_id);
-        CREATE INDEX IF NOT EXISTS idx_match_features_player2_id ON match_features(player2_id);
-        CREATE INDEX IF NOT EXISTS idx_match_features_tournament_date ON match_features(tournament_date);
+        CREATE INDEX idx_match_features_match_id ON match_features(match_id);
+        CREATE INDEX idx_match_features_player1_id ON match_features(player1_id);
+        CREATE INDEX idx_match_features_player2_id ON match_features(player2_id);
+        CREATE INDEX idx_match_features_tournament_date ON match_features(tournament_date);
         """)
         conn.commit()
 
@@ -1126,6 +1129,22 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
         
         # Convert tournament_date to datetime if it's not already
         symmetric_df['tournament_date'] = pd.to_datetime(symmetric_df['tournament_date'])
+        
+        # Convert integer columns to int64 to handle larger numbers
+        int_columns = ['match_id', 'player1_id', 'player2_id', 'result', 
+                      'win_streak_diff', 'loss_streak_diff',
+                      'player1_win_streak', 'player2_win_streak',
+                      'player1_loss_streak', 'player2_loss_streak']
+        
+        for col in int_columns:
+            if col in symmetric_df.columns:
+                symmetric_df[col] = symmetric_df[col].astype('int64')
+        
+        # Convert float columns to float64 for precision
+        float_columns = [col for col in columns if col not in int_columns + ['surface', 'tournament_date']]
+        for col in float_columns:
+            if col in symmetric_df.columns:
+                symmetric_df[col] = symmetric_df[col].astype('float64')
         
         # Process in batches
         total_rows = len(symmetric_df)
