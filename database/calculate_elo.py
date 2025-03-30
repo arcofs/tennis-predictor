@@ -1,12 +1,22 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text
-from typing import Dict, Tuple
+from sqlalchemy.exc import SQLAlchemyError
+from typing import Dict, Tuple, List
 import os
 from dotenv import load_dotenv
 import logging
 from datetime import datetime
 from pydantic import BaseModel
+import multiprocessing as mp
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+# Configure number of CPU cores to use (set to -1 to use all cores)
+N_CORES = 120  # Change this value to limit the number of cores used
+
+# Get actual number of cores to use
+N_CORES = mp.cpu_count() if N_CORES == -1 else min(N_CORES, mp.cpu_count())
 
 # Configure logging
 logging.basicConfig(
@@ -167,6 +177,34 @@ def add_elo_columns(engine: create_engine) -> None:
         logger.error(f"Error adding Elo columns: {str(e)}")
         raise
 
+def process_match_batch(batch_data: List[dict], calculator: EloCalculator) -> List[dict]:
+    """Process a batch of matches for parallel processing"""
+    updates = []
+    for match in batch_data:
+        winner_rating = calculator.update_rating(
+            match['winner_id'],
+            match['loser_id'],
+            1.0,
+            match['tournament_date'],
+            match['tournament_level']
+        )
+        loser_rating = calculator.update_rating(
+            match['loser_id'],
+            match['winner_id'],
+            0.0,
+            match['tournament_date'],
+            match['tournament_level']
+        )
+        
+        updates.append({
+            'id': match['id'],
+            'winner_elo': winner_rating,
+            'loser_elo': loser_rating,
+            'winner_matches': calculator.player_matches[match['winner_id']],
+            'loser_matches': calculator.player_matches[match['loser_id']]
+        })
+    return updates
+
 def calculate_and_update_elo_ratings() -> None:
     """Main function to calculate and update Elo ratings"""
     try:
@@ -178,7 +216,8 @@ def calculate_and_update_elo_ratings() -> None:
 
         # Convert postgres:// to postgresql:// if needed
         database_url = validate_database_url(database_url)
-        logger.info("Using database URL with dialect: " + database_url.split("://")[0])
+        logger.info(f"Using database URL with dialect: {database_url.split('://')[0]}")
+        logger.info(f"Using {N_CORES} CPU cores for processing")
 
         # Create database engine
         engine = create_engine(database_url)
@@ -202,51 +241,47 @@ def calculate_and_update_elo_ratings() -> None:
         
         df = pd.read_sql(query, engine)
         df['tournament_date'] = pd.to_datetime(df['tournament_date'])
+        total_matches = len(df)
         
         # Initialize Elo calculator
         calculator = EloCalculator(initial_rating=1500.0)
         
-        # Process matches chronologically and update database
-        batch_size = 1000
-        updates = []
+        # Convert DataFrame to list of dictionaries for parallel processing
+        matches = df.to_dict('records')
         
-        for idx, match in df.iterrows():
-            # Calculate new ratings
-            winner_rating = calculator.update_rating(
-                match['winner_id'], 
-                match['loser_id'], 
-                1.0,
-                match['tournament_date'],
-                match['tournament_level']
-            )
-            loser_rating = calculator.update_rating(
-                match['loser_id'], 
-                match['winner_id'], 
-                0.0,
-                match['tournament_date'],
-                match['tournament_level']
-            )
-            
-            # Prepare update
-            updates.append({
-                'id': match['id'],
-                'winner_elo': winner_rating,
-                'loser_elo': loser_rating,
-                'winner_matches': calculator.player_matches[match['winner_id']],
-                'loser_matches': calculator.player_matches[match['loser_id']]
-            })
-            
-            # Update database in batches
-            if len(updates) >= batch_size:
-                update_batch(engine, updates)
-                updates = []
-                logger.info(f"Processed {idx + 1} matches...")
+        # Process matches in parallel with progress bar
+        batch_size = max(1000, total_matches // (N_CORES * 10))  # Adjust batch size based on total matches
+        batches = [matches[i:i + batch_size] for i in range(0, len(matches), batch_size)]
         
-        # Update remaining matches
-        if updates:
-            update_batch(engine, updates)
-            
-        logger.info(f"Successfully updated {len(df)} matches with Elo ratings")
+        all_updates = []
+        with tqdm(total=total_matches, desc="Processing matches") as pbar:
+            with ProcessPoolExecutor(max_workers=N_CORES) as executor:
+                # Submit all batches to the process pool
+                future_to_batch = {
+                    executor.submit(process_match_batch, batch, calculator): batch 
+                    for batch in batches
+                }
+                
+                # Process completed batches and update progress
+                for future in as_completed(future_to_batch):
+                    batch = future_to_batch[future]
+                    try:
+                        batch_updates = future.result()
+                        all_updates.extend(batch_updates)
+                        pbar.update(len(batch))
+                    except Exception as e:
+                        logger.error(f"Error processing batch: {str(e)}")
+                        raise
+        
+        # Update database with all processed matches
+        logger.info("Updating database with processed matches...")
+        with tqdm(total=len(all_updates), desc="Updating database") as pbar:
+            for i in range(0, len(all_updates), batch_size):
+                batch = all_updates[i:i + batch_size]
+                update_batch(engine, batch)
+                pbar.update(len(batch))
+        
+        logger.info(f"Successfully updated {total_matches} matches with Elo ratings")
 
     except Exception as e:
         logger.error(f"Error in calculate_and_update_elo_ratings: {str(e)}")
