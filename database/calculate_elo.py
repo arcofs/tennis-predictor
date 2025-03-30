@@ -19,7 +19,8 @@ N_CORES = 120  # Change this value to limit the number of cores used
 
 # Configure batch sizes
 PROCESSING_BATCH_SIZE = 10000  # Size of batches for parallel processing
-DB_BATCH_SIZE = 50000  # Size of batches for database updates
+DB_BATCH_SIZE = 10000  # Reduced batch size for database updates
+DB_PAGE_SIZE = 1000    # Size of each page for execute_values
 
 # Get actual number of cores to use
 N_CORES = mp.cpu_count() if N_CORES == -1 else min(N_CORES, mp.cpu_count())
@@ -231,7 +232,7 @@ def update_batch(engine: create_engine, updates: list) -> None:
             port=port
         ) as conn:
             with conn.cursor() as cur:
-                # Create temporary table
+                # Create temporary table with index
                 cur.execute("""
                     CREATE TEMP TABLE temp_updates (
                         id INTEGER PRIMARY KEY,
@@ -239,7 +240,8 @@ def update_batch(engine: create_engine, updates: list) -> None:
                         loser_elo FLOAT,
                         winner_matches INTEGER,
                         loser_matches INTEGER
-                    )
+                    );
+                    CREATE INDEX temp_updates_id_idx ON temp_updates(id);
                 """)
 
                 # Prepare data for bulk insert
@@ -251,7 +253,7 @@ def update_batch(engine: create_engine, updates: list) -> None:
                     update['loser_matches']
                 ) for update in updates]
 
-                # Fast bulk insert using execute_values
+                # Fast bulk insert using execute_values with smaller page size
                 psycopg2.extras.execute_values(
                     cur,
                     """
@@ -259,10 +261,11 @@ def update_batch(engine: create_engine, updates: list) -> None:
                     VALUES %s
                     """,
                     data,
-                    page_size=1000
+                    page_size=DB_PAGE_SIZE
                 )
 
-                # Bulk update using JOIN
+                # Bulk update using JOIN with progress logging
+                logger.info("Performing final update from temporary table...")
                 cur.execute("""
                     UPDATE matches m
                     SET 
@@ -273,6 +276,10 @@ def update_batch(engine: create_engine, updates: list) -> None:
                     FROM temp_updates t
                     WHERE m.id = t.id
                 """)
+
+                # Log the number of rows updated
+                rows_updated = cur.rowcount
+                logger.info(f"Updated {rows_updated} rows in matches table")
 
                 # Clean up
                 cur.execute("DROP TABLE temp_updates")
