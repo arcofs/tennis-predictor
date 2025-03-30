@@ -7,6 +7,16 @@ from datetime import datetime
 import logging
 from tqdm import tqdm
 import time
+import multiprocessing
+from functools import partial
+
+# Multiprocessing settings
+# Set to 0 to use all available cores, or specify a number to limit the cores used
+NUM_CORES = 120  # Default: use all cores
+
+# If NUM_CORES is set to 0, use all available cores
+if NUM_CORES <= 0:
+    NUM_CORES = multiprocessing.cpu_count()
 
 # Configure logging
 logging.basicConfig(
@@ -59,7 +69,7 @@ def load_data(file_path: Union[str, Path]) -> pd.DataFrame:
     
     Args:
         file_path: Path to the input CSV file
-        
+    
     Returns:
         DataFrame with tennis match data
     """
@@ -533,25 +543,20 @@ def calculate_serve_return_rolling_stats(player_df: pd.DataFrame) -> pd.DataFram
     
     return df
 
-def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serve_return_df: pd.DataFrame) -> pd.DataFrame:
+def process_match_features_batch(batch_data, player_df, serve_return_df, surface_mapping=None):
     """
-    Prepare features for each match by joining player statistics.
+    Process a batch of matches to extract features.
     
     Args:
-        df: Original match dataset
+        batch_data: Tuple containing (batch_idx, batch_df)
         player_df: Player-centric dataset with calculated features
         serve_return_df: Player-centric dataset with serve and return stats
+        surface_mapping: Optional mapping for standardizing surfaces
         
     Returns:
-        DataFrame with match features
+        List of match features
     """
-    logger.info("Preparing match features...")
-    
-    # Create a copy of the match dataframe
-    match_df = df.copy()
-    
-    # Get the features for each player before each match
-    features = []
+    batch_idx, batch_df = batch_data
     
     # Define serve and return metrics we'll use for feature differences
     serve_return_metrics = [
@@ -565,8 +570,8 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
         'bp_conversion_pct_5'
     ]
     
-    # Process each match with progress bar
-    for idx, match in tqdm(match_df.iterrows(), total=len(match_df), desc="Preparing match features", unit="match"):
+    features = []
+    for idx, match in batch_df.iterrows():
         match_date = match['tourney_date']
         winner_id = match['winner_id']
         loser_id = match['loser_id']
@@ -671,47 +676,75 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
         
         features.append(match_features)
     
+    return features
+
+def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serve_return_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prepare features for each match by joining player statistics using multiprocessing.
+    
+    Args:
+        df: Original match dataset
+        player_df: Player-centric dataset with calculated features
+        serve_return_df: Player-centric dataset with serve and return stats
+        
+    Returns:
+        DataFrame with match features
+    """
+    logger.info("Preparing match features using multiprocessing...")
+    logger.info(f"Using {NUM_CORES} CPU cores")
+    
+    # Create a copy of the match dataframe
+    match_df = df.copy()
+    
+    # Sort by date to ensure chronological processing
+    match_df = match_df.sort_values('tourney_date').reset_index(drop=True)
+    
+    # Split the data into chunks for parallel processing
+    chunk_size = max(1, len(match_df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
+    chunks = [(i, match_df.iloc[i:i+chunk_size]) for i in range(0, len(match_df), chunk_size)]
+    
+    # Create a pool of workers
+    with multiprocessing.Pool(processes=NUM_CORES) as pool:
+        # Process each chunk in parallel
+        results = list(tqdm(
+            pool.imap(
+                partial(process_match_features_batch, player_df=player_df, serve_return_df=serve_return_df),
+                chunks
+            ),
+            total=len(chunks),
+            desc="Preparing match features (parallel)",
+            unit="chunk"
+        ))
+    
+    # Combine all results
+    all_features = []
+    for chunk_features in results:
+        all_features.extend(chunk_features)
+    
     # Create dataframe with all features
-    features_df = pd.DataFrame(features)
+    features_df = pd.DataFrame(all_features)
     
     # Sort by date
     features_df = features_df.sort_values('tourney_date').reset_index(drop=True)
     
     return features_df
 
-def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFrame:
+def process_symmetric_features_batch(batch_data, serve_return_metrics):
     """
-    Generate player-symmetric features to avoid player position bias.
+    Process a batch of matches to create symmetric features.
     
     Args:
-        features_df: DataFrame with calculated features
+        batch_data: Tuple containing (batch_idx, batch_df)
+        serve_return_metrics: List of serve and return metrics to include
         
     Returns:
-        DataFrame with player-symmetric features
+        List of symmetric match features
     """
-    logger.info("Generating player-symmetric features...")
-    
-    # Create a copy
-    df = features_df.copy()
-    
-    # Define serve and return metrics to include in symmetric features
-    serve_return_metrics = [
-        'serve_efficiency_5',
-        'first_serve_pct_5',
-        'first_serve_win_pct_5',
-        'second_serve_win_pct_5',
-        'ace_pct_5',
-        'bp_saved_pct_5',
-        'return_efficiency_5',
-        'bp_conversion_pct_5'
-    ]
-    
-    # Create player-symmetric features required for prediction
-    # Create two versions of each match: p1 = winner, p2 = loser and p1 = loser, p2 = winner
+    batch_idx, batch_df = batch_data
     matches = []
     
     # First pass: p1 = winner, p2 = loser (actual match result)
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Creating winner perspective features", unit="match"):
+    for idx, row in batch_df.iterrows():
         surface = row['surface']
         match_dict = {
             'match_id': row['match_id'],
@@ -777,7 +810,7 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
         matches.append(match_dict)
     
     # Second pass: p1 = loser, p2 = winner (flipped match result)
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Creating loser perspective features", unit="match"):
+    for idx, row in batch_df.iterrows():
         surface = row['surface']
         match_dict = {
             'match_id': row['match_id'],
@@ -837,8 +870,60 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
         
         matches.append(match_dict)
     
+    return matches
+
+def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate player-symmetric features to avoid player position bias using multiprocessing.
+    
+    Args:
+        features_df: DataFrame with calculated features
+        
+    Returns:
+        DataFrame with player-symmetric features
+    """
+    logger.info("Generating player-symmetric features using multiprocessing...")
+    logger.info(f"Using {NUM_CORES} CPU cores")
+    
+    # Create a copy
+    df = features_df.copy()
+    
+    # Define serve and return metrics to include in symmetric features
+    serve_return_metrics = [
+        'serve_efficiency_5',
+        'first_serve_pct_5',
+        'first_serve_win_pct_5',
+        'second_serve_win_pct_5',
+        'ace_pct_5',
+        'bp_saved_pct_5',
+        'return_efficiency_5',
+        'bp_conversion_pct_5'
+    ]
+    
+    # Split the data into chunks for parallel processing
+    chunk_size = max(1, len(df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
+    chunks = [(i, df.iloc[i:i+chunk_size]) for i in range(0, len(df), chunk_size)]
+    
+    # Create a pool of workers
+    with multiprocessing.Pool(processes=NUM_CORES) as pool:
+        # Process each chunk in parallel
+        results = list(tqdm(
+            pool.imap(
+                partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
+                chunks
+            ),
+            total=len(chunks),
+            desc="Generating symmetric features (parallel)",
+            unit="chunk"
+        ))
+    
+    # Combine all results
+    all_matches = []
+    for chunk_matches in results:
+        all_matches.extend(chunk_matches)
+    
     # Convert to DataFrame
-    symmetric_df = pd.DataFrame(matches)
+    symmetric_df = pd.DataFrame(all_matches)
     
     # Sort by date and match_id
     symmetric_df = symmetric_df.sort_values(['tourney_date', 'match_id']).reset_index(drop=True)

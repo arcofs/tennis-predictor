@@ -45,7 +45,7 @@ class ProgressTracker:
         self.total_steps = total_steps
         self.current_step = 0
         self.start_time = time.time()
-    
+        
     def update(self, description: str = None):
         """Update progress and log status."""
         self.current_step += 1
@@ -98,7 +98,7 @@ def load_model(model_path: Union[str, Path],
 
 
 def load_test_data(features_path: Union[str, Path], test_size: float = 0.2, 
-                 progress_tracker: Optional[ProgressTracker] = None) -> pd.DataFrame:
+                  progress_tracker: Optional[ProgressTracker] = None) -> pd.DataFrame:
     """
     Load test data from features file.
     
@@ -119,7 +119,7 @@ def load_test_data(features_path: Union[str, Path], test_size: float = 0.2,
         # Convert date columns to datetime
         if 'tourney_date' in df.columns:
             df['tourney_date'] = pd.to_datetime(df['tourney_date'])
-        
+            
         # Sort by date
         df = df.sort_values(by='tourney_date').reset_index(drop=True)
         
@@ -133,8 +133,8 @@ def load_test_data(features_path: Union[str, Path], test_size: float = 0.2,
         
         if progress_tracker:
             progress_tracker.update("Test data loading complete")
-        
-        return test_df
+            
+            return test_df
     
     except Exception as e:
         logger.error(f"Error loading test data: {e}")
@@ -277,7 +277,7 @@ def make_predictions(model: xgb.Booster, test_df: pd.DataFrame, feature_cols: Li
             'by_confidence': confidence_metrics
         }
         
-        if progress_tracker:
+    if progress_tracker:
             progress_tracker.update("Prediction complete")
         
         return df_pred, metrics
@@ -670,7 +670,7 @@ def main():
         logger.error(f"Error in prediction process: {e}")
         raise
 
-
+    
     # Check if all required features exist
     missing_cols = [col for col in feature_cols if col not in df.columns]
     if missing_cols:
