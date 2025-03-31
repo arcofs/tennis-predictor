@@ -73,6 +73,7 @@ MODEL_OUTPUT = MODELS_DIR / "tennis_model_v3.json"
 PIPELINE_OUTPUT = MODELS_DIR / "tennis_pipeline_v3.pkl"
 METRICS_OUTPUT = OUTPUT_DIR / "model_metrics_v3.json"
 HYPERPARAMS_OUTPUT = OUTPUT_DIR / "hyperparameters_v3.json"
+OPTUNA_STUDY_OUTPUT = OUTPUT_DIR / "optuna_study_v3.pkl"
 
 # Training configuration
 TRAIN_SPLIT = 0.7
@@ -90,11 +91,50 @@ CATEGORICAL_COLUMNS_PATTERN = [
 # Tennis surfaces for surface-specific evaluation
 SURFACES = ["Hard", "Clay", "Grass", "Carpet"]
 
-# XGBoost baseline parameters
+# Database configuration
+DB_BATCH_SIZE = 10000  # Number of records to fetch in each database batch
+DB_TIMEOUT_SECONDS = 30  # Database query timeout in seconds
+
+# Default CPU threads to use if GPU is not available
+DEFAULT_CPU_THREADS = max(4, os.cpu_count() - 2) if os.cpu_count() else 4
+
+def detect_optimal_device() -> dict:
+    """
+    Detect the optimal device for XGBoost training.
+    Tries GPU first with CUDA, then falls back to CPU with multithreading.
+    
+    Returns:
+        Dict with optimal parameters for tree_method and nthread
+    """
+    # Try GPU first
+    try:
+        # Create small test matrix to verify GPU works
+        test_matrix = xgb.DMatrix(np.array([[1, 2], [3, 4]]), label=np.array([0, 1]))
+        test_params = {'tree_method': 'gpu_hist'}
+        xgb.train(test_params, test_matrix, num_boost_round=1)
+        
+        logger.info("CUDA GPU acceleration available and will be used")
+        return {
+            'tree_method': 'gpu_hist',
+            'gpu_id': 0
+        }
+    except Exception as e:
+        logger.info(f"GPU acceleration not available ({str(e)}), falling back to CPU with multithreading")
+        
+        # Determine optimal number of threads for CPU
+        cpu_threads = DEFAULT_CPU_THREADS
+        logger.info(f"Using {cpu_threads} CPU threads for XGBoost training")
+        
+        return {
+            'tree_method': 'hist',
+            'nthread': cpu_threads
+        }
+
+# XGBoost baseline parameters with optimal device detection
+device_params = detect_optimal_device()
 BASELINE_PARAMS = {
     'objective': 'binary:logistic',
     'eval_metric': ['logloss', 'error', 'auc'],
-    'tree_method': 'hist',  # More memory-efficient for large datasets
     'grow_policy': 'lossguide',  # Can improve accuracy
     'max_depth': 6,
     'min_child_weight': 1,
@@ -104,6 +144,8 @@ BASELINE_PARAMS = {
     'random_state': RANDOM_SEED,
     'verbosity': 0
 }
+# Add device-specific parameters
+BASELINE_PARAMS.update(device_params)
 
 def get_database_connection() -> psycopg2.extensions.connection:
     """
@@ -257,49 +299,8 @@ def load_data_from_database(limit: Optional[int] = None,
     finally:
         conn.close()
 
-def load_data_from_file(file_path: Union[str, Path], 
-                       progress_tracker: Optional['ProgressTracker'] = None) -> pd.DataFrame:
-    """
-    Load the tennis match features dataset from a file.
-    
-    Args:
-        file_path: Path to the input CSV file
-        progress_tracker: Optional progress tracker
-        
-    Returns:
-        DataFrame with tennis match features
-    """
-    logger.info(f"Loading data from {file_path}")
-    
-    try:
-        # Use chunked reading for large files
-        chunks = pd.read_csv(file_path, chunksize=DB_BATCH_SIZE)
-        df_list = []
-        
-        # Process each chunk
-        for chunk in tqdm(chunks, desc="Reading data chunks"):
-            df_list.append(chunk)
-        
-        # Combine chunks
-        df = pd.concat(df_list, ignore_index=True)
-        
-        # Convert date columns to datetime
-        if 'tournament_date' in df.columns:
-            df['tournament_date'] = pd.to_datetime(df['tournament_date'])
-        
-        # Sort by date
-        df = df.sort_values(by='tournament_date').reset_index(drop=True)
-        
-        logger.info(f"Loaded {len(df)} match features")
-        
-        if progress_tracker:
-            progress_tracker.update("Data loading complete")
-        
-        return df
-    
-    except Exception as e:
-        logger.error(f"Error loading data from file: {e}")
-        raise
+# Note: Only database loading is used in this workflow.
+# File-based loading has been removed as it was not being used.
 
 class ProgressTracker:
     """Helper class to track and log progress during model training."""
@@ -629,6 +630,9 @@ def tune_hyperparameters(
     """
     logger.info(f"Tuning hyperparameters with Optuna (n_trials={n_trials}, timeout={timeout}s)")
     
+    # Get optimal device parameters once before tuning
+    device_params = detect_optimal_device()
+    
     # Define objective function for Optuna
     def objective(trial: optuna.Trial) -> float:
         """Objective function for hyperparameter optimization."""
@@ -642,6 +646,7 @@ def tune_hyperparameters(
             
             # Tree complexity parameters
             'max_depth': trial.suggest_int('max_depth', 3, 9),
+            'max_leaves': trial.suggest_int('max_leaves', 32, 512),
             'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
             'gamma': trial.suggest_float('gamma', 0, 0.5),
             
@@ -649,21 +654,29 @@ def tune_hyperparameters(
             'subsample': trial.suggest_float('subsample', 0.6, 1.0),
             'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
             
-            # Regularization parameters
-            'lambda': trial.suggest_float('lambda', 1e-8, 1.0, log=True),  # L2 regularization
-            'alpha': trial.suggest_float('alpha', 1e-8, 1.0, log=True),    # L1 regularization
+            # Regularization parameters (more focused ranges for tennis prediction)
+            'lambda': trial.suggest_float('lambda', 1.0, 10.0),  # L2 regularization
+            'alpha': trial.suggest_float('alpha', 0.01, 1.0),    # L1 regularization
             
             # Class imbalance parameter
             'scale_pos_weight': trial.suggest_float('scale_pos_weight', 0.8, 1.2),
             
             # Performance optimizations for large datasets
-            'tree_method': 'hist',       # Faster histogram-based algorithm
             'grow_policy': 'lossguide',  # Grow trees by loss reduction
-            'max_bin': 256,              # Number of bins for histogram
+            'max_bin': trial.suggest_int('max_bin', 128, 512),  # Number of bins for histogram
+            
+            # Categorical feature handling
+            'max_cat_to_onehot': trial.suggest_int('max_cat_to_onehot', 4, 16),
             
             # Let XGBoost handle missing values optimally
             'missing': float('nan')
         }
+        
+        # Add device-specific parameters from the pre-tuning detection
+        params.update(device_params)
+        
+        # Number of boosting rounds
+        num_boost_round = trial.suggest_int('num_boost_round', 500, 3000)
         
         # Enable categorical feature support if needed
         if categorical_indices and len(categorical_indices) > 0:
@@ -685,9 +698,9 @@ def tune_hyperparameters(
         pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-logloss")
         evals = [(dtrain, "train"), (dval, "validation")]
         
-        # Use a moderate number of boosting rounds for tuning with early stopping
+        # Use num_boost_round from the trial
         bst = xgb.train(
-            params, dtrain, num_boost_round=1000, 
+            params, dtrain, num_boost_round=num_boost_round, 
             evals=evals, early_stopping_rounds=50, 
             callbacks=[pruning_callback], verbose_eval=False
         )
@@ -710,15 +723,23 @@ def tune_hyperparameters(
         # Get best parameters
         best_params = study.best_params
         
+        # Extract num_boost_round from best params
+        num_boost_round = best_params.pop('num_boost_round', 1000)
+        
+        # Get optimal device parameters again for final model
+        final_device_params = detect_optimal_device()
+        
         # Add fixed parameters
         best_params.update({
             'objective': 'binary:logistic',
             'eval_metric': ['logloss', 'auc'],  # Track both metrics
-            'tree_method': 'hist',
             'grow_policy': 'lossguide',
-            'max_bin': 256,
-            'missing': float('nan')
+            'missing': float('nan'),
+            'num_boost_round': num_boost_round
         })
+        
+        # Add device-specific parameters
+        best_params.update(final_device_params)
         
         # Enable categorical support if needed
         if categorical_indices and len(categorical_indices) > 0:
@@ -800,17 +821,18 @@ def train_model(
     start_time = time.time()
     
     if params is None:
+        # Start with baseline params
         params = BASELINE_PARAMS.copy()
+    else:
+        # If params are provided but don't have device settings, add them
+        if 'tree_method' not in params:
+            device_params = detect_optimal_device()
+            params.update(device_params)
     
     # Enable categorical feature support if categorical features are present
     if categorical_features and len(categorical_features) > 0:
         params['enable_categorical'] = True
         logger.info(f"Enabling categorical feature support for {len(categorical_features)} features")
-    
-    # Recommend using histogram-based algorithm for large datasets
-    if 'tree_method' not in params:
-        params['tree_method'] = 'hist'
-        logger.info("Using histogram-based algorithm for efficient training on large dataset")
     
     # Create DMatrix format for better memory efficiency and faster processing
     logger.info("Creating DMatrix for efficient memory usage")
@@ -895,29 +917,33 @@ def evaluate_model(
     progress_tracker: Optional[ProgressTracker] = None
 ) -> Dict[str, Any]:
     """
-    Evaluate the trained model with comprehensive metrics.
+    Evaluate model performance on a dataset with comprehensive metrics.
     
     Args:
         model: Trained XGBoost model
-        X: Features
-        y: Labels
-        feature_names: List of feature column names
-        dataset_name: Name of the dataset for logging
+        X: Feature matrix
+        y: Target vector
+        feature_names: List of feature names
+        dataset_name: Name of the dataset for reporting
         threshold: Classification threshold
-        surfaces: List of surfaces for surface-specific evaluation
+        surfaces: List of surfaces to evaluate separately
         progress_tracker: Optional progress tracker
         
     Returns:
         Dictionary of evaluation metrics
     """
-    logger.info(f"Evaluating model on {dataset_name} data")
+    if progress_tracker:
+        progress_tracker.update(f"Evaluating model on {dataset_name} dataset")
     
-    # Create DMatrix
-    dmatrix = xgb.DMatrix(X, label=y, feature_names=feature_names)
+    logger.info(f"Evaluating model on {dataset_name} dataset with {X.shape[0]} samples")
+    
+    # Create DMatrix for efficient prediction
+    device_params = detect_optimal_device()
+    dtest = xgb.DMatrix(X, label=y, feature_names=feature_names)
     
     # Make predictions
-    y_pred_proba = model.predict(dmatrix)
-    y_pred = (y_pred_proba >= threshold).astype(int)
+    y_pred_proba = model.predict(dtest)
+    y_pred = (y_pred_proba > threshold).astype(int)
     
     # Calculate standard classification metrics
     accuracy = accuracy_score(y, y_pred)
@@ -1814,20 +1840,30 @@ def save_pipeline(
 
 def main() -> None:
     """
-    Main function to execute the entire training workflow.
-    Handles features generated by generate_features_v3.py.
+    Main function for training tennis prediction model.
     """
     start_time = time.time()
     
-    # Configure directories
-    DATA_DIR.mkdir(exist_ok=True)
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    MODELS_DIR.mkdir(exist_ok=True)
-    PLOTS_DIR.mkdir(exist_ok=True)
+    # Create output directories if they don't exist
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(PLOTS_DIR, exist_ok=True)
     
-    # Set up progress tracking
-    total_steps = 14
-    progress_tracker = ProgressTracker(total_steps, "Training tennis prediction model v3")
+    # Log hardware information and model configuration
+    logger.info(f"XGBoost version: {xgb.__version__}")
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"CPU count: {os.cpu_count()}")
+    logger.info(f"Memory: {psutil.virtual_memory().total / (1024 ** 3):.1f} GB")
+    
+    # Check CUDA availability for GPU acceleration
+    device_info = detect_optimal_device()
+    if device_info.get('tree_method') == 'gpu_hist':
+        logger.info("Training will use GPU acceleration (CUDA)")
+    else:
+        logger.info(f"Training will use CPU with {device_info.get('nthread', 'default')} threads")
+    
+    # Define the total number of processing steps for progress tracking
+    total_steps = 10
+    progress_tracker = ProgressTracker(total_steps)
     
     try:
         # Step 1: Load data from PostgreSQL database
