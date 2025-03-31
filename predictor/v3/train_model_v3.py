@@ -35,6 +35,7 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import xgboost as xgb
 import optuna
+from optuna.visualization import plot_optimization_history, plot_param_importances
 import psycopg2
 from tqdm import tqdm
 from sklearn.metrics import (
@@ -559,6 +560,24 @@ def prepare_features(
     if categorical_features:
         logger.info(f"Found {len(categorical_features)} categorical features: {categorical_features}")
     
+    # Check for datetime or non-numeric columns in feature_cols
+    non_numeric_cols = []
+    for col in feature_cols:
+        if col in train_df.columns:
+            if pd.api.types.is_datetime64_any_dtype(train_df[col]):
+                logger.warning(f"Column {col} is a datetime type and needs to be converted")
+                non_numeric_cols.append(col)
+            elif not pd.api.types.is_numeric_dtype(train_df[col]) and col not in categorical_features:
+                logger.warning(f"Column {col} is not numeric type: {train_df[col].dtype}")
+                non_numeric_cols.append(col)
+    
+    # Filter out any non-numeric and non-categorical features
+    if non_numeric_cols:
+        logger.warning(f"Removing {len(non_numeric_cols)} non-numeric and non-categorical features: {non_numeric_cols}")
+        feature_cols = [col for col in feature_cols if col not in non_numeric_cols]
+        # Update categorical indices after removing columns
+        categorical_indices = [i for i, col in enumerate(feature_cols) if col in categorical_features]
+    
     # Convert categorical features to appropriate format for XGBoost
     # Either convert to codes or leave as-is depending on features
     train_features = train_df[feature_cols].copy()
@@ -569,7 +588,7 @@ def prepare_features(
     for col in categorical_features:
         # For each categorical feature, ensure it's properly encoded
         # This addresses both string and categorical dtype columns
-        if train_df[col].dtype == 'object' or train_df[col].dtype.name == 'category':
+        if col in train_features.columns and (train_df[col].dtype == 'object' or train_df[col].dtype.name == 'category'):
             # Create category mapping from training data
             categories = train_df[col].astype('category').cat.categories
             
@@ -592,15 +611,27 @@ def prepare_features(
             val_features[col] = val_features[col].replace(-1, np.nan)
             test_features[col] = test_features[col].replace(-1, np.nan)
     
+    # Ensure all features are numeric - convert any remaining non-numeric types
+    for col in feature_cols:
+        if col in train_features.columns and not pd.api.types.is_numeric_dtype(train_features[col]):
+            logger.warning(f"Converting non-numeric feature {col} to float type")
+            train_features[col] = pd.to_numeric(train_features[col], errors='coerce')
+            val_features[col] = pd.to_numeric(val_features[col], errors='coerce')
+            test_features[col] = pd.to_numeric(test_features[col], errors='coerce')
+    
     # Extract features and labels as numpy arrays
-    X_train = train_features.values
+    X_train = train_features.values.astype(np.float32)  # Ensure numeric type for XGBoost
     y_train = train_df['result'].values
     
-    X_val = val_features.values
+    X_val = val_features.values.astype(np.float32)
     y_val = val_df['result'].values
     
-    X_test = test_features.values
+    X_test = test_features.values.astype(np.float32)
     y_test = test_df['result'].values
+    
+    # Check for any NaN or infinite values
+    if np.isnan(X_train).any() or np.isinf(X_train).any():
+        logger.warning("Training data contains NaN or infinite values. XGBoost will handle these.")
     
     # Check for features with excessive missing values (>50%)
     # Generate_features_v3.py already handles most missing values, but we check anyway
@@ -728,31 +759,35 @@ def tune_hyperparameters(
         if categorical_indices and len(categorical_indices) > 0:
             params['enable_categorical'] = True
         
-        # Create DMatrix objects - memory efficient data structure
-        dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
-                             enable_categorical=params.get('enable_categorical', False))
-        dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names,
-                           enable_categorical=params.get('enable_categorical', False))
-        
-        # Set up categorical features if present
-        if categorical_indices:
-            for cat_idx in categorical_indices:
-                dtrain.set_feature_types(['c' if i == cat_idx else 'q' for i in range(X_train.shape[1])])
-                dval.set_feature_types(['c' if i == cat_idx else 'q' for i in range(X_val.shape[1])])
-        
-        # Train model with early stopping
-        pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-logloss")
-        evals = [(dtrain, "train"), (dval, "validation")]
-        
-        # Use num_boost_round from the trial
-        bst = xgb.train(
-            params, dtrain, num_boost_round=num_boost_round, 
-            evals=evals, early_stopping_rounds=50, 
-            callbacks=[pruning_callback], verbose_eval=False
-        )
-        
-        # Return validation metric as objective value (lower is better for logloss)
-        return float(bst.best_score)
+        try:
+            # Create DMatrix objects - memory efficient data structure
+            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
+                                enable_categorical=params.get('enable_categorical', False))
+            dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names,
+                            enable_categorical=params.get('enable_categorical', False))
+            
+            # Set up categorical features if present
+            if categorical_indices:
+                for cat_idx in categorical_indices:
+                    dtrain.set_feature_types(['c' if i == cat_idx else 'q' for i in range(X_train.shape[1])])
+                    dval.set_feature_types(['c' if i == cat_idx else 'q' for i in range(X_val.shape[1])])
+            
+            # Train model with early stopping
+            pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-logloss")
+            evals = [(dtrain, "train"), (dval, "validation")]
+            
+            # Use num_boost_round from the trial
+            bst = xgb.train(
+                params, dtrain, num_boost_round=num_boost_round, 
+                evals=evals, early_stopping_rounds=50, 
+                callbacks=[pruning_callback], verbose_eval=False
+            )
+            
+            # Return validation metric as objective value (lower is better for logloss)
+            return float(bst.best_score)
+        except Exception as e:
+            logger.error(f"Error in trial: {e}")
+            raise
     
     # Create Optuna study with pruning to eliminate unpromising trials early
     study_name = f"xgboost_tennis_prediction_{time.strftime('%Y%m%d_%H%M%S')}"
@@ -822,7 +857,7 @@ def tune_hyperparameters(
         logger.info("Falling back to default parameters")
         
         # Return default parameters on error
-        default_params = MODEL_PARAMS.copy()
+        default_params = BASELINE_PARAMS.copy()
         
         # Enable categorical support if needed
         if categorical_indices and len(categorical_indices) > 0:
