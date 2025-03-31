@@ -42,7 +42,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, average_precision_score, roc_curve, auc,
     precision_recall_curve, log_loss, brier_score_loss,
-    confusion_matrix, balanced_accuracy_score
+    confusion_matrix, balanced_accuracy_score, classification_report
 )
 from sklearn.calibration import calibration_curve
 from psycopg2 import pool
@@ -52,6 +52,11 @@ import psutil
 # Suppress warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
+
+# Define a custom exception for optimization failures
+class OptimizationFailedError(Exception):
+    """Error indicating a fundamental problem with optimization that should not be counted as a trial."""
+    pass
 
 # Set up logging
 logging.basicConfig(
@@ -707,50 +712,41 @@ def tune_hyperparameters(
     """
     logger.info(f"Tuning hyperparameters with Optuna (n_trials={n_trials}, timeout={timeout}s)")
     
-    # Get optimal device parameters once before tuning
+    # Set up device info
     device_params = detect_optimal_device()
+    logger.info(f"Hyperparameter optimization using {device_params.get('tree_method', 'unknown')} method")
     
     # Define objective function for Optuna
     def objective(trial: optuna.Trial) -> float:
         """Objective function for hyperparameter optimization."""
-        # Define hyperparameter search space based on XGBoost best practices
+        
+        # Sample hyperparameters
         params = {
-            'objective': 'binary:logistic',
-            'eval_metric': 'logloss',
-            
-            # Learning rate (smaller values require more trees but generalize better)
-            'eta': trial.suggest_float('eta', 0.01, 0.2, log=True),
-            
-            # Tree complexity parameters
-            'max_depth': trial.suggest_int('max_depth', 3, 9),
-            'max_leaves': trial.suggest_int('max_leaves', 32, 512),
-            'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
-            'gamma': trial.suggest_float('gamma', 0, 0.5),
-            
-            # Subsampling parameters to prevent overfitting
-            'subsample': trial.suggest_float('subsample', 0.6, 1.0),
-            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
-            
-            # Regularization parameters (more focused ranges for tennis prediction)
-            'lambda': trial.suggest_float('lambda', 1.0, 10.0),  # L2 regularization
-            'alpha': trial.suggest_float('alpha', 0.01, 1.0),    # L1 regularization
-            
-            # Class imbalance parameter
+            'eta': trial.suggest_float('eta', 0.01, 0.3, log=True),
+            'max_depth': trial.suggest_int('max_depth', 3, 10),
+            'max_leaves': trial.suggest_int('max_leaves', 31, 300),
+            'min_child_weight': trial.suggest_float('min_child_weight', 1.0, 10.0, log=True),
+            'gamma': trial.suggest_float('gamma', 0.0, 1.0),
+            'subsample': trial.suggest_float('subsample', 0.5, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
+            'lambda': trial.suggest_float('lambda', 0.01, 10.0, log=True),
+            'alpha': trial.suggest_float('alpha', 0.01, 10.0, log=True),
             'scale_pos_weight': trial.suggest_float('scale_pos_weight', 0.8, 1.2),
-            
-            # Performance optimizations for large datasets
-            'grow_policy': 'lossguide',  # Grow trees by loss reduction
-            'max_bin': trial.suggest_int('max_bin', 128, 512),  # Number of bins for histogram
-            
-            # Categorical feature handling
-            'max_cat_to_onehot': trial.suggest_int('max_cat_to_onehot', 4, 16),
-            
-            # Let XGBoost handle missing values optimally
-            'missing': float('nan')
+            'max_bin': trial.suggest_int('max_bin', 256, 512),
+            'max_cat_to_onehot': trial.suggest_int('max_cat_to_onehot', 4, 8),
+            'objective': 'binary:logistic',
+            'eval_metric': ['logloss', 'auc']
         }
         
-        # Add device-specific parameters from the pre-tuning detection
-        params.update(device_params)
+        # Set tree growth policy
+        params['grow_policy'] = 'lossguide'
+        
+        # Add device settings from outside
+        if device_params:
+            params.update(device_params)
+        
+        # XGBoost-specific parameters for handling missing values
+        params['missing'] = float('nan')
         
         # Number of boosting rounds
         num_boost_round = trial.suggest_int('num_boost_round', 500, 3000)
@@ -767,41 +763,68 @@ def tune_hyperparameters(
                 # Option 1: Truncate feature_names if it's too long
                 if len(feature_names_adjusted) > X_train.shape[1]:
                     feature_names_adjusted = feature_names_adjusted[:X_train.shape[1]]
+                    logger.warning(f"Truncated feature_names to {len(feature_names_adjusted)} entries")
                 # Option 2: Add generic names if feature_names is too short
                 else:
                     additional_names = [f"feature_{i}" for i in range(len(feature_names_adjusted), X_train.shape[1])]
                     feature_names_adjusted = feature_names_adjusted + additional_names
+                    logger.warning(f"Extended feature_names with {len(additional_names)} generic names")
                 
                 # Update categorical indices if needed
-                categorical_indices_adjusted = [idx for idx in categorical_indices if idx < X_train.shape[1]] if categorical_indices else []
+                categorical_indices_adjusted = [idx for idx in (categorical_indices or []) if idx < X_train.shape[1]]
             else:
                 categorical_indices_adjusted = categorical_indices
 
             # Create DMatrix objects with feature names and enable_categorical if needed
-            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names_adjusted,
-                                enable_categorical=params.get('enable_categorical', False))
-            dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names_adjusted,
-                            enable_categorical=params.get('enable_categorical', False))
+            try:
+                dtrain = xgb.DMatrix(
+                    X_train, 
+                    label=y_train, 
+                    feature_names=feature_names_adjusted,
+                    enable_categorical=params.get('enable_categorical', False)
+                )
+                
+                dval = xgb.DMatrix(
+                    X_val, 
+                    label=y_val, 
+                    feature_names=feature_names_adjusted,
+                    enable_categorical=params.get('enable_categorical', False)
+                )
+            except Exception as e:
+                logger.error(f"Error creating DMatrix for hyperparameter tuning: {str(e)}")
+                logger.error(f"X_train shape: {X_train.shape}, feature_names_adjusted length: {len(feature_names_adjusted)}")
+                raise OptimizationFailedError(f"DMatrix creation failed: {str(e)}")
             
-            # Note: set_feature_types method is not available or needed
-            # XGBoost will handle categorical features based on enable_categorical parameter
-            
-            # Train model with early stopping
-            pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-logloss")
-            evals = [(dtrain, "train"), (dval, "validation")]
-            
-            # Use num_boost_round from the trial
-            bst = xgb.train(
-                params, dtrain, num_boost_round=num_boost_round, 
-                evals=evals, early_stopping_rounds=50, 
-                callbacks=[pruning_callback], verbose_eval=False
+            pruning_callback = optuna.integration.XGBoostPruningCallback(
+                trial, 'validation-logloss'
             )
             
-            # Return validation metric as objective value (lower is better for logloss)
-            return float(bst.best_score)
-        except Exception as e:
-            logger.error(f"Error in trial: {e}")
+            evals_result = {}
+            
+            xgb.train(
+                params,
+                dtrain,
+                num_boost_round=num_boost_round,
+                evals=[(dtrain, 'train'), (dval, 'validation')],
+                early_stopping_rounds=50,
+                callbacks=[pruning_callback],
+                evals_result=evals_result,
+                verbose_eval=False
+            )
+            
+            # Return validation logloss (to be minimized)
+            val_logloss = evals_result['validation']['logloss'][-1]
+            
+            # Return best score
+            return val_logloss
+            
+        except OptimizationFailedError as e:
+            # Re-raise existing optimization errors
             raise
+        except Exception as e:
+            logger.error(f"Error in trial: {str(e)}")
+            # This allows Optuna to record the trial as failed and continue
+            raise optuna.exceptions.TrialPruned(f"Trial failed with error: {str(e)}")
     
     # Create Optuna study with pruning to eliminate unpromising trials early
     study_name = f"xgboost_tennis_prediction_{time.strftime('%Y%m%d_%H%M%S')}"
@@ -915,6 +938,17 @@ def train_model(
     
     start_time = time.time()
     
+    # Check if we have data and features
+    if X_train.shape[0] == 0 or X_train.shape[1] == 0:
+        raise ValueError(f"Training data has invalid shape: {X_train.shape}")
+    
+    if X_val.shape[0] == 0 or X_val.shape[1] == 0:
+        raise ValueError(f"Validation data has invalid shape: {X_val.shape}")
+    
+    if not feature_names:
+        logger.warning("No feature names provided. Using generic feature names.")
+        feature_names = [f"feature_{i}" for i in range(X_train.shape[1])]
+    
     if params is None:
         # Start with baseline params
         params = BASELINE_PARAMS.copy()
@@ -950,23 +984,25 @@ def train_model(
             categorical_features = [idx for idx in categorical_features if idx < X_train.shape[1]]
     
     # Create DMatrix objects with feature names
-    dtrain = xgb.DMatrix(
-        X_train, 
-        label=y_train, 
-        feature_names=feature_names,
-        enable_categorical=params.get('enable_categorical', False)
-    )
-    
-    dval = xgb.DMatrix(
-        X_val, 
-        label=y_val, 
-        feature_names=feature_names,
-        enable_categorical=params.get('enable_categorical', False)
-    )
-    
-    # Note: Instead of set_feature_types, categorical features should be
-    # passed at DMatrix creation time or handled by XGBoost internally
-    # when enable_categorical=True
+    try:
+        dtrain = xgb.DMatrix(
+            X_train, 
+            label=y_train, 
+            feature_names=feature_names,
+            enable_categorical=params.get('enable_categorical', False)
+        )
+        
+        dval = xgb.DMatrix(
+            X_val, 
+            label=y_val, 
+            feature_names=feature_names,
+            enable_categorical=params.get('enable_categorical', False)
+        )
+    except Exception as e:
+        logger.error(f"Error creating DMatrix: {str(e)}")
+        logger.error(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
+        logger.error(f"Feature names: {feature_names[:10]}{'...' if len(feature_names) > 10 else ''}")
+        raise
     
     # Set up evaluation metrics
     watchlist = [(dtrain, 'train'), (dval, 'validation')]
@@ -991,29 +1027,29 @@ def train_model(
     evals_result_dict = {}
     
     # Train the model
-    model = xgb.train(
-        params,
-        dtrain,
-        num_boost_round=num_boost_round,
-        evals=watchlist,
-        early_stopping_rounds=early_stopping_rounds,
-        callbacks=callbacks,
-        verbose_eval=100,  # Log progress every 100 rounds
-        evals_result=evals_result_dict  # Store evaluation results here
-    )
-    
-    # Log memory usage after training
-    memory_after = process.memory_info().rss / 1024 / 1024  # MB
-    logger.info(f"Memory usage after training: {memory_after:.2f} MB (change: {memory_after - memory_before:.2f} MB)")
-    
-    # Get evaluation results
-    # FIX: Use the existing evals_result from xgb.train rather than calling eval_set separately
-    # We'll use the evals_result dict that's populated during training
-    
-    # Log best iteration and score
-    logger.info(f"Best iteration: {model.best_iteration}")
-    logger.info(f"Best validation score: {model.best_score}")
-    logger.info(f"Training completed in {time.time() - start_time:.2f} seconds")
+    try:
+        model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=num_boost_round,
+            evals=watchlist,
+            early_stopping_rounds=early_stopping_rounds,
+            callbacks=callbacks,
+            verbose_eval=100,  # Log progress every 100 rounds
+            evals_result=evals_result_dict  # Store evaluation results here
+        )
+        
+        # Log memory usage after training
+        memory_after = process.memory_info().rss / 1024 / 1024  # MB
+        logger.info(f"Memory usage after training: {memory_after:.2f} MB (change: {memory_after - memory_before:.2f} MB)")
+        
+        # Log best iteration and score
+        logger.info(f"Best iteration: {model.best_iteration}")
+        logger.info(f"Best validation score: {model.best_score}")
+        logger.info(f"Training completed in {time.time() - start_time:.2f} seconds")
+    except Exception as e:
+        logger.error(f"Error during training: {str(e)}")
+        raise
     
     if progress_tracker:
         progress_tracker.update(f"Model training completed (best iteration: {model.best_iteration})")
@@ -1052,6 +1088,19 @@ def evaluate_model(
     
     logger.info(f"Evaluating model on {dataset_name} dataset with {X.shape[0]} samples")
     
+    # Validate input data
+    if X.shape[0] == 0 or X.shape[1] == 0:
+        logger.error(f"Cannot evaluate model: Input data has invalid shape {X.shape}")
+        return {"error": f"Invalid data shape: {X.shape}"}
+    
+    if len(y) == 0:
+        logger.error("Cannot evaluate model: Empty target vector")
+        return {"error": "Empty target vector"}
+    
+    if not feature_names:
+        logger.warning("No feature names provided. Using generic feature names.")
+        feature_names = [f"feature_{i}" for i in range(X.shape[1])]
+    
     # Create DMatrix for efficient prediction
     device_params = detect_optimal_device()
     
@@ -1065,208 +1114,145 @@ def evaluate_model(
             additional_names = [f"feature_{i}" for i in range(len(feature_names), X.shape[1])]
             feature_names = feature_names + additional_names
     
-    dtest = xgb.DMatrix(X, label=y, feature_names=feature_names)
-    
-    # Make predictions
-    y_pred_proba = model.predict(dtest)
-    y_pred = (y_pred_proba > threshold).astype(int)
-    
-    # Calculate standard classification metrics
-    accuracy = accuracy_score(y, y_pred)
-    balanced_acc = balanced_accuracy_score(y, y_pred)  # Add balanced accuracy
-    precision = precision_score(y, y_pred)
-    recall = recall_score(y, y_pred)
-    f1 = f1_score(y, y_pred)
-    
-    # Calculate ROC AUC
     try:
-        roc_auc = roc_auc_score(y, y_pred_proba)  # Use roc_auc_score directly
-    except Exception as e:
-        logger.warning(f"Could not calculate ROC AUC: {e}")
-        roc_auc = None
-    
-    # Calculate average precision (PR AUC)
-    try:
-        pr_auc = average_precision_score(y, y_pred_proba)
-    except Exception as e:
-        logger.warning(f"Could not calculate PR AUC: {e}")
-        pr_auc = None
-    
-    # Calculate log loss
-    try:
-        logloss = log_loss(y, y_pred_proba)
-    except Exception as e:
-        logger.warning(f"Could not calculate log loss: {e}")
-        logloss = None
-    
-    # Calculate Brier score (calibration metric)
-    try:
-        brier = brier_score_loss(y, y_pred_proba)
-    except Exception as e:
-        logger.warning(f"Could not calculate Brier score: {e}")
-        brier = None
-    
-    # Confusion matrix for showing class distribution
-    try:
-        cm = confusion_matrix(y, y_pred)
-        tn, fp, fn, tp = cm.ravel()
-    except Exception:
-        tn, fp, fn, tp = 0, 0, 0, 0
-    
-    # Get detailed classification report
-    try:
-        class_report = classification_report(y, y_pred, output_dict=True)
-    except Exception as e:
-        logger.warning(f"Could not generate classification report: {e}")
-        class_report = {}
-    
-    # Log metrics
-    logger.info(f"{dataset_name} metrics:")
-    logger.info(f"  Accuracy: {accuracy:.4f}")
-    logger.info(f"  Balanced Accuracy: {balanced_acc:.4f}")  # Log balanced accuracy
-    logger.info(f"  Precision: {precision:.4f}")
-    logger.info(f"  Recall: {recall:.4f}")
-    logger.info(f"  F1 Score: {f1:.4f}")
-    if roc_auc:
-        logger.info(f"  ROC AUC: {roc_auc:.4f}")
-    if pr_auc:
-        logger.info(f"  PR AUC: {pr_auc:.4f}")
-    if logloss:
-        logger.info(f"  Log Loss: {logloss:.4f}")
-    if brier:
-        logger.info(f"  Brier Score: {brier:.4f}")
-    
-    # Tennis-specific metrics: evaluate on different surfaces
-    surface_metrics = {}
-    
-    if surfaces is not None and hasattr(df, 'surface'):
-        for surface in surfaces:
-            surface_idx = df['surface'] == surface
-            
-            if sum(surface_idx) > 0:
-                y_true_surface = y[surface_idx]
-                y_pred_surface = y_pred[surface_idx]
-                y_proba_surface = y_pred_proba[surface_idx]
-                
-                if len(y_true_surface) > 0:
-                    accuracy_surface = accuracy_score(y_true_surface, y_pred_surface)
-                    precision_surface = precision_score(y_true_surface, y_pred_surface, zero_division=0)
-                    recall_surface = recall_score(y_true_surface, y_pred_surface, zero_division=0)
-                    f1_surface = f1_score(y_true_surface, y_pred_surface, zero_division=0)
-                    
-                    # ROC AUC for this surface
-                    try:
-                        roc_auc_surface = roc_auc_score(y_true_surface, y_proba_surface)  # Use roc_auc_score directly
-                    except Exception:
-                        roc_auc_surface = None
-                    
-                    surface_metrics[surface] = {
-                        'accuracy': accuracy_surface,
-                        'precision': precision_surface,
-                        'recall': recall_surface,
-                        'f1': f1_surface,
-                        'roc_auc': roc_auc_surface,
-                        'count': int(sum(surface_idx))
-                    }
-                    
-                    logger.info(f"Metrics for {surface} surface (n={sum(surface_idx)}):")
-                    logger.info(f"  Accuracy: {accuracy_surface:.4f}")
-                    logger.info(f"  F1 Score: {f1_surface:.4f}")
-                    if roc_auc_surface:
-                        logger.info(f"  ROC AUC: {roc_auc_surface:.4f}")
-            else:
-                logger.info(f"No {dataset_name} samples for {surface} surface")
-    
-    # Calculate metrics by confidence range (measure of prediction certainty)
-    confidence_bins = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    confidence_metrics = []
-    
-    for i in range(len(confidence_bins) - 1):
-        lower = confidence_bins[i]
-        upper = confidence_bins[i + 1]
+        dtest = xgb.DMatrix(X, label=y, feature_names=feature_names)
         
-        # Find predictions in this confidence range (from both sides of 0.5)
-        mask = (
-            ((y_pred_proba >= lower) & (y_pred_proba < upper)) | 
-            ((y_pred_proba <= (1 - lower)) & (y_pred_proba > (1 - upper)))
-        )
-        
-        if sum(mask) > 0:
-            bin_acc = accuracy_score(y[mask], y_pred[mask])
-            
-            confidence_metrics.append({
-                'confidence_range': f"{lower:.1f}-{upper:.1f}",
-                'accuracy': bin_acc,
-                'count': int(sum(mask)),
-                'percentage': float(sum(mask) / len(y) * 100)
-            })
-            
-            logger.info(f"Accuracy for confidence {lower:.1f}-{upper:.1f}: {bin_acc:.4f} " 
-                      f"(n={sum(mask)}, {sum(mask) / len(y) * 100:.1f}%)")
+        # Make predictions
+        y_pred_proba = model.predict(dtest)
+        y_pred = (y_pred_proba > threshold).astype(int)
+    except Exception as e:
+        logger.error(f"Error during prediction: {str(e)}")
+        return {"error": f"Prediction error: {str(e)}"}
     
-    # Tennis-specific: Calculate metrics for underdogs and favorites
-    # In tennis betting, favorites have higher probability of winning
-    favorite_mask = y_pred_proba >= 0.6  # Probability threshold for favorites
-    underdog_mask = y_pred_proba < 0.4   # Probability threshold for underdogs
-    
-    # Calculate metrics for favorites
-    if sum(favorite_mask) > 0:
-        favorite_acc = accuracy_score(y[favorite_mask], y_pred[favorite_mask])
-        favorite_metrics = {
-            'accuracy': favorite_acc,
-            'count': int(sum(favorite_mask)),
-            'percentage': float(sum(favorite_mask) / len(y) * 100)
-        }
-        logger.info(f"Favorite (p ≥ 0.6) accuracy: {favorite_acc:.4f} " 
-                   f"(n={sum(favorite_mask)}, {sum(favorite_mask) / len(y) * 100:.1f}%)")
-    else:
-        favorite_metrics = {'accuracy': 0, 'count': 0, 'percentage': 0}
-    
-    # Calculate metrics for underdogs
-    if sum(underdog_mask) > 0:
-        underdog_acc = accuracy_score(y[underdog_mask], 1 - y_pred[underdog_mask])  # Inverse prediction for underdogs
-        underdog_metrics = {
-            'accuracy': underdog_acc,
-            'count': int(sum(underdog_mask)),
-            'percentage': float(sum(underdog_mask) / len(y) * 100)
-        }
-        logger.info(f"Underdog (p < 0.4) accuracy: {underdog_acc:.4f} " 
-                   f"(n={sum(underdog_mask)}, {sum(underdog_mask) / len(y) * 100:.1f}%)")
-    else:
-        underdog_metrics = {'accuracy': 0, 'count': 0, 'percentage': 0}
-    
-    # Compile all metrics
+    # Initialize results dictionary
     metrics = {
-        'overall': {
-            'accuracy': accuracy,
-            'balanced_accuracy': balanced_acc,  # Add balanced accuracy to metrics
-            'precision': precision,
-            'recall': recall,
-            'f1': f1,
-            'roc_auc': roc_auc,
-            'pr_auc': pr_auc,
-            'log_loss': logloss,
-            'brier_score': brier,
-            'confusion_matrix': {
-                'tn': int(tn if 'tn' in locals() else 0),
-                'fp': int(fp if 'fp' in locals() else 0),
-                'fn': int(fn if 'fn' in locals() else 0),
-                'tp': int(tp if 'tp' in locals() else 0)
-            },
-            'count': len(y)
-        },
-        'class_report': class_report,
-        'by_surface': surface_metrics,
-        'by_confidence': confidence_metrics,
-        'favorites': favorite_metrics,
-        'underdogs': underdog_metrics,
-        'threshold': threshold,
-        'dataset': dataset_name
+        "overall": {},
+        "by_surface": {} if surfaces else None
     }
     
-    if progress_tracker:
-        progress_tracker.update(f"Model evaluation on {dataset_name} data complete")
+    try:
+        # Calculate standard classification metrics
+        accuracy = accuracy_score(y, y_pred)
+        balanced_acc = balanced_accuracy_score(y, y_pred)  # Add balanced accuracy
+        precision = precision_score(y, y_pred)
+        recall = recall_score(y, y_pred)
+        f1 = f1_score(y, y_pred)
+        
+        # Calculate ROC AUC
+        try:
+            roc_auc = roc_auc_score(y, y_pred_proba)  # Use roc_auc_score directly
+        except Exception as e:
+            logger.warning(f"Could not calculate ROC AUC: {e}")
+            roc_auc = None
+        
+        # Calculate average precision (PR AUC)
+        try:
+            pr_auc = average_precision_score(y, y_pred_proba)
+        except Exception as e:
+            logger.warning(f"Could not calculate PR AUC: {e}")
+            pr_auc = None
+        
+        # Calculate log loss
+        try:
+            logloss = log_loss(y, y_pred_proba)
+        except Exception as e:
+            logger.warning(f"Could not calculate log loss: {e}")
+            logloss = None
+        
+        # Calculate Brier score (calibration metric)
+        try:
+            brier = brier_score_loss(y, y_pred_proba)
+        except Exception as e:
+            logger.warning(f"Could not calculate Brier score: {e}")
+            brier = None
+        
+        # Confusion matrix for showing class distribution
+        try:
+            cm = confusion_matrix(y, y_pred)
+            tn, fp, fn, tp = cm.ravel()
+        except Exception:
+            tn, fp, fn, tp = 0, 0, 0, 0
+        
+        # Get detailed classification report
+        try:
+            class_report = classification_report(y, y_pred, output_dict=True)
+        except Exception as e:
+            logger.warning(f"Could not generate classification report: {e}")
+            class_report = {}
     
+        # Store overall metrics
+        metrics["overall"] = {
+            "accuracy": accuracy,
+            "balanced_accuracy": balanced_acc,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "roc_auc": roc_auc,
+            "pr_auc": pr_auc,
+            "log_loss": logloss,
+            "brier_score": brier,
+            "tn": int(tn),
+            "fp": int(fp),
+            "fn": int(fn),
+            "tp": int(tp),
+            "confusion_matrix": cm.tolist() if 'cm' in locals() else None,
+            "classification_report": class_report
+        }
+    
+        # Evaluate by surface if requested
+        if surfaces:
+            surface_col_idx = None
+            
+            # Look for surface column in feature names
+            for i, name in enumerate(feature_names):
+                if name.lower() == 'surface':
+                    surface_col_idx = i
+                    break
+            
+            if surface_col_idx is not None:
+                logger.info("Evaluating performance by surface...")
+                surface_values = X[:, surface_col_idx]
+                
+                for surface_idx, surface in enumerate(surfaces):
+                    # Find rows with this surface
+                    surface_mask = surface_values == surface_idx
+                    if np.sum(surface_mask) > 0:
+                        surface_y = y[surface_mask]
+                        surface_pred = y_pred[surface_mask]
+                        surface_pred_proba = y_pred_proba[surface_mask]
+                        
+                        # Calculate metrics for this surface
+                        surface_metrics = {
+                            "count": int(np.sum(surface_mask)),
+                            "accuracy": accuracy_score(surface_y, surface_pred),
+                            "balanced_accuracy": balanced_accuracy_score(surface_y, surface_pred),
+                            "precision": precision_score(surface_y, surface_pred, zero_division=0),
+                            "recall": recall_score(surface_y, surface_pred, zero_division=0),
+                            "f1": f1_score(surface_y, surface_pred, zero_division=0)
+                        }
+                        
+                        # Add ROC AUC and PR AUC if possible
+                        if len(np.unique(surface_y)) > 1:
+                            try:
+                                surface_metrics["roc_auc"] = roc_auc_score(surface_y, surface_pred_proba)
+                                surface_metrics["pr_auc"] = average_precision_score(surface_y, surface_pred_proba)
+                            except Exception as e:
+                                logger.warning(f"Could not calculate AUC metrics for surface {surface}: {e}")
+                        
+                        metrics["by_surface"][surface] = surface_metrics
+                        
+                        # Log surface metrics
+                        logger.info(f"Surface '{surface}' metrics:")
+                        logger.info(f"  Count: {surface_metrics['count']}")
+                        logger.info(f"  Accuracy: {surface_metrics['accuracy']:.4f}")
+                        if "roc_auc" in surface_metrics:
+                            logger.info(f"  ROC AUC: {surface_metrics['roc_auc']:.4f}")
+            else:
+                logger.warning("Surface column not found in feature names. Skipping surface-specific evaluation.")
+    except Exception as e:
+        logger.error(f"Error calculating evaluation metrics: {str(e)}")
+        metrics["error"] = str(e)
+        
     return metrics
 
 
@@ -1677,11 +1663,21 @@ def select_features_by_importance(
     Returns:
         List of selected feature names
     """
+    # Check if importances dictionary is empty
+    if not importances:
+        logger.warning("Feature importance dictionary is empty. Cannot select features.")
+        return []
+        
     # Sort features by importance
     sorted_features = sorted(importances.items(), key=lambda x: x[1], reverse=True)
     
     # Calculate total importance
     total_importance = sum(importances.values())
+    
+    # If total importance is zero, return all features
+    if total_importance == 0:
+        logger.warning("Total feature importance is zero. Returning all features.")
+        return list(importances.keys())
     
     # Select features up to threshold
     selected_features = []
@@ -1698,6 +1694,11 @@ def select_features_by_importance(
     if len(selected_features) < min_features:
         remaining = [f for f, _ in sorted_features if f not in selected_features]
         selected_features.extend(remaining[:min_features - len(selected_features)])
+    
+    # Safety check: If still no features selected, return all features
+    if not selected_features and importances:
+        logger.warning("No features selected. Returning all features.")
+        selected_features = list(importances.keys())
     
     logger.info(f"Selected {len(selected_features)} features covering {cumulative_importance:.2%} of total importance")
     return selected_features
@@ -2034,37 +2035,69 @@ def main() -> None:
         
         # Step 7: Extract feature importance
         logger.info(f"Step 7/{total_steps}: Extracting feature importance...")
-        importance_scores = model.get_score(importance_type='gain')
-        importances = {feature: score for feature, score in importance_scores.items() if feature in feature_cols}
-        importances = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
-        
-        # Log top features
-        top_features = list(importances.items())[:10]
-        logger.info("Top 10 features by importance:")
-        for feature, importance in top_features:
-            logger.info(f"  - {feature}: {importance:.4f}")
+        try:
+            importance_scores = model.get_score(importance_type='gain')
+            importances = {feature: score for feature, score in importance_scores.items() if feature in feature_cols}
+            importances = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
+            
+            # Log top features
+            top_features = list(importances.items())[:10]
+            logger.info("Top 10 features by importance:")
+            for feature, importance in top_features:
+                logger.info(f"  - {feature}: {importance:.4f}")
+        except Exception as e:
+            logger.error(f"Error extracting feature importance: {str(e)}")
+            importances = {}
+            logger.warning("Using empty importance dictionary. Feature selection will return all features.")
         
         # Step 8: Select most important features
         logger.info(f"Step 8/{total_steps}: Selecting top features...")
         selected_features = select_features_by_importance(importances, threshold=0.95, min_features=20)
         
+        # If no features were selected, use all feature columns
+        if not selected_features:
+            logger.warning("No features were selected. Using all feature columns for retraining.")
+            selected_features = feature_cols
+        
         # Step 9: Retrain with selected features (improves model performance and reduces size)
         logger.info(f"Step 9/{total_steps}: Retraining with selected features...")
-        X_train_selected = X_train[:, [feature_cols.index(f) for f in selected_features]]
-        X_val_selected = X_val[:, [feature_cols.index(f) for f in selected_features]]
-        X_test_selected = X_test[:, [feature_cols.index(f) for f in selected_features]]
+        
+        # Check if we have at least one feature to use
+        if len(selected_features) == 0:
+            logger.error("No features available for retraining. Cannot continue.")
+            raise ValueError("No features available for retraining")
+            
+        # Create feature matrices with selected features
+        X_train_selected = X_train[:, [feature_cols.index(f) for f in selected_features if f in feature_cols]]
+        X_val_selected = X_val[:, [feature_cols.index(f) for f in selected_features if f in feature_cols]]
+        X_test_selected = X_test[:, [feature_cols.index(f) for f in selected_features if f in feature_cols]]
+        
+        # Verify we have features to work with
+        if X_train_selected.shape[1] == 0:
+            logger.error("No valid features remained after selection. Cannot continue.")
+            raise ValueError("No valid features for training")
+            
+        # Log the selected features and data shape
+        logger.info(f"Training with {X_train_selected.shape[1]} selected features")
+        logger.info(f"Selected features: {selected_features[:10]}{'...' if len(selected_features) > 10 else ''}")
         
         # Update categorical indices for selected features
         selected_categorical_indices = []
         for i, feature in enumerate(selected_features):
-            if feature_cols.index(feature) in categorical_indices:
+            if feature in feature_cols and feature_cols.index(feature) in categorical_indices:
                 selected_categorical_indices.append(i)
         
         # Retrain
-        final_model, final_evals_result = train_model(
-            X_train_selected, y_train, X_val_selected, y_val, selected_features, 
-            selected_categorical_indices, best_params, 50, progress_tracker
-        )
+        try:
+            final_model, final_evals_result = train_model(
+                X_train_selected, y_train, X_val_selected, y_val, selected_features, 
+                selected_categorical_indices, best_params, 50, progress_tracker
+            )
+        except Exception as e:
+            logger.error(f"Error in retraining with selected features: {str(e)}")
+            logger.warning("Falling back to original model")
+            final_model = model
+            final_evals_result = evals_result
         
         # Step 10: Evaluate model
         logger.info(f"Step 10/{total_steps}: Evaluating model...")
