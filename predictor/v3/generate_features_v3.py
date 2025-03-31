@@ -82,7 +82,14 @@ def get_database_connection() -> create_engine:
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    return create_engine(database_url)
+    # Add connection timeout and command timeout settings
+    return create_engine(
+        database_url,
+        connect_args={
+            'connect_timeout': 10,  # Connection timeout in seconds
+            'options': '-c statement_timeout=300000'  # Query timeout in milliseconds (5 minutes)
+        }
+    )
 
 def get_psycopg2_connection():
     """Create a psycopg2 connection for efficient batch operations"""
@@ -91,7 +98,12 @@ def get_psycopg2_connection():
     if not database_url:
         raise ValueError("DATABASE_URL not found in environment variables")
     
-    return psycopg2.connect(database_url)
+    # Add connection timeout and statement timeout
+    return psycopg2.connect(
+        database_url,
+        connect_timeout=10,  # Connection timeout in seconds
+        options='-c statement_timeout=300000'  # Query timeout in milliseconds (5 minutes)
+    )
 
 def create_features_table(conn):
     """Create the match_features table if it doesn't exist"""
