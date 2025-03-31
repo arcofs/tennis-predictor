@@ -120,7 +120,6 @@ def create_features_table(conn):
         if not table_exists:
             logger.info("Creating match_features table...")
             # Create the table with all required columns, using lowercase for all column names
-            # Note: No foreign key constraint on match_id
             cur.execute("""
             CREATE TABLE match_features (
                 id SERIAL PRIMARY KEY,
@@ -201,28 +200,6 @@ def create_features_table(conn):
             conn.commit()
             logger.info("Successfully created match_features table")
         else:
-            # Check for existing constraints that might need to be dropped
-            cur.execute("""
-            SELECT constraint_name 
-            FROM information_schema.table_constraints 
-            WHERE table_name = 'match_features'
-            AND constraint_name LIKE '%match_id_fkey%'
-            """)
-            fk_constraints = cur.fetchall()
-            
-            # Drop any foreign key constraints
-            for fk in fk_constraints:
-                logger.info(f"Dropping foreign key constraint: {fk[0]}")
-                try:
-                    cur.execute(f"""
-                    ALTER TABLE match_features 
-                    DROP CONSTRAINT {fk[0]}
-                    """)
-                    conn.commit()
-                except Exception as e:
-                    logger.warning(f"Could not drop constraint {fk[0]}: {str(e)}")
-                    conn.rollback()
-            
             # Check for missing columns and add them if needed
             logger.info("Table already exists. Checking for missing columns...")
             
@@ -381,7 +358,7 @@ def load_data() -> pd.DataFrame:
     engine = get_database_connection()
     logger.info("Successfully connected to database")
     
-    logger.info("Loading data from database (LIMITED TO 5000 ROWS FOR TESTING)...")
+    logger.info("Loading data from database...")
     
     query = """
         SELECT 
@@ -429,7 +406,6 @@ def load_data() -> pd.DataFrame:
         WHERE winner_id IS NOT NULL 
         AND loser_id IS NOT NULL
         ORDER BY tournament_date ASC
-        LIMIT 5000
     """
     
     df = pd.read_sql(query, engine)
@@ -924,7 +900,7 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
         ]
         
         features = []
-        for _, match in batch_df.iterrows():
+        for idx, match in batch_df.iterrows():
             match_date = match['tournament_date']
             winner_id = match['winner_id']
             loser_id = match['loser_id']
@@ -935,18 +911,18 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
                                    (player_df['tournament_date'] < match_date)]
             
             loser_prev = player_df[(player_df['player_id'] == loser_id) & 
-                                  (player_df['tournament_date'] < match_date)]
+                                   (player_df['tournament_date'] < match_date)]
             
             # Get player serve/return stats just before this match
             winner_sr_prev = serve_return_df[(serve_return_df['player_id'] == winner_id) & 
                                            (serve_return_df['tournament_date'] < match_date)]
             
             loser_sr_prev = serve_return_df[(serve_return_df['player_id'] == loser_id) & 
-                                          (serve_return_df['tournament_date'] < match_date)]
+                                           (serve_return_df['tournament_date'] < match_date)]
             
             # Initialize match features
             match_features = {
-                'match_id': match['match_id'],  # Use actual match_id from the data
+                'match_id': idx,
                 'tournament_date': match_date,
                 'surface': surface,
                 'winner_id': winner_id,
@@ -1101,10 +1077,10 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
         matches = []
         
         # First pass: p1 = winner, p2 = loser (actual match result)
-        for _, row in batch_df.iterrows():
+        for idx, row in batch_df.iterrows():
             surface = row['surface'].lower() if isinstance(row['surface'], str) else row['surface']
             match_dict = {
-                'match_id': row['match_id'],  # Use actual match_id from the data
+                'match_id': row['match_id'],
                 'tournament_date': row['tournament_date'],
                 'surface': surface,
                 'player1_id': row['winner_id'],
@@ -1168,13 +1144,10 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
             matches.append(match_dict)
         
         # Second pass: p1 = loser, p2 = winner (flipped match result)
-        for _, row in batch_df.iterrows():
+        for idx, row in batch_df.iterrows():
             surface = row['surface'].lower() if isinstance(row['surface'], str) else row['surface']
-            
-            # For the flipped match, add a large unique offset to the match_id to avoid conflicts
-            # We'll use the actual database ID later for lookups, this just prevents duplicates
             match_dict = {
-                'match_id': int(str(row['match_id']) + "999"),  # Append 999 to create a unique match_id for the flipped match
+                'match_id': row['match_id'],
                 'tournament_date': row['tournament_date'],
                 'surface': surface,
                 'player1_id': row['loser_id'],
@@ -1304,12 +1277,6 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
     """
     logger.info("Saving features to database...")
     
-    # Filter out duplicate match_ids (the ones with 999 suffix)
-    # These are the flipped versions of the matches we created for symmetric training
-    logger.info(f"Original DataFrame size: {len(symmetric_df)}")
-    filtered_df = symmetric_df[~symmetric_df['match_id'].astype(str).str.endswith('999')].copy()
-    logger.info(f"Filtered DataFrame size (removing duplicates): {len(filtered_df)}")
-    
     # Get database connection
     conn = get_psycopg2_connection()
     
@@ -1323,13 +1290,13 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
             existing_match_ids = set(row[0] for row in cur.fetchall())
         
         # Filter out matches that already exist in the database
-        new_df = filtered_df[~filtered_df['match_id'].isin(existing_match_ids)].copy()
+        new_df = symmetric_df[~symmetric_df['match_id'].isin(existing_match_ids)].copy()
         
         if len(new_df) == 0:
             logger.info("No new matches to process. All matches already exist in the database.")
             return
         
-        logger.info(f"Found {len(new_df)} new matches to process out of {len(filtered_df)} total matches")
+        logger.info(f"Found {len(new_df)} new matches to process out of {len(symmetric_df)} total matches")
         
         # Define all possible columns we expect to have (using lowercase for surface names)
         all_possible_columns = [
