@@ -559,19 +559,57 @@ def prepare_features(
     if categorical_features:
         logger.info(f"Found {len(categorical_features)} categorical features: {categorical_features}")
     
-    # Extract features and labels
-    X_train = train_df[feature_cols].values
-    y_train = train_df['result'].values
+    # Convert categorical features to appropriate format for XGBoost
+    # Either convert to codes or leave as-is depending on features
+    train_features = train_df[feature_cols].copy()
+    val_features = val_df[feature_cols].copy()
+    test_features = test_df[feature_cols].copy()
     
-    X_val = val_df[feature_cols].values
-    y_val = val_df['result'].values
+    # Handle categorical features specially
+    for col in categorical_features:
+        # For each categorical feature, ensure it's properly encoded
+        # This addresses both string and categorical dtype columns
+        if train_df[col].dtype == 'object' or train_df[col].dtype.name == 'category':
+            # Create category mapping from training data
+            categories = train_df[col].astype('category').cat.categories
+            
+            # Apply consistent encoding across train/val/test
+            train_features[col] = train_df[col].astype('category').cat.codes
+            
+            # For validation and test, handle new categories not seen in training
+            val_features[col] = pd.Categorical(
+                val_df[col], 
+                categories=categories
+            ).codes
+            
+            test_features[col] = pd.Categorical(
+                test_df[col], 
+                categories=categories
+            ).codes
+            
+            # Replace -1 (unknown category) with NaN for XGBoost to handle
+            train_features[col] = train_features[col].replace(-1, np.nan)
+            val_features[col] = val_features[col].replace(-1, np.nan)
+            test_features[col] = test_features[col].replace(-1, np.nan)
     
-    X_test = test_df[feature_cols].values
-    y_test = test_df['result'].values
+    # Extract features and labels as numpy arrays
+    X_train = train_features.values
+    y_train = train_df['player1_win'].values
+    
+    X_val = val_features.values
+    y_val = val_df['player1_win'].values
+    
+    X_test = test_features.values
+    y_test = test_df['player1_win'].values
     
     # Check for features with excessive missing values (>50%)
     # Generate_features_v3.py already handles most missing values, but we check anyway
-    missing_pct = (np.isnan(X_train).sum(axis=0) / X_train.shape[0]) * 100
+    missing_pct = np.zeros(X_train.shape[1])
+    for i in range(X_train.shape[1]):
+        # Use pandas to safely check for NaN values regardless of data type
+        col_data = pd.Series(X_train[:, i])
+        missing_pct[i] = (col_data.isna().sum() / len(col_data)) * 100
+    
     high_missing_features = [(feature_cols[i], pct) for i, pct in enumerate(missing_pct) if pct > 50]
     
     if high_missing_features:
@@ -586,7 +624,12 @@ def prepare_features(
     logger.info(f"Test set shape: {X_test.shape}, class distribution: {np.bincount(y_test)}")
     
     # Log missing value statistics
-    train_missing_rates = (np.isnan(X_train).sum(axis=0) / X_train.shape[0]) * 100
+    train_missing_rates = np.zeros(X_train.shape[1])
+    for i in range(X_train.shape[1]):
+        # Use pandas to safely check for NaN values
+        col_data = pd.Series(X_train[:, i])
+        train_missing_rates[i] = (col_data.isna().sum() / len(col_data)) * 100
+    
     high_missing_features = [(feature_cols[i], rate) for i, rate in enumerate(train_missing_rates) if rate > 10]
     
     if high_missing_features:
@@ -950,14 +993,14 @@ def evaluate_model(
     
     # Calculate standard classification metrics
     accuracy = accuracy_score(y, y_pred)
+    balanced_acc = balanced_accuracy_score(y, y_pred)  # Add balanced accuracy
     precision = precision_score(y, y_pred)
     recall = recall_score(y, y_pred)
     f1 = f1_score(y, y_pred)
     
     # Calculate ROC AUC
     try:
-        fpr, tpr, _ = roc_curve(y, y_pred_proba)
-        roc_auc = auc(fpr, tpr)
+        roc_auc = roc_auc_score(y, y_pred_proba)  # Use roc_auc_score directly
     except Exception as e:
         logger.warning(f"Could not calculate ROC AUC: {e}")
         roc_auc = None
@@ -1000,6 +1043,7 @@ def evaluate_model(
     # Log metrics
     logger.info(f"{dataset_name} metrics:")
     logger.info(f"  Accuracy: {accuracy:.4f}")
+    logger.info(f"  Balanced Accuracy: {balanced_acc:.4f}")  # Log balanced accuracy
     logger.info(f"  Precision: {precision:.4f}")
     logger.info(f"  Recall: {recall:.4f}")
     logger.info(f"  F1 Score: {f1:.4f}")
@@ -1032,7 +1076,7 @@ def evaluate_model(
                     
                     # ROC AUC for this surface
                     try:
-                        roc_auc_surface = auc(*roc_curve(y_true_surface, y_proba_surface)[:2])
+                        roc_auc_surface = roc_auc_score(y_true_surface, y_proba_surface)  # Use roc_auc_score directly
                     except Exception:
                         roc_auc_surface = None
                     
@@ -1115,6 +1159,7 @@ def evaluate_model(
     metrics = {
         'overall': {
             'accuracy': accuracy,
+            'balanced_accuracy': balanced_acc,  # Add balanced accuracy to metrics
             'precision': precision,
             'recall': recall,
             'f1': f1,
