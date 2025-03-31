@@ -987,6 +987,9 @@ def train_model(
     memory_before = process.memory_info().rss / 1024 / 1024  # MB
     logger.info(f"Memory usage before training: {memory_before:.2f} MB")
     
+    # Initialize dictionary to store evaluation results
+    evals_result_dict = {}
+    
     # Train the model
     model = xgb.train(
         params,
@@ -995,7 +998,8 @@ def train_model(
         evals=watchlist,
         early_stopping_rounds=early_stopping_rounds,
         callbacks=callbacks,
-        verbose_eval=100  # Log progress every 100 rounds
+        verbose_eval=100,  # Log progress every 100 rounds
+        evals_result=evals_result_dict  # Store evaluation results here
     )
     
     # Log memory usage after training
@@ -1003,7 +1007,8 @@ def train_model(
     logger.info(f"Memory usage after training: {memory_after:.2f} MB (change: {memory_after - memory_before:.2f} MB)")
     
     # Get evaluation results
-    evals_result = model.eval_set([(X_val, y_val)], iteration=model.best_iteration)
+    # FIX: Use the existing evals_result from xgb.train rather than calling eval_set separately
+    # We'll use the evals_result dict that's populated during training
     
     # Log best iteration and score
     logger.info(f"Best iteration: {model.best_iteration}")
@@ -1013,7 +1018,7 @@ def train_model(
     if progress_tracker:
         progress_tracker.update(f"Model training completed (best iteration: {model.best_iteration})")
     
-    return model, model.evals_result()
+    return model, evals_result_dict  # Return model and populated evals_result
 
 
 def evaluate_model(
