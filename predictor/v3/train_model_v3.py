@@ -18,13 +18,19 @@ The script follows best practices for XGBoost model training:
 
 import os
 import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import json
 import time
 import pickle
 import logging
 import warnings
 import argparse
-from pathlib import Path
 from datetime import datetime
 from typing import Optional, Any, Dict, List, Tuple, Union, cast
 
