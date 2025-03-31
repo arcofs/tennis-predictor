@@ -1,68 +1,181 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Tennis Match Prediction Script - Version 3
+
+This script loads the trained XGBoost model from train_model_v3.py and makes
+predictions on test data from the database, ensuring we don't use training data.
+
+The script:
+1. Connects to the database and loads recent test data
+2. Loads the trained model pipeline
+3. Makes predictions with probabilities
+4. Generates evaluation metrics and visualizations
+5. Analyzes prediction quality and identifies discrepancies
+6. Outputs results to the output/v3 directory
+"""
+
 import os
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+import json
 import time
+import pickle
 import logging
-import pandas as pd
+import warnings
+import argparse
+from datetime import datetime, timedelta
+from typing import Optional, Any, Dict, List, Tuple, Union, cast
+
 import numpy as np
-import xgboost as xgb
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
+import xgboost as xgb
 import psycopg2
-from typing import Dict, List, Tuple, Optional, Union, Any
-from pathlib import Path
-from datetime import datetime
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_curve, auc
 from tqdm import tqdm
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, average_precision_score, roc_curve, auc,
+    precision_recall_curve, log_loss, brier_score_loss,
+    confusion_matrix, balanced_accuracy_score, classification_report
+)
+from sklearn.calibration import calibration_curve
+from psycopg2 import pool
 from dotenv import load_dotenv
-import argparse
+import psutil
+from predictor.v3.data_cache import get_cache_key, get_cached_data, save_to_cache
 
-# Configure logging
+# Suppress warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
+
+# Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("predict_v3.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("tennis_predictor")
 
 # Project directories
-PROJECT_ROOT = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-DATA_DIR = PROJECT_ROOT / "data"
-V3_DATA_DIR = DATA_DIR / "v3"
-OUTPUT_DIR = PROJECT_ROOT / "predictor" / "output" / "v3"
-MODELS_DIR = PROJECT_ROOT / "models" / "v3"
+PROJECT_DIR = Path(__file__).parent.parent.parent
+DATA_DIR = PROJECT_DIR / "data"
+OUTPUT_DIR = PROJECT_DIR / "output" / "v3"
+MODELS_DIR = OUTPUT_DIR / "models"
+PLOTS_DIR = OUTPUT_DIR / "plots"
+PREDICTIONS_DIR = OUTPUT_DIR / "predictions"
 
-# Create output directory if it doesn't exist
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(MODELS_DIR, exist_ok=True)
+# Create output directories if they don't exist
+os.makedirs(PREDICTIONS_DIR, exist_ok=True)
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
-# File paths
+# Input/output file paths
 MODEL_PATH = MODELS_DIR / "tennis_model_v3.json"
-FEATURES_PATH = V3_DATA_DIR / "features_v3.csv"
-PREDICTIONS_OUTPUT = OUTPUT_DIR / "predictions_v3.csv"
+PIPELINE_PATH = MODELS_DIR / "tennis_pipeline_v3.pkl"
+PREDICTIONS_OUTPUT = PREDICTIONS_DIR / f"predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+METRICS_OUTPUT = PREDICTIONS_DIR / f"prediction_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
-# Constants
-SURFACES = ['hard', 'clay', 'grass', 'carpet']
+# Tennis surfaces for surface-specific evaluation
+SURFACES = ["hard", "clay", "grass", "carpet"]
 
-# Database constants
+# Database configuration
 DB_BATCH_SIZE = 10000  # Number of records to fetch in each database batch
 DB_TIMEOUT_SECONDS = 30  # Database query timeout in seconds
 
-# Define serve and return feature names
-SERVE_RETURN_FEATURES = [
-    'serve_efficiency_5_diff',
-    'first_serve_pct_5_diff',
-    'first_serve_win_pct_5_diff',
-    'second_serve_win_pct_5_diff',
-    'ace_pct_5_diff',
-    'bp_saved_pct_5_diff',
-    'return_efficiency_5_diff',
-    'bp_conversion_pct_5_diff'
-]
+# Default CPU threads to use if GPU is not available
+DEFAULT_CPU_THREADS = max(4, os.cpu_count() - 1) if os.cpu_count() else 4
 
-# Raw player features
-RAW_PLAYER_FEATURES = [
-    'win_rate_5',
-    'win_streak',
-    'loss_streak'
-]
+
+def detect_optimal_device() -> dict:
+    """
+    Detect the optimal device for XGBoost prediction.
+    Tries GPU first with CUDA, then falls back to CPU with multithreading.
+    
+    Returns:
+        Dict with optimal parameters for tree_method and nthread
+    """
+    # Try GPU first
+    try:
+        # Create small test matrix to verify GPU works
+        test_matrix = xgb.DMatrix(np.array([[1, 2], [3, 4]]), label=np.array([0, 1]))
+        test_params = {'tree_method': 'gpu_hist'}
+        xgb.train(test_params, test_matrix, num_boost_round=1)
+        
+        logger.info("CUDA GPU acceleration available and will be used")
+        return {
+            'tree_method': 'gpu_hist',
+            'gpu_id': 0
+        }
+    except Exception as e:
+        logger.info(f"GPU acceleration not available ({str(e)}), falling back to CPU with multithreading")
+        
+        # Determine optimal number of threads for CPU - use all cores minus 1
+        cpu_threads = DEFAULT_CPU_THREADS
+        logger.info(f"Using {cpu_threads} CPU threads for XGBoost prediction")
+        
+        return {
+            'tree_method': 'hist',
+            'nthread': cpu_threads
+        }
+
+
+class ProgressTracker:
+    """Helper class to track and log progress during model prediction."""
+    
+    def __init__(self, total_steps: int, task_description: str):
+        """
+        Initialize the progress tracker.
+        
+        Args:
+            total_steps: Total number of steps in the process
+            task_description: Description of the task
+        """
+        self.total_steps = total_steps
+        self.current_step = 0
+        self.task_description = task_description
+        self.start_time = time.time()
+        self.last_update_time = self.start_time
+        
+        logger.info(f"Starting {task_description} with {total_steps} steps")
+    
+    def update(self, step_description: str) -> None:
+        """
+        Update the progress tracker.
+        
+        Args:
+            step_description: Description of the current step
+        """
+        self.current_step += 1
+        current_time = time.time()
+        elapsed = current_time - self.last_update_time
+        total_elapsed = current_time - self.start_time
+        
+        logger.info(f"[{self.current_step}/{self.total_steps}] {step_description} "
+                   f"(step: {elapsed:.2f}s, total: {total_elapsed:.2f}s)")
+        
+        self.last_update_time = current_time
+    
+    def get_progress(self) -> float:
+        """
+        Get the current progress as a fraction.
+        
+        Returns:
+            Progress as a float between 0 and 1
+        """
+        return self.current_step / self.total_steps
 
 
 def get_database_connection() -> psycopg2.extensions.connection:
@@ -98,218 +211,98 @@ def get_database_connection() -> psycopg2.extensions.connection:
         raise
 
 
-class ProgressTracker:
+def load_test_data_from_database(
+    training_end_date: Optional[datetime] = None,
+    limit: Optional[int] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> pd.DataFrame:
     """
-    Class to track and log progress during prediction.
-    """
-    def __init__(self, total_steps: int):
-        self.total_steps = total_steps
-        self.current_step = 0
-        self.start_time = time.time()
-        
-    def update(self, description: str = None):
-        """Update progress and log status."""
-        self.current_step += 1
-        elapsed = time.time() - self.start_time
-        
-        if description:
-            message = f"{description}: "
-        else:
-            message = ""
-            
-        if self.current_step < self.total_steps:
-            est_remaining = (elapsed / self.current_step) * (self.total_steps - self.current_step)
-            logger.info(f"{message}Progress: {self.percent_complete}% complete. Est. remaining time: {est_remaining:.1f}s")
-        else:
-            logger.info(f"{message}Progress: 100% complete. Total time: {elapsed:.1f}s")
-    
-    @property
-    def percent_complete(self) -> int:
-        """Calculate percentage of completion."""
-        return int((self.current_step / self.total_steps) * 100)
-
-
-def load_model(model_path: Union[str, Path], 
-              progress_tracker: Optional[ProgressTracker] = None) -> xgb.Booster:
-    """
-    Load the trained XGBoost model.
+    Load test data from the database, ensuring we don't use training data.
     
     Args:
-        model_path: Path to the saved model
-        progress_tracker: Optional progress tracker
-        
-    Returns:
-        Loaded XGBoost model
-    """
-    logger.info(f"Loading model from {model_path}")
-    
-    try:
-        model = xgb.Booster()
-        model.load_model(str(model_path))
-        logger.info("Model loaded successfully")
-        
-        if progress_tracker:
-            progress_tracker.update("Model loading complete")
-        
-        return model
-    
-    except Exception as e:
-        logger.error(f"Error loading model: {e}")
-        raise
-
-
-def load_test_data_from_database(training_cutoff_date: Optional[str] = None, 
-                               limit: Optional[int] = None,
-                               progress_tracker: Optional[ProgressTracker] = None) -> pd.DataFrame:
-    """
-    Load test data from the PostgreSQL database, ensuring we only get matches
-    that occurred after the training cutoff date to prevent data leakage.
-    
-    Args:
-        training_cutoff_date: ISO format date string (YYYY-MM-DD) after which to get test data
+        training_end_date: End date of training data to avoid using training data
         limit: Optional limit on number of rows to fetch
         progress_tracker: Optional progress tracker
         
     Returns:
-        DataFrame with test data
+        DataFrame with tennis match features for testing
     """
-    logger.info("Loading test data from database")
+    # If training_end_date is not provided, try to get it from metrics file
+    if training_end_date is None:
+        metrics_files = list(OUTPUT_DIR.glob("model_metrics_v3.json"))
+        if metrics_files:
+            try:
+                with open(metrics_files[0], 'r') as f:
+                    metrics = json.load(f)
+                    if 'training_info' in metrics and 'data_date_range' in metrics['training_info']:
+                        date_str = metrics['training_info']['data_date_range'].get('end')
+                        if date_str:
+                            training_end_date = datetime.fromisoformat(date_str)
+                            logger.info(f"Using training end date from metrics: {training_end_date.date()}")
+            except Exception as e:
+                logger.warning(f"Could not load training end date from metrics: {e}")
+    
+    # If still no training_end_date, use default of 1 year ago
+    if training_end_date is None:
+        training_end_date = datetime.now() - timedelta(days=365)
+        logger.warning(f"No training end date found. Using default: {training_end_date.date()}")
+    
+    # Define the base query to fetch data after training period
+    base_query = f"""
+    SELECT *
+    FROM match_features
+    WHERE tournament_date > '{training_end_date.date()}'
+    ORDER BY tournament_date ASC
+    """
+    
+    # Generate cache key
+    cache_key = get_cache_key(base_query, limit)
+    
+    # Try to load from cache first
+    cached_df = get_cached_data(cache_key)
+    if cached_df is not None:
+        logger.info("Using cached test data")
+        if progress_tracker:
+            progress_tracker.update("Test data loaded from cache")
+        return cached_df
+    
+    # If not in cache, load from database
+    logger.info("Loading test data from database (match_features table)...")
+    
+    # Connect to database
+    conn = get_database_connection()
     
     try:
-        # Connect to database
-        conn = get_database_connection()
-        
-        # Define query to get model training date
-        if training_cutoff_date is None:
-            try:
-                # Try to get the training cutoff date from model metrics
-                metrics_path = OUTPUT_DIR / "model_metrics_v3.json"
-                if os.path.exists(metrics_path):
-                    import json
-                    with open(metrics_path, 'r') as f:
-                        metrics = json.load(f)
-                    
-                    # Get the exact date range from the test set used during training
-                    if 'training_info' in metrics and 'data_date_range' in metrics['training_info']:
-                        # Calculate the start date for test set based on splits
-                        # Assuming TRAIN_SPLIT = 0.7, VAL_SPLIT = 0.15, TEST_SPLIT = 0.15
-                        data_start = metrics['training_info']['data_date_range']['start'].split('T')[0]
-                        data_end = metrics['training_info']['data_date_range']['end'].split('T')[0]
-                        logger.info(f"Data date range from metrics: {data_start} to {data_end}")
-                        
-                        # Get the test size - default to 0.15 if not specified
-                        test_size = 0.15
-                        val_size = 0.15
-                        
-                        # Load the total dataset to calculate dates proportionally
-                        count_query = """
-                        SELECT COUNT(*) as total_count,
-                               MIN(tournament_date) as min_date,
-                               MAX(tournament_date) as max_date
-                        FROM match_features
-                        WHERE tournament_date BETWEEN '{0}' AND '{1}'
-                        """.format(data_start, data_end)
-                        
-                        df_count = pd.read_sql(count_query, conn)
-                        total_count = df_count.iloc[0]['total_count']
-                        min_date = df_count.iloc[0]['min_date']
-                        max_date = df_count.iloc[0]['max_date']
-                        
-                        # Calculate the test split start date
-                        # This query finds the date that corresponds to the start of the test set
-                        # by ordering all matches and finding the date at the position where test set begins
-                        test_start_query = """
-                        WITH ordered_matches AS (
-                            SELECT tournament_date,
-                                   ROW_NUMBER() OVER (ORDER BY tournament_date ASC) as rn
-                            FROM match_features
-                            WHERE tournament_date BETWEEN '{0}' AND '{1}'
-                        )
-                        SELECT tournament_date
-                        FROM ordered_matches
-                        WHERE rn >= FLOOR({2} * {3})
-                        ORDER BY rn ASC
-                        LIMIT 1
-                        """.format(data_start, data_end, total_count, 1 - test_size)
-                        
-                        df_test_start = pd.read_sql(test_start_query, conn)
-                        
-                        if not df_test_start.empty:
-                            test_start_date = df_test_start.iloc[0]['tournament_date']
-                            if isinstance(test_start_date, str):
-                                test_start_date = test_start_date.split('T')[0]
-                            elif hasattr(test_start_date, 'date'):
-                                test_start_date = test_start_date.date().isoformat()
-                                
-                            logger.info(f"Using test start date: {test_start_date}")
-                            training_cutoff_date = test_start_date
-                        else:
-                            logger.warning("Could not determine test start date from query")
-                            training_cutoff_date = data_end
-                    else:
-                        # Default to end date if no specific info available
-                        training_cutoff_date = metrics['training_info']['data_date_range']['end'].split('T')[0]
-                        logger.info(f"Using training cutoff date from metrics: {training_cutoff_date}")
-            except Exception as e:
-                logger.warning(f"Error loading training cutoff date from metrics: {e}")
-                logger.info("Using recent data for testing")
-        
-        # Define the base query
-        if training_cutoff_date:
-            base_query = f"""
-            SELECT *
-            FROM match_features
-            WHERE tournament_date >= '{training_cutoff_date}'
-            ORDER BY tournament_date ASC
-            """
-            logger.info(f"Getting test data from {training_cutoff_date}")
-        else:
-            # If no cutoff date, get the most recent 15% of matches (matching TEST_SPLIT in training)
-            base_query = """
-            WITH ranked_matches AS (
-                SELECT 
-                    *, 
-                    NTILE(20) OVER (ORDER BY tournament_date ASC) AS date_quintile
-                FROM match_features
-            )
-            SELECT * FROM ranked_matches
-            WHERE date_quintile >= 18
-            ORDER BY tournament_date ASC
-            """
-            logger.info("Getting most recent 15% of matches as test data (matching TEST_SPLIT in training)")
+        # Define the query with dynamic row limit
+        limit_clause = f"LIMIT {limit}" if limit else ""
         
         # Use batched loading to handle large datasets efficiently
         offset = 0
         dataframes = []
         total_rows = 0
         
-        if limit:
-            total_to_fetch = limit
-        else:
-            # Get total count first
-            with conn.cursor() as cursor:
-                if training_cutoff_date:
-                    cursor.execute(f"SELECT COUNT(*) FROM match_features WHERE tournament_date >= '{training_cutoff_date}'")
-                else:
-                    cursor.execute("SELECT COUNT(*) FROM match_features")
-                    total_count = cursor.fetchone()[0]
-                    # We want the most recent 15% if no cutoff date
-                    total_to_fetch = max(1, int(total_count * 0.15))
+        # Get total count first
+        with conn.cursor() as cursor:
+            count_query = f"""
+            SELECT COUNT(*) 
+            FROM match_features 
+            WHERE tournament_date > '{training_end_date.date()}'
+            """
+            cursor.execute(count_query)
+            total_to_fetch = cursor.fetchone()[0]
+            
+            if limit and limit < total_to_fetch:
+                total_to_fetch = limit
         
-        logger.info(f"Fetching up to {total_to_fetch} rows from database")
+        logger.info(f"Fetching up to {total_to_fetch} rows of test data from database")
         pbar = tqdm(total=total_to_fetch, desc="Loading test data from database")
         
-        # Define the overall limit
-        remaining_to_fetch = limit if limit else total_to_fetch
-        
-        while remaining_to_fetch > 0:
-            # Define batch size (either DB_BATCH_SIZE or remaining limit)
-            batch_size = min(DB_BATCH_SIZE, remaining_to_fetch)
-            
-            # Define batch query with proper LIMIT and OFFSET
+        while True:
+            # Define batch query
             query = f"""
             {base_query}
-            LIMIT {batch_size} OFFSET {offset}
+            OFFSET {offset}
+            LIMIT {DB_BATCH_SIZE}
             """
             
             # Load batch
@@ -327,13 +320,12 @@ def load_test_data_from_database(training_cutoff_date: Optional[str] = None,
             total_rows += rows_fetched
             pbar.update(rows_fetched)
             
-            # Update remaining to fetch and offset
-            remaining_to_fetch -= rows_fetched
-            offset += rows_fetched
-            
-            # If we've reached the limit, we're done
+            # Check if we've reached the limit
             if limit and total_rows >= limit:
                 break
+                
+            # Update offset for next batch
+            offset += DB_BATCH_SIZE
         
         pbar.close()
         
@@ -345,15 +337,17 @@ def load_test_data_from_database(training_cutoff_date: Optional[str] = None,
             if 'tournament_date' in df.columns:
                 df['tournament_date'] = pd.to_datetime(df['tournament_date'])
             
-            # Sort by date
-            df = df.sort_values(by='tournament_date').reset_index(drop=True)
-            
             # Ensure result is an integer (1 for win, 0 for loss)
             if 'result' in df.columns:
                 df['result'] = df['result'].astype(int)
             
-            logger.info(f"Loaded {len(df)} test matches spanning from "
-                      f"{df['tournament_date'].min().date()} to {df['tournament_date'].max().date()}")
+            # Sort by date
+            df = df.sort_values(by='tournament_date').reset_index(drop=True)
+            
+            logger.info(f"Loaded {len(df)} test matches from {df['tournament_date'].min().date()} to {df['tournament_date'].max().date()}")
+            
+            # Save to cache for future use
+            save_to_cache(df, cache_key)
             
             if progress_tracker:
                 progress_tracker.update("Test data loading complete")
@@ -363,1107 +357,908 @@ def load_test_data_from_database(training_cutoff_date: Optional[str] = None,
             logger.warning("No test data retrieved from database")
             return pd.DataFrame()
     
-    except Exception as e:
-        logger.error(f"Error loading test data: {e}")
-        raise
     finally:
         conn.close()
 
 
-def load_test_data(features_path: Union[str, Path], test_size: float = 0.2, 
-                  progress_tracker: Optional[ProgressTracker] = None) -> pd.DataFrame:
+def load_model_pipeline() -> dict:
     """
-    Load test data from features file. 
-    This is kept for backwards compatibility.
+    Load the trained model pipeline.
     
-    Args:
-        features_path: Path to the features CSV file
-        test_size: Proportion of data to use for testing
-        progress_tracker: Optional progress tracker
-        
     Returns:
-        DataFrame with test data
+        Dictionary containing model, features, and metadata
     """
-    logger.info(f"Loading test data from {features_path}")
+    logger.info(f"Loading model pipeline from {PIPELINE_PATH}")
     
     try:
-        # Load features
-        df = pd.read_csv(features_path)
+        with open(PIPELINE_PATH, 'rb') as f:
+            pipeline = pickle.load(f)
         
-        # Convert date columns to datetime
-        if 'tourney_date' in df.columns:
-            df['tourney_date'] = pd.to_datetime(df['tourney_date'])
-            
-        # Sort by date
-        df = df.sort_values(by='tourney_date').reset_index(drop=True)
+        # Verify pipeline structure
+        required_keys = ['model', 'features', 'metadata']
+        for key in required_keys:
+            if key not in pipeline:
+                raise ValueError(f"Invalid pipeline format: missing '{key}'")
         
-        # Calculate split index - always use the most recent matches for testing
-        # to ensure we're evaluating on future matches not seen during training
-        split_idx = int(len(df) * (1 - test_size))
+        # Log model metadata
+        logger.info(f"Model type: {pipeline['metadata'].get('model_type', 'unknown')}")
+        logger.info(f"Model features: {pipeline['metadata'].get('feature_count', 'unknown')}")
+        logger.info(f"Model version: {pipeline['metadata'].get('version', 'unknown')}")
+        logger.info(f"Creation date: {pipeline['metadata'].get('creation_date', 'unknown')}")
         
-        # Get test data
-        test_df = df.iloc[split_idx:].copy()
-        
-        # Check if we have enough test data
-        if len(test_df) < 100:
-            logger.warning(f"Small test set: only {len(test_df)} matches. Consider using a larger test_size.")
-        
-        # Calculate date range
-        if 'tourney_date' in test_df.columns:
-            start_date = test_df['tourney_date'].min().strftime('%Y-%m-%d')
-            end_date = test_df['tourney_date'].max().strftime('%Y-%m-%d')
-            logger.info(f"Test data date range: {start_date} to {end_date}")
-        
-        logger.info(f"Loaded {len(test_df)} test matches from a total of {len(df)} matches")
-        logger.info(f"Using the most recent {test_size*100:.1f}% of matches for testing")
-        
-        if progress_tracker:
-            progress_tracker.update("Test data loading complete")
-        
-        return test_df
-    
+        return pipeline
     except Exception as e:
-        logger.error(f"Error loading test data: {e}")
+        logger.error(f"Error loading model pipeline: {e}")
         raise
 
 
-def get_feature_columns(df: pd.DataFrame, 
-                       progress_tracker: Optional[ProgressTracker] = None) -> List[str]:
+def prepare_features_for_prediction(
+    df: pd.DataFrame,
+    feature_names: list,
+    categorical_features: Optional[list] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> tuple[np.ndarray, Optional[np.ndarray]]:
     """
-    Get the list of feature columns for prediction.
+    Prepare features for prediction using the same approach as in training.
     
     Args:
-        df: DataFrame with match features
+        df: DataFrame containing tennis match features
+        feature_names: List of feature names to use
+        categorical_features: List of categorical feature names
         progress_tracker: Optional progress tracker
         
     Returns:
-        List of feature column names
+        Tuple of (feature matrix, labels if available)
     """
-    logger.info("Identifying feature columns")
+    logger.info("Preparing features for prediction")
     
-    # Columns to exclude from features
-    exclude_cols = ['id', 'match_id', 'tournament_date', 'player1_id', 'player2_id', 'surface', 'result', 'created_at', 'updated_at']
-    
-    # Get all numeric columns except excluded ones
-    feature_cols = [col for col in df.columns if col not in exclude_cols]
-    
-    # Generate list of surface-specific serve and return features
-    surface_specific_features = []
-    for feature in SERVE_RETURN_FEATURES:
-        base_feature = feature.split('_diff')[0]
-        # Try both lowercase and uppercase surface names
-        for surface in SURFACES:
-            surface_lower = surface.lower()
-            # Check for lowercase version (from database)
-            surface_feature_lower = f"{base_feature}_{surface_lower}_diff"
-            if surface_feature_lower in df.columns:
-                surface_specific_features.append(surface_feature_lower)
-            
-            # Also add uppercase version (model might use this)
-            surface_feature_upper = f"{base_feature}_{surface}_diff"
-            if surface_feature_upper in df.columns and surface_feature_upper != surface_feature_lower:
-                surface_specific_features.append(surface_feature_upper)
-    
-    # Generate list of surface-specific win rate features
-    for surface in SURFACES:
-        surface_lower = surface.lower()
+    # Ensure all required features are present
+    missing_features = [f for f in feature_names if f not in df.columns]
+    if missing_features:
+        logger.warning(f"Missing {len(missing_features)} features in prediction data: {missing_features[:5]}...")
+        logger.warning("Will proceed with available features, but predictions may be less accurate")
         
-        # Try both lowercase and uppercase versions
-        for surface_format in [surface_lower, surface]:
-            # Most recent win rate on specific surface
-            surface_win_rate = f"win_rate_{surface_format}_5_diff"
-            if surface_win_rate in df.columns and surface_win_rate not in feature_cols:
-                surface_specific_features.append(surface_win_rate)
-            
-            # Overall win rate on specific surface
-            surface_overall_win_rate = f"win_rate_{surface_format}_overall_diff"
-            if surface_overall_win_rate in df.columns and surface_overall_win_rate not in feature_cols:
-                surface_specific_features.append(surface_overall_win_rate)
+        # Use only available features
+        available_features = [f for f in feature_names if f in df.columns]
+        if not available_features:
+            raise ValueError("No model features found in prediction data")
+        feature_names = available_features
     
-    # Generate list of raw player features (for both player1 and player2)
-    raw_player_features = []
-    for feature in RAW_PLAYER_FEATURES:
-        player1_feature = f"player1_{feature}"
-        player2_feature = f"player2_{feature}"
-        
-        if player1_feature in df.columns and player1_feature not in feature_cols:
-            raw_player_features.append(player1_feature)
-        
-        if player2_feature in df.columns and player2_feature not in feature_cols:
-            raw_player_features.append(player2_feature)
+    # Extract features
+    X = df[feature_names].copy()
     
-    # Generate raw player serve/return features
-    for feature in SERVE_RETURN_FEATURES:
-        base_feature = feature.split('_diff')[0]
-        player1_feature = f"player1_{base_feature}"
-        player2_feature = f"player2_{base_feature}"
-        
-        if player1_feature in df.columns and player1_feature not in feature_cols:
-            raw_player_features.append(player1_feature)
-        
-        if player2_feature in df.columns and player2_feature not in feature_cols:
-            raw_player_features.append(player2_feature)
-    
-    # Generate raw player surface-specific features
-    for surface in SURFACES:
-        surface_lower = surface.lower()
-        
-        # Try both lowercase and uppercase versions for each player
-        for surface_format in [surface_lower, surface]:
-            # Win rates
-            for player_prefix in ['player1_', 'player2_']:
-                # Recent win rate
-                feat = f"{player_prefix}win_rate_{surface_format}_5"
-                if feat in df.columns and feat not in raw_player_features:
-                    raw_player_features.append(feat)
+    # Handle categorical features
+    if categorical_features:
+        for col in categorical_features:
+            if col in X.columns and (df[col].dtype == 'object' or df[col].dtype.name == 'category'):
+                # Convert to numeric codes for XGBoost
+                X[col] = pd.Categorical(X[col]).codes
                 
-                # Overall win rate
-                feat = f"{player_prefix}win_rate_{surface_format}_overall"
-                if feat in df.columns and feat not in raw_player_features:
-                    raw_player_features.append(feat)
-            
-            # Serve and return stats
-            for base_feature in [feat.split('_diff')[0] for feat in SERVE_RETURN_FEATURES]:
-                for player_prefix in ['player1_', 'player2_']:
-                    feat = f"{player_prefix}{base_feature}_{surface_format}"
-                    if feat in df.columns and feat not in raw_player_features:
-                        raw_player_features.append(feat)
+                # Replace -1 (unknown category) with NaN for XGBoost to handle
+                X[col] = X[col].replace(-1, np.nan)
     
-    # Ensure all surface-specific and raw player features are included
-    for feature in surface_specific_features + raw_player_features:
-        if feature not in feature_cols:
-            feature_cols.append(feature)
+    # Ensure all features are numeric
+    for col in feature_names:
+        if col in X.columns and not pd.api.types.is_numeric_dtype(X[col]):
+            logger.warning(f"Converting non-numeric feature {col} to float type")
+            X[col] = pd.to_numeric(X[col], errors='coerce')
     
-    logger.info(f"Selected {len(feature_cols)} feature columns")
+    # Convert to numpy array
+    X_array = X.values.astype(np.float32)
+    
+    # Extract labels if available
+    y_array = None
+    if 'result' in df.columns:
+        y_array = df['result'].values
+    
+    # Log data info
+    logger.info(f"Prepared features: {X_array.shape[1]} features, {X_array.shape[0]} samples")
+    if y_array is not None:
+        logger.info(f"Class distribution: {np.bincount(y_array)}")
     
     if progress_tracker:
-        progress_tracker.update("Feature selection complete")
+        progress_tracker.update("Feature preparation complete")
     
-    return feature_cols
+    return X_array, y_array
 
 
-def make_predictions(model: xgb.Booster, test_df: pd.DataFrame, feature_cols: List[str],
-                    progress_tracker: Optional[ProgressTracker] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def make_predictions(
+    model: xgb.Booster,
+    X: np.ndarray,
+    feature_names: list,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> np.ndarray:
     """
-    Make predictions on test data.
+    Make predictions using the trained model.
     
     Args:
         model: Trained XGBoost model
-        test_df: Test DataFrame
-        feature_cols: List of feature columns
+        X: Feature matrix
+        feature_names: List of feature names
         progress_tracker: Optional progress tracker
         
     Returns:
-        Tuple of (DataFrame with predictions, metrics dictionary)
+        Array of prediction probabilities
     """
-    logger.info("Making predictions on test data")
+    logger.info(f"Making predictions on {X.shape[0]} samples")
+    
+    # Create DMatrix for efficient prediction
+    dmatrix = xgb.DMatrix(X, feature_names=feature_names)
+    
+    # Make predictions - use GPU if available
+    device_params = detect_optimal_device()
+    logger.info(f"Prediction using {device_params.get('tree_method', 'unknown')} method")
+    
+    start_time = time.time()
+    y_pred_proba = model.predict(dmatrix)
+    prediction_time = time.time() - start_time
+    
+    logger.info(f"Predictions completed in {prediction_time:.2f} seconds")
+    logger.info(f"Average prediction probability: {y_pred_proba.mean():.4f}")
+    
+    if progress_tracker:
+        progress_tracker.update("Predictions complete")
+    
+    return y_pred_proba
+
+
+def evaluate_predictions(
+    y_true: np.ndarray,
+    y_pred_proba: np.ndarray,
+    threshold: float = 0.5,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> dict:
+    """
+    Evaluate prediction performance with comprehensive metrics.
+    
+    Args:
+        y_true: True labels
+        y_pred_proba: Predicted probabilities
+        threshold: Classification threshold
+        progress_tracker: Optional progress tracker
+        
+    Returns:
+        Dictionary of evaluation metrics
+    """
+    logger.info(f"Evaluating predictions with threshold {threshold}")
+    
+    # Convert probabilities to binary predictions
+    y_pred = (y_pred_proba > threshold).astype(int)
+    
+    # Calculate standard classification metrics
+    metrics = {}
     
     try:
-        # Create a copy of test data
-        df_pred = test_df.copy()
+        # Basic metrics
+        metrics['accuracy'] = float(accuracy_score(y_true, y_pred))
+        metrics['balanced_accuracy'] = float(balanced_accuracy_score(y_true, y_pred))
+        metrics['precision'] = float(precision_score(y_true, y_pred))
+        metrics['recall'] = float(recall_score(y_true, y_pred))
+        metrics['f1'] = float(f1_score(y_true, y_pred))
         
-        # Get model feature names
-        model_features = model.feature_names
+        # ROC AUC
+        metrics['roc_auc'] = float(roc_auc_score(y_true, y_pred_proba))
         
-        # Create a mapping between database columns and model features
-        # This is needed in case column names differ slightly (e.g., case sensitivity)
-        feature_mapping = {}
-        missing_features = []
+        # Average precision (PR AUC)
+        metrics['pr_auc'] = float(average_precision_score(y_true, y_pred_proba))
         
-        for model_feat in model_features:
-            found = False
-            
-            # Direct match - feature exists exactly as named
-            if model_feat in df_pred.columns:
-                feature_mapping[model_feat] = model_feat
-                found = True
-            else:
-                # Try case-insensitive match
-                model_feat_lower = model_feat.lower()
-                for db_col in df_pred.columns:
-                    if db_col.lower() == model_feat_lower:
-                        feature_mapping[model_feat] = db_col
-                        found = True
-                        logger.info(f"Mapped model feature '{model_feat}' to database column '{db_col}'")
-                        break
-            
-            if not found:
-                missing_features.append(model_feat)
+        # Log loss
+        metrics['log_loss'] = float(log_loss(y_true, y_pred_proba))
         
-        # Log the mapping and missing features
-        logger.info(f"Successfully mapped {len(feature_mapping)} features between model and database")
+        # Brier score (calibration metric)
+        metrics['brier_score'] = float(brier_score_loss(y_true, y_pred_proba))
         
-        if missing_features:
-            logger.warning(f"Missing {len(missing_features)} features expected by model")
-            
-            # Add missing features as NaN values
-            for feat in missing_features:
-                if feat not in df_pred.columns:
-                    logger.info(f"Adding missing feature '{feat}' as NaN (will be handled by XGBoost)")
-                    df_pred[feat] = np.nan
+        # Confusion matrix
+        cm = confusion_matrix(y_true, y_pred)
+        tn, fp, fn, tp = cm.ravel()
+        metrics['confusion_matrix'] = {
+            'true_negative': int(tn),
+            'false_positive': int(fp),
+            'false_negative': int(fn),
+            'true_positive': int(tp)
+        }
         
-        # Create a new DataFrame with the exact column names the model expects
-        X_test_mapped = pd.DataFrame()
+        # Classification report
+        report = classification_report(y_true, y_pred, output_dict=True)
+        metrics['classification_report'] = report
         
-        # For existing mappings, copy data from df_pred using the correct database column name
-        for model_feat, db_feat in feature_mapping.items():
-            X_test_mapped[model_feat] = df_pred[db_feat]
+        # Log results
+        logger.info(f"Accuracy: {metrics['accuracy']:.4f}")
+        logger.info(f"Balanced Accuracy: {metrics['balanced_accuracy']:.4f}")
+        logger.info(f"ROC AUC: {metrics['roc_auc']:.4f}")
+        logger.info(f"PR AUC: {metrics['pr_auc']:.4f}")
+        logger.info(f"Brier Score: {metrics['brier_score']:.4f}")
+        logger.info(f"Confusion Matrix: TN={tn}, FP={fp}, FN={fn}, TP={tp}")
         
-        # For missing features, copy from the added NaN columns
-        for feat in missing_features:
-            if feat in df_pred.columns:
-                X_test_mapped[feat] = df_pred[feat]
+    except Exception as e:
+        logger.error(f"Error calculating evaluation metrics: {e}")
+        metrics['error'] = str(e)
+    
+    if progress_tracker:
+        progress_tracker.update("Evaluation complete")
+    
+    return metrics
+
+
+def plot_confusion_matrix(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    output_path: Optional[Path] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> None:
+    """
+    Plot and save confusion matrix.
+    
+    Args:
+        y_true: True labels
+        y_pred: Predicted labels
+        output_path: Path to save the plot
+        progress_tracker: Optional progress tracker
+    """
+    logger.info("Plotting confusion matrix")
+    
+    cm = confusion_matrix(y_true, y_pred)
+    
+    # Calculate percentages
+    cm_pct = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+    
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    # Plot counts
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax1)
+    ax1.set_xlabel('Predicted')
+    ax1.set_ylabel('Actual')
+    ax1.set_title('Confusion Matrix (Counts)')
+    ax1.set_xticklabels(['Loss', 'Win'])
+    ax1.set_yticklabels(['Loss', 'Win'])
+    
+    # Plot percentages
+    sns.heatmap(cm_pct, annot=True, fmt='.1f', cmap='Blues', cbar=False, ax=ax2)
+    ax2.set_xlabel('Predicted')
+    ax2.set_ylabel('Actual')
+    ax2.set_title('Confusion Matrix (Percentages)')
+    ax2.set_xticklabels(['Loss', 'Win'])
+    ax2.set_yticklabels(['Loss', 'Win'])
+    
+    plt.tight_layout()
+    
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        logger.info(f"Saved confusion matrix to {output_path}")
+    
+    plt.close()
+    
+    if progress_tracker:
+        progress_tracker.update("Confusion matrix plot complete")
+
+
+def plot_roc_curve(
+    y_true: np.ndarray,
+    y_pred_proba: np.ndarray,
+    output_path: Optional[Path] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> None:
+    """
+    Plot and save ROC curve.
+    
+    Args:
+        y_true: True labels
+        y_pred_proba: Predicted probabilities
+        output_path: Path to save the plot
+        progress_tracker: Optional progress tracker
+    """
+    logger.info("Plotting ROC curve")
+    
+    # Calculate ROC curve
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+    
+    # Plot
+    plt.figure(figsize=(10, 8))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
+    
+    # Plot thresholds
+    threshold_markers = [0.1, 0.3, 0.5, 0.7, 0.9]
+    for threshold in threshold_markers:
+        # Find closest threshold
+        idx = (np.abs(thresholds - threshold)).argmin()
+        plt.plot(fpr[idx], tpr[idx], 'o', markersize=8, 
+                label=f'Threshold = {thresholds[idx]:.2f}')
+    
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve')
+    plt.legend(loc='lower right')
+    plt.grid(alpha=0.3)
+    
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        logger.info(f"Saved ROC curve to {output_path}")
+    
+    plt.close()
+    
+    if progress_tracker:
+        progress_tracker.update("ROC curve plot complete")
+
+
+def plot_precision_recall_curve(
+    y_true: np.ndarray,
+    y_pred_proba: np.ndarray,
+    output_path: Optional[Path] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> None:
+    """
+    Plot and save precision-recall curve.
+    
+    Args:
+        y_true: True labels
+        y_pred_proba: Predicted probabilities
+        output_path: Path to save the plot
+        progress_tracker: Optional progress tracker
+    """
+    logger.info("Plotting precision-recall curve")
+    
+    # Calculate PR curve
+    precision, recall, thresholds = precision_recall_curve(y_true, y_pred_proba)
+    pr_auc = average_precision_score(y_true, y_pred_proba)
+    
+    # Plot
+    plt.figure(figsize=(10, 8))
+    plt.plot(recall, precision, color='green', lw=2, label=f'PR curve (AP = {pr_auc:.3f})')
+    
+    # Add baseline
+    baseline = sum(y_true) / len(y_true)
+    plt.axhline(y=baseline, color='navy', lw=2, linestyle='--', label=f'Baseline (= {baseline:.3f})')
+    
+    # Plot thresholds
+    threshold_markers = [0.1, 0.3, 0.5, 0.7, 0.9]
+    for threshold in threshold_markers:
+        if len(thresholds) > 0:  # Check if we have thresholds
+            # Find closest threshold (handling edge case)
+            idx = min(len(thresholds) - 1, (np.abs(thresholds - threshold)).argmin())
+            idx2 = min(len(precision) - 1, idx)  # Ensure we don't exceed precision length
+            plt.plot(recall[idx2], precision[idx2], 'o', markersize=8, 
+                    label=f'Threshold = {threshold:.2f}')
+    
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend(loc='lower left')
+    plt.grid(alpha=0.3)
+    
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        logger.info(f"Saved precision-recall curve to {output_path}")
+    
+    plt.close()
+    
+    if progress_tracker:
+        progress_tracker.update("Precision-recall curve plot complete")
+
+
+def plot_calibration_curve(
+    y_true: np.ndarray,
+    y_pred_proba: np.ndarray,
+    output_path: Optional[Path] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> None:
+    """
+    Plot and save calibration curve.
+    
+    Args:
+        y_true: True labels
+        y_pred_proba: Predicted probabilities
+        output_path: Path to save the plot
+        progress_tracker: Optional progress tracker
+    """
+    logger.info("Plotting calibration curve")
+    
+    # Calculate calibration curve
+    prob_true, prob_pred = calibration_curve(y_true, y_pred_proba, n_bins=10)
+    
+    # Calculate Brier score
+    brier = brier_score_loss(y_true, y_pred_proba)
+    
+    # Plot
+    plt.figure(figsize=(10, 8))
+    
+    # Plot calibration curve
+    plt.plot(prob_pred, prob_true, 's-', color='darkgreen', lw=2, 
+            label=f'Calibration curve (Brier score = {brier:.3f})')
+    
+    # Plot perfect calibration
+    plt.plot([0, 1], [0, 1], '--', color='gray', label='Perfect calibration')
+    
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('Mean predicted probability')
+    plt.ylabel('Fraction of positives (Empirical probability)')
+    plt.title('Calibration Curve')
+    plt.legend(loc='lower right')
+    plt.grid(alpha=0.3)
+    
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        logger.info(f"Saved calibration curve to {output_path}")
+    
+    plt.close()
+    
+    if progress_tracker:
+        progress_tracker.update("Calibration curve plot complete")
+
+
+def plot_probability_distribution(
+    y_true: np.ndarray,
+    y_pred_proba: np.ndarray,
+    output_path: Optional[Path] = None,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> None:
+    """
+    Plot distribution of prediction probabilities.
+    
+    Args:
+        y_true: True labels
+        y_pred_proba: Predicted probabilities
+        output_path: Path to save the plot
+        progress_tracker: Optional progress tracker
+    """
+    logger.info("Plotting probability distribution")
+    
+    # Create figure
+    plt.figure(figsize=(12, 8))
+    
+    # Plot histograms for each class
+    bins = np.linspace(0, 1, 21)  # 20 bins
+    
+    # Class 0 (Losses)
+    class0_probs = y_pred_proba[y_true == 0]
+    if len(class0_probs) > 0:
+        plt.hist(class0_probs, bins=bins, alpha=0.5, color='red', 
+                 label=f'Actual losses (n={len(class0_probs)})')
+    
+    # Class 1 (Wins)
+    class1_probs = y_pred_proba[y_true == 1]
+    if len(class1_probs) > 0:
+        plt.hist(class1_probs, bins=bins, alpha=0.5, color='blue', 
+                 label=f'Actual wins (n={len(class1_probs)})')
+    
+    # Add vertical line at threshold 0.5
+    plt.axvline(x=0.5, color='black', linestyle='--', 
+                label='Decision threshold (0.5)')
+    
+    plt.xlabel('Predicted probability of winning')
+    plt.ylabel('Count')
+    plt.title('Distribution of Prediction Probabilities by Actual Outcome')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        logger.info(f"Saved probability distribution plot to {output_path}")
+    
+    plt.close()
+    
+    if progress_tracker:
+        progress_tracker.update("Probability distribution plot complete")
+
+
+def analyze_prediction_quality(
+    df: pd.DataFrame,
+    y_pred_proba: np.ndarray,
+    metrics: dict,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> dict:
+    """
+    Analyze prediction quality and identify discrepancies.
+    
+    Args:
+        df: Original DataFrame with match details
+        y_pred_proba: Predicted probabilities
+        metrics: Evaluation metrics
+        progress_tracker: Optional progress tracker
         
-        # Ensure we have all features the model expects
-        assert set(X_test_mapped.columns) == set(model_features), "Feature mismatch after mapping"
-        
-        # Log feature information
-        logger.info(f"Using {len(model_features)} features for prediction")
-        
-        # Check for features with all missing values
-        null_counts = X_test_mapped.isnull().sum()
-        complete_null_features = null_counts[null_counts == len(X_test_mapped)].index.tolist()
-        if complete_null_features:
-            logger.warning(f"Features with all missing values: {complete_null_features[:5]}...")
-        
-        # Extract target
-        y_test = df_pred['result'].values
-        
-        # Create DMatrix with feature names and specify missing value handling
-        dtest = xgb.DMatrix(X_test_mapped.values, label=y_test, feature_names=model_features, missing=np.nan)
-        
-        # Make predictions
-        y_pred_proba = model.predict(dtest)
-        y_pred = (y_pred_proba > 0.5).astype(int)
-        
-        # Add predictions to DataFrame
-        df_pred['predicted_proba'] = y_pred_proba
-        df_pred['predicted'] = y_pred
-        df_pred['correct'] = (df_pred['predicted'] == df_pred['result']).astype(int)
-        
-        # Calculate metrics
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-        
-        logger.info(f"Overall accuracy: {accuracy:.4f}")
-        logger.info(f"Precision: {precision:.4f}")
-        logger.info(f"Recall: {recall:.4f}")
-        logger.info(f"F1 Score: {f1:.4f}")
-        
-        # Calculate surface-specific metrics
+    Returns:
+        Dictionary with analysis results
+    """
+    logger.info("Analyzing prediction quality")
+    
+    # Copy DataFrame and add predictions
+    analysis_df = df.copy()
+    analysis_df['prediction_proba'] = y_pred_proba
+    analysis_df['predicted_winner'] = (y_pred_proba > 0.5).astype(int)
+    
+    # Calculate correctness
+    if 'result' in analysis_df.columns:
+        analysis_df['correct'] = analysis_df['predicted_winner'] == analysis_df['result']
+    
+    analysis = {}
+    
+    # 1. Surface analysis
+    if 'surface' in analysis_df.columns and 'result' in analysis_df.columns:
         surface_metrics = {}
         
         for surface in SURFACES:
-            surface_idx = df_pred['surface'] == surface
-            
-            if sum(surface_idx) > 0:
-                surface_acc = accuracy_score(
-                    df_pred.loc[surface_idx, 'result'], 
-                    df_pred.loc[surface_idx, 'predicted']
-                )
+            surface_df = analysis_df[analysis_df['surface'].str.lower() == surface.lower()]
+            if len(surface_df) > 0:
+                y_true_surface = surface_df['result'].values
+                y_pred_surface = surface_df['predicted_winner'].values
+                y_proba_surface = surface_df['prediction_proba'].values
                 
-                surface_metrics[surface] = {
-                    'accuracy': surface_acc,
-                    'count': sum(surface_idx)
-                }
-                
-                logger.info(f"{surface} surface accuracy: {surface_acc:.4f} (n={sum(surface_idx)})")
+                # Calculate metrics for this surface
+                try:
+                    surface_metrics[surface] = {
+                        'count': int(len(surface_df)),
+                        'accuracy': float(accuracy_score(y_true_surface, y_pred_surface)),
+                        'roc_auc': float(roc_auc_score(y_true_surface, y_proba_surface)) 
+                            if len(np.unique(y_true_surface)) > 1 else None
+                    }
+                except Exception as e:
+                    logger.warning(f"Error calculating metrics for {surface} surface: {e}")
         
-        # Calculate confidence-based metrics
-        confidence_bins = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        confidence_metrics = []
-        
-        for i in range(len(confidence_bins) - 1):
-            lower = confidence_bins[i]
-            upper = confidence_bins[i + 1]
-            
-            # Filter predictions in this confidence range
-            mask = (df_pred['predicted_proba'] >= lower) & (df_pred['predicted_proba'] < upper) | \
-                  (df_pred['predicted_proba'] <= (1 - lower)) & (df_pred['predicted_proba'] > (1 - upper))
-            
-            bin_count = sum(mask)
-            
-            if bin_count > 0:
-                bin_acc = accuracy_score(
-                    df_pred.loc[mask, 'result'], 
-                    df_pred.loc[mask, 'predicted']
-                )
-                
-                confidence_metrics.append({
-                    'confidence_range': f"{lower:.1f}-{upper:.1f}",
-                    'accuracy': bin_acc,
-                    'count': bin_count,
-                    'percentage': bin_count / len(df_pred) * 100
-                })
-                
-                logger.info(f"Confidence {lower:.1f}-{upper:.1f} accuracy: {bin_acc:.4f} (n={bin_count}, {bin_count / len(df_pred) * 100:.1f}%)")
-        
-        # Compile metrics
-        metrics = {
-            'overall': {
-                'accuracy': accuracy,
-                'precision': precision,
-                'recall': recall,
-                'f1': f1,
-                'count': len(test_df)
-            },
-            'by_surface': surface_metrics,
-            'by_confidence': confidence_metrics
-        }
-        
-        if progress_tracker:
-            progress_tracker.update("Prediction complete")
-        
-        return df_pred, metrics
+        analysis['surface_analysis'] = surface_metrics
     
-    except Exception as e:
-        logger.error(f"Error making predictions: {e}")
-        raise
-
-
-def calculate_match_level_metrics(predictions_df: pd.DataFrame,
-                                progress_tracker: Optional[ProgressTracker] = None) -> Dict[str, Any]:
-    """
-    Calculate match-level metrics for player position symmetry.
-    
-    Args:
-        predictions_df: DataFrame with predictions
-        progress_tracker: Optional progress tracker
+    # 2. Tournament level analysis
+    if 'tournament_level' in analysis_df.columns and 'result' in analysis_df.columns:
+        level_metrics = {}
         
-    Returns:
-        Dictionary with match-level metrics
-    """
-    logger.info("Calculating match-level metrics")
-    
-    try:
-        # Get unique match IDs
-        match_ids = predictions_df['match_id'].unique()
-        
-        # Initialize counters
-        consistent_predictions = 0
-        inconsistent_predictions = 0
-        
-        # Initialize match-level accuracy counter
-        match_correct = 0
-        total_matches = 0
-        
-        # Create progress bar
-        pbar = tqdm(match_ids, desc="Analyzing match predictions")
-        
-        for match_id in pbar:
-            # Get predictions for this match
-            match_rows = predictions_df[predictions_df['match_id'] == match_id]
-            
-            if len(match_rows) != 2:
+        for level in analysis_df['tournament_level'].unique():
+            if pd.isna(level):
                 continue
-            
-            # Check if predictions are consistent
-            p1_pred = match_rows.iloc[0]['predicted']
-            p2_pred = match_rows.iloc[1]['predicted']
-            
-            # p1_pred and p2_pred should be opposite for consistent predictions
-            if (p1_pred == 1 and p2_pred == 0) or (p1_pred == 0 and p2_pred == 1):
-                consistent_predictions += 1
-            else:
-                inconsistent_predictions += 1
-            
-            # Check if either prediction is correct (only need to check one)
-            if match_rows.iloc[0]['correct'] == 1 or match_rows.iloc[1]['correct'] == 1:
-                match_correct += 1
-            
-            total_matches += 1
+                
+            level_df = analysis_df[analysis_df['tournament_level'] == level]
+            if len(level_df) > 0:
+                y_true_level = level_df['result'].values
+                y_pred_level = level_df['predicted_winner'].values
+                y_proba_level = level_df['prediction_proba'].values
+                
+                # Calculate metrics for this tournament level
+                try:
+                    level_metrics[str(level)] = {
+                        'count': int(len(level_df)),
+                        'accuracy': float(accuracy_score(y_true_level, y_pred_level)),
+                        'roc_auc': float(roc_auc_score(y_true_level, y_proba_level))
+                            if len(np.unique(y_true_level)) > 1 else None
+                    }
+                except Exception as e:
+                    logger.warning(f"Error calculating metrics for tournament level {level}: {e}")
         
-        # Calculate match-level accuracy
-        match_level_accuracy = match_correct / total_matches if total_matches > 0 else 0
-        
-        # Calculate consistency percentage
-        consistency_pct = consistent_predictions / total_matches * 100 if total_matches > 0 else 0
-        
-        logger.info(f"Match-level accuracy: {match_level_accuracy:.4f}")
-        logger.info(f"Prediction consistency: {consistency_pct:.2f}%")
-        logger.info(f"Consistent predictions: {consistent_predictions} / {total_matches}")
-        logger.info(f"Inconsistent predictions: {inconsistent_predictions} / {total_matches}")
-        
-        # Compile metrics
-        match_metrics = {
-            'match_level_accuracy': match_level_accuracy,
-            'prediction_consistency_pct': consistency_pct,
-            'consistent_predictions': consistent_predictions,
-            'inconsistent_predictions': inconsistent_predictions,
-            'total_matches': total_matches
-        }
-        
-        if progress_tracker:
-            progress_tracker.update("Match-level metrics calculation complete")
-        
-        return match_metrics
+        analysis['tournament_level_analysis'] = level_metrics
     
-    except Exception as e:
-        logger.error(f"Error calculating match-level metrics: {e}")
-        raise
+    # 3. Check for potential issues or discrepancies
+    discrepancies = []
+    
+    # Surface performance discrepancy
+    if 'surface_analysis' in analysis:
+        surface_accs = [(s, m['accuracy']) for s, m in analysis['surface_analysis'].items() 
+                        if m['count'] >= 50]  # Only consider surfaces with enough matches
+        
+        if surface_accs:
+            best_surface = max(surface_accs, key=lambda x: x[1])
+            worst_surface = min(surface_accs, key=lambda x: x[1])
+            
+            if best_surface[1] - worst_surface[1] > 0.1:  # Difference > 10%
+                discrepancies.append({
+                    'type': 'surface_performance_gap',
+                    'description': f"Large performance gap between surfaces: {best_surface[0]} ({best_surface[1]:.2%}) vs {worst_surface[0]} ({worst_surface[1]:.2%})",
+                    'severity': 'medium'
+                })
+    
+    # Unexpected probability distributions
+    if 'result' in analysis_df.columns:
+        class0_probs = y_pred_proba[analysis_df['result'] == 0]
+        class1_probs = y_pred_proba[analysis_df['result'] == 1]
+        
+        if len(class0_probs) > 0 and len(class1_probs) > 0:
+            # Check if mean probability for winners is lower than expected
+            if np.mean(class1_probs) < 0.6:
+                discrepancies.append({
+                    'type': 'low_winner_confidence',
+                    'description': f"Model lacks confidence in true winners. Mean probability for winners: {np.mean(class1_probs):.2f}",
+                    'severity': 'high' if np.mean(class1_probs) < 0.55 else 'medium'
+                })
+            
+            # Check if mean probability for losers is higher than expected
+            if np.mean(class0_probs) > 0.4:
+                discrepancies.append({
+                    'type': 'high_loser_confidence',
+                    'description': f"Model overconfident in predicting losers as winners. Mean probability for losers: {np.mean(class0_probs):.2f}",
+                    'severity': 'high' if np.mean(class0_probs) > 0.45 else 'medium'
+                })
+    
+    # Overall calibration issues
+    if metrics.get('brier_score', 0) > 0.25:
+        discrepancies.append({
+            'type': 'poor_calibration',
+            'description': f"Model shows poor probability calibration (Brier score: {metrics['brier_score']:.3f})",
+            'severity': 'high'
+        })
+    
+    # Threshold analysis
+    if 'roc_auc' in metrics and metrics['roc_auc'] > 0.6:
+        # If AUC is decent but accuracy is lower than expected,
+        # the threshold might need adjustment
+        if metrics.get('accuracy', 0) < 0.6:
+            discrepancies.append({
+                'type': 'threshold_adjustment',
+                'description': "Model has good ROC AUC but lower accuracy. Consider adjusting the prediction threshold.",
+                'severity': 'medium'
+            })
+    
+    analysis['discrepancies'] = discrepancies
+    
+    # 4. Timestamp analysis
+    if 'tournament_date' in analysis_df.columns and 'result' in analysis_df.columns:
+        # Group by month and calculate performance
+        analysis_df['month'] = analysis_df['tournament_date'].dt.to_period('M')
+        monthly_performance = analysis_df.groupby('month')['correct'].agg(['mean', 'count']).reset_index()
+        monthly_performance['month'] = monthly_performance['month'].astype(str)
+        
+        # Convert to dictionary for JSON serialization
+        analysis['monthly_performance'] = monthly_performance.to_dict(orient='records')
+        
+        # Check for performance trends
+        if len(monthly_performance) >= 3:
+            recent_months = monthly_performance.iloc[-3:]
+            if recent_months['mean'].is_monotonic_decreasing and recent_months['mean'].iloc[-1] < 0.6:
+                discrepancies.append({
+                    'type': 'decreasing_performance',
+                    'description': "Model performance is steadily decreasing in recent months",
+                    'severity': 'high'
+                })
+    
+    # Log major findings
+    if discrepancies:
+        logger.warning("Analysis found the following issues:")
+        for d in discrepancies:
+            logger.warning(f"  - {d['severity'].upper()}: {d['description']}")
+    else:
+        logger.info("No significant issues found in prediction analysis")
+    
+    if progress_tracker:
+        progress_tracker.update("Prediction quality analysis complete")
+    
+    return analysis
 
 
-def plot_results(predictions_df: pd.DataFrame, metrics: Dict[str, Any], output_dir: Union[str, Path],
-                progress_tracker: Optional[ProgressTracker] = None) -> None:
+def save_predictions_and_analysis(
+    df: pd.DataFrame,
+    y_pred_proba: np.ndarray,
+    metrics: dict,
+    analysis: dict,
+    predictions_path: Path,
+    metrics_path: Path,
+    progress_tracker: Optional[ProgressTracker] = None
+) -> None:
     """
-    Plot prediction results.
+    Save predictions, metrics, and analysis to files.
     
     Args:
-        predictions_df: DataFrame with predictions
-        metrics: Dictionary with metrics
-        output_dir: Directory to save plots
+        df: Original DataFrame with match details
+        y_pred_proba: Predicted probabilities
+        metrics: Evaluation metrics
+        analysis: Analysis results
+        predictions_path: Path to save predictions CSV
+        metrics_path: Path to save metrics JSON
         progress_tracker: Optional progress tracker
     """
-    logger.info("Plotting results")
+    logger.info("Saving predictions and analysis")
     
-    try:
-        # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Plot confusion matrix
-        plt.figure(figsize=(8, 6))
-        cm = confusion_matrix(predictions_df['result'], predictions_df['predicted'])
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                   xticklabels=['Player 2 Wins', 'Player 1 Wins'],
-                   yticklabels=['Player 2 Wins', 'Player 1 Wins'])
-        plt.title('Confusion Matrix')
-        plt.xlabel('Predicted')
-        plt.ylabel('Actual')
-        plt.savefig(output_dir / "prediction_confusion_matrix.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        # Plot ROC curve
-        plt.figure(figsize=(8, 6))
-        fpr, tpr, _ = roc_curve(predictions_df['result'], predictions_df['predicted_proba'])
-        roc_auc = auc(fpr, tpr)
-        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.3f})')
-        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-        plt.xlim([0.0, 1.0])
-        plt.ylim([0.0, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic')
-        plt.legend(loc="lower right")
-        plt.savefig(output_dir / "roc_curve.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        # Plot accuracy by confidence
-        if 'by_confidence' in metrics and metrics['by_confidence']:
-            plt.figure(figsize=(10, 6))
-            conf_ranges = [item['confidence_range'] for item in metrics['by_confidence']]
-            accuracies = [item['accuracy'] for item in metrics['by_confidence']]
-            counts = [item['count'] for item in metrics['by_confidence']]
-            
-            # Plot bar chart
-            bars = plt.bar(conf_ranges, accuracies, color='skyblue')
-            
-            # Add count labels
-            for i, bar in enumerate(bars):
-                plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                      f"n={counts[i]}", ha='center')
-            
-            plt.axhline(y=metrics['overall']['accuracy'], color='r', linestyle='--', 
-                      label=f"Overall Accuracy: {metrics['overall']['accuracy']:.3f}")
-            plt.xlabel('Confidence Range')
-            plt.ylabel('Accuracy')
-            plt.title('Prediction Accuracy by Confidence Range')
-            plt.ylim(0, 1.1)
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(output_dir / "accuracy_by_confidence.png", dpi=300, bbox_inches='tight')
-            plt.close()
-        
-        # Plot accuracy by surface
-        if 'by_surface' in metrics and metrics['by_surface']:
-            plt.figure(figsize=(10, 6))
-            surfaces = list(metrics['by_surface'].keys())
-            surface_accs = [metrics['by_surface'][s]['accuracy'] for s in surfaces]
-            surface_counts = [metrics['by_surface'][s]['count'] for s in surfaces]
-            
-            # Plot bar chart
-            bars = plt.bar(surfaces, surface_accs, color='lightgreen')
-            
-            # Add count labels
-            for i, bar in enumerate(bars):
-                plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                      f"n={surface_counts[i]}", ha='center')
-            
-            plt.axhline(y=metrics['overall']['accuracy'], color='r', linestyle='--',
-                      label=f"Overall Accuracy: {metrics['overall']['accuracy']:.3f}")
-            plt.xlabel('Surface')
-            plt.ylabel('Accuracy')
-            plt.title('Prediction Accuracy by Surface')
-            plt.ylim(0, 1.1)
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(output_dir / "accuracy_by_surface.png", dpi=300, bbox_inches='tight')
-            plt.close()
-        
-        # Plot prediction distribution
-        plt.figure(figsize=(10, 6))
-        sns.histplot(predictions_df['predicted_proba'], bins=20, kde=True)
-        plt.xlabel('Prediction Probability')
-        plt.ylabel('Count')
-        plt.title('Distribution of Prediction Probabilities')
-        plt.savefig(output_dir / "prediction_distribution.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        logger.info(f"Saved plots to {output_dir}")
-        
-        if progress_tracker:
-            progress_tracker.update("Results plotting complete")
+    # Save predictions to CSV
+    predictions_df = df.copy()
+    predictions_df['prediction_probability'] = y_pred_proba
+    predictions_df['predicted_winner'] = (y_pred_proba > 0.5).astype(int)
     
-    except Exception as e:
-        logger.error(f"Error plotting results: {e}")
-
-
-def save_results(predictions_df: pd.DataFrame, metrics: Dict[str, Any], 
-                output_path: Union[str, Path], metrics_path: Union[str, Path],
-                progress_tracker: Optional[ProgressTracker] = None) -> None:
-    """
-    Save prediction results.
+    # Add correctness if actual results are available
+    if 'result' in predictions_df.columns:
+        predictions_df['correct'] = predictions_df['predicted_winner'] == predictions_df['result']
     
-    Args:
-        predictions_df: DataFrame with predictions
-        metrics: Dictionary with metrics
-        output_path: Path to save predictions
-        metrics_path: Path to save metrics
-        progress_tracker: Optional progress tracker
-    """
-    logger.info("Saving results")
+    # Save to CSV
+    predictions_df.to_csv(predictions_path, index=False)
+    logger.info(f"Saved predictions to {predictions_path}")
     
-    try:
-        # Save predictions
-        predictions_df.to_csv(output_path, index=False)
-        logger.info(f"Saved predictions to {output_path}")
-        
-        # Save metrics
-        import json
-        
-        # Convert numpy types to Python types for JSON serialization
-        def convert_numpy_types(obj):
-            if isinstance(obj, dict):
-                return {k: convert_numpy_types(v) for k, v in obj.items()}
-            elif isinstance(obj, (list, tuple)):
-                return [convert_numpy_types(x) for x in obj]
-            elif isinstance(obj, (np.int64, np.int32)):
-                return int(obj)
-            elif isinstance(obj, (np.float64, np.float32)):
-                return float(obj)
-            else:
-                return obj
-        
-        metrics_json = convert_numpy_types(metrics)
-        
-        # Add timestamp
-        metrics_json['timestamp'] = datetime.now().isoformat()
-        
-        with open(metrics_path, 'w') as f:
-            json.dump(metrics_json, f, indent=2)
-        
-        logger.info(f"Saved metrics to {metrics_path}")
-        
-        if progress_tracker:
-            progress_tracker.update("Results saving complete")
-    
-    except Exception as e:
-        logger.error(f"Error saving results: {e}")
-
-
-def predict_match(model: xgb.Booster, player1_id: str, player2_id: str, 
-                 surface: str, player_stats: Dict[str, Dict[str, float]]) -> Dict[str, Any]:
-    """
-    Predict the outcome of a single match.
-    
-    Args:
-        model: Trained XGBoost model
-        player1_id: ID of player 1
-        player2_id: ID of player 2
-        surface: Match surface
-        player_stats: Dictionary with player statistics
-        
-    Returns:
-        Dictionary with prediction results
-    """
-    logger.info(f"Predicting match between player {player1_id} and player {player2_id} on {surface}")
-    
-    try:
-        # Check if players exist in stats
-        if player1_id not in player_stats:
-            raise ValueError(f"Player {player1_id} not found in player stats")
-        
-        if player2_id not in player_stats:
-            raise ValueError(f"Player {player2_id} not found in player stats")
-        
-        # Get player stats
-        p1_stats = player_stats[player1_id]
-        p2_stats = player_stats[player2_id]
-        
-        # Create feature dictionary
-        features = {}
-        
-        # Add Elo difference if available
-        if 'elo' in p1_stats and 'elo' in p2_stats:
-            features['player_elo_diff'] = p1_stats['elo'] - p2_stats['elo']
-        else:
-            # Leave as NaN instead of 0.0
-            features['player_elo_diff'] = np.nan
-        
-        # Add win rate differences
-        for stat in RAW_PLAYER_FEATURES:
-            if stat in p1_stats and stat in p2_stats:
-                features[f"{stat}_diff"] = p1_stats[stat] - p2_stats[stat]
-                
-                # Add raw player features
-                features[f"player1_{stat}"] = p1_stats[stat]
-                features[f"player2_{stat}"] = p2_stats[stat]
-            else:
-                # Use NaN for missing stats
-                features[f"{stat}_diff"] = np.nan
-                if stat not in p1_stats:
-                    features[f"player1_{stat}"] = np.nan
-                if stat not in p2_stats:
-                    features[f"player2_{stat}"] = np.nan
-        
-        # Surface name handling - ensure we use lowercase consistently
-        surface_lower = surface.lower()
-        
-        # Win rate features
-        for timeframe in ["5", "overall"]:
-            # Define feature name for database feature (always lowercase)
-            db_feature = f"win_rate_{surface_lower}_{timeframe}"
-            
-            # Define feature names in model format
-            model_feature = f"win_rate_{surface_lower}_{timeframe}_diff"
-            p1_model_feature = f"player1_win_rate_{surface_lower}_{timeframe}"
-            p2_model_feature = f"player2_win_rate_{surface_lower}_{timeframe}"
-            
-            if db_feature in p1_stats and db_feature in p2_stats:
-                features[model_feature] = p1_stats[db_feature] - p2_stats[db_feature]
-                features[p1_model_feature] = p1_stats[db_feature]
-                features[p2_model_feature] = p2_stats[db_feature]
-            else:
-                # Use NaN for missing stats
-                features[model_feature] = np.nan
-                features[p1_model_feature] = np.nan if db_feature not in p1_stats else p1_stats[db_feature]
-                features[p2_model_feature] = np.nan if db_feature not in p2_stats else p2_stats[db_feature]
-        
-        # Add serve and return stats
-        for stat in SERVE_RETURN_FEATURES:
-            base_stat = stat.split('_diff')[0]
-            
-            if base_stat in p1_stats and base_stat in p2_stats:
-                features[stat] = p1_stats[base_stat] - p2_stats[base_stat]
-                
-                # Add raw player serve/return stats
-                features[f"player1_{base_stat}"] = p1_stats[base_stat]
-                features[f"player2_{base_stat}"] = p2_stats[base_stat]
-            else:
-                # Use NaN for missing stats
-                features[stat] = np.nan
-                if base_stat not in p1_stats:
-                    features[f"player1_{base_stat}"] = np.nan
-                if base_stat not in p2_stats:
-                    features[f"player2_{base_stat}"] = np.nan
-            
-            # Add surface-specific serve/return stats
-            # Database feature name (always lowercase)
-            db_surface_stat = f"{base_stat}_{surface_lower}"
-            
-            # Create feature names as model might expect them
-            model_surface_stat = f"{base_stat}_{surface_lower}_diff"
-            p1_model_surface_stat = f"player1_{base_stat}_{surface_lower}"
-            p2_model_surface_stat = f"player2_{base_stat}_{surface_lower}"
-            
-            if db_surface_stat in p1_stats and db_surface_stat in p2_stats:
-                features[model_surface_stat] = p1_stats[db_surface_stat] - p2_stats[db_surface_stat]
-                features[p1_model_surface_stat] = p1_stats[db_surface_stat]
-                features[p2_model_surface_stat] = p2_stats[db_surface_stat]
-            else:
-                # Use NaN for missing stats
-                features[model_surface_stat] = np.nan
-                features[p1_model_surface_stat] = np.nan if db_surface_stat not in p1_stats else p1_stats[db_surface_stat]
-                features[p2_model_surface_stat] = np.nan if db_surface_stat not in p2_stats else p2_stats[db_surface_stat]
-        
-        # Add surface - use lowercase for consistency
-        features['surface'] = surface_lower
-        
-        # Convert to DataFrame
-        df = pd.DataFrame([features])
-        
-        # Get feature columns that match the model's features
-        feature_names = model.feature_names
-        
-        # Map feature names to ensure we have exact columns the model expects
-        X_test_mapped = pd.DataFrame()
-        missing_features = []
-        
-        for model_feat in feature_names:
-            if model_feat in df.columns:
-                # Direct match
-                X_test_mapped[model_feat] = df[model_feat]
-            else:
-                # Check for case-insensitive matches
-                model_feat_lower = model_feat.lower()
-                found = False
-                for col in df.columns:
-                    if col.lower() == model_feat_lower:
-                        X_test_mapped[model_feat] = df[col]
-                        found = True
-                        break
-                
-                if not found:
-                    missing_features.append(model_feat)
-        
-        # Add any missing features as NaN
-        if missing_features:
-            logger.warning(f"Missing features: {missing_features}")
-            
-            for feat in missing_features:
-                X_test_mapped[feat] = np.nan
-                logger.info(f"Adding missing feature '{feat}' as NaN (will be handled by XGBoost)")
-        
-        # Create DMatrix with missing value handling
-        dmat = xgb.DMatrix(X_test_mapped.values, feature_names=feature_names, missing=np.nan)
-        
-        # Make prediction
-        prob = model.predict(dmat)[0]
-        pred = 1 if prob > 0.5 else 0
-        
-        # Prepare result
-        result = {
-            'player1_id': player1_id,
-            'player2_id': player2_id,
-            'surface': surface,
-            'predicted_winner': player1_id if pred == 1 else player2_id,
-            'predicted_proba': float(prob) if pred == 1 else float(1 - prob),
-            'player1_win_proba': float(prob),
-            'player2_win_proba': float(1 - prob),
-            'features_used': list(feature_names)
+    # Combine metrics and analysis
+    combined_results = {
+        'metrics': metrics,
+        'analysis': analysis,
+        'timestamp': datetime.now().isoformat(),
+        'prediction_count': len(y_pred_proba),
+        'data_range': {
+            'start': predictions_df['tournament_date'].min().isoformat() if 'tournament_date' in predictions_df.columns else None,
+            'end': predictions_df['tournament_date'].max().isoformat() if 'tournament_date' in predictions_df.columns else None
         }
-        
-        logger.info(f"Prediction: {result['predicted_winner']} will win with {result['predicted_proba']:.2f} probability")
-        
-        return result
+    }
     
-    except Exception as e:
-        logger.error(f"Error predicting match: {e}")
-        raise
+    # Save to JSON
+    with open(metrics_path, 'w') as f:
+        json.dump(combined_results, f, indent=2)
+    logger.info(f"Saved metrics and analysis to {metrics_path}")
+    
+    if progress_tracker:
+        progress_tracker.update("Saved predictions and analysis")
 
 
-def get_player_stats_from_db(player_ids: List[str]) -> Dict[str, Dict[str, float]]:
+def main(args: argparse.Namespace) -> None:
     """
-    Get player statistics from the database for prediction.
+    Main function for tennis match prediction.
     
     Args:
-        player_ids: List of player IDs to get stats for
-        
-    Returns:
-        Dictionary mapping player IDs to their statistics
+        args: Command-line arguments
     """
-    logger.info(f"Getting stats for {len(player_ids)} players from database")
-    
-    try:
-        # Connect to database
-        conn = get_database_connection()
-        
-        # Create empty result dictionary
-        player_stats = {}
-        
-        for player_id in tqdm(player_ids, desc="Fetching player stats"):
-            # Query to get the latest match features for this player
-            query = f"""
-            WITH player_matches AS (
-                SELECT * FROM match_features
-                WHERE player1_id = {player_id} OR player2_id = {player_id}
-                ORDER BY tournament_date DESC
-                LIMIT 1
-            )
-            SELECT * FROM player_matches
-            """
-            
-            # Execute query
-            player_df = pd.read_sql(query, conn)
-            
-            if len(player_df) == 0:
-                logger.warning(f"No matches found for player {player_id}")
-                continue
-            
-            # Extract player stats
-            stats = {}
-            
-            # Get all player-specific columns
-            if str(player_id) == str(player_df['player1_id'].iloc[0]):
-                # Player is player1 in the latest match
-                prefix = 'player1_'
-                opponent_prefix = 'player2_'
-            else:
-                # Player is player2 in the latest match
-                prefix = 'player2_'
-                opponent_prefix = 'player1_'
-            
-            # Get all raw player features
-            for col in player_df.columns:
-                if col.startswith(prefix):
-                    feature_name = col[len(prefix):]  # Remove prefix
-                    stats[feature_name] = float(player_df[col].iloc[0])
-            
-            # Get Elo if available (from _diff features)
-            if 'player_elo_diff' in player_df.columns:
-                # Positive diff means player1 has higher Elo, negative means player2 has higher Elo
-                elo_diff = float(player_df['player_elo_diff'].iloc[0])
-                
-                if prefix == 'player1_':
-                    # If player is player1, their Elo is higher by elo_diff
-                    if 'elo' in stats:
-                        # If we already have an Elo value, leave it
-                        pass
-                    else:
-                        # Assume a base Elo and add the diff (this is approximate)
-                        stats['elo'] = 1500.0 + abs(elo_diff) / 2
-                else:
-                    # If player is player2, their Elo is lower by elo_diff
-                    if 'elo' in stats:
-                        pass
-                    else:
-                        stats['elo'] = 1500.0 - abs(elo_diff) / 2
-            
-            # Store player stats
-            player_stats[str(player_id)] = stats
-            
-        logger.info(f"Retrieved stats for {len(player_stats)} players")
-        return player_stats
-    
-    except Exception as e:
-        logger.error(f"Error getting player stats: {e}")
-        raise
-    
-    finally:
-        conn.close()
-
-
-def predict_upcoming_matches(model_path: Union[str, Path], matches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Predict outcomes for a list of upcoming matches.
-    
-    Args:
-        model_path: Path to the trained model
-        matches: List of dictionaries with player1_id, player2_id, and surface
-        
-    Returns:
-        List of dictionaries with prediction results
-    """
-    logger.info(f"Predicting outcomes for {len(matches)} upcoming matches")
-    
-    try:
-        # Load model
-        model = load_model(model_path)
-        
-        # Get unique player IDs
-        player_ids = []
-        for match in matches:
-            player_ids.append(str(match['player1_id']))
-            player_ids.append(str(match['player2_id']))
-        player_ids = list(set(player_ids))
-        
-        # Get player stats
-        player_stats = get_player_stats_from_db(player_ids)
-        
-        # Make predictions
-        predictions = []
-        for match in tqdm(matches, desc="Predicting matches"):
-            try:
-                result = predict_match(
-                    model, 
-                    str(match['player1_id']), 
-                    str(match['player2_id']), 
-                    match['surface'], 
-                    player_stats
-                )
-                
-                # Add match info to result
-                result.update({
-                    'tournament_name': match.get('tournament_name', ''),
-                    'match_date': match.get('match_date', '')
-                })
-                
-                predictions.append(result)
-                
-            except Exception as e:
-                logger.error(f"Error predicting match: {e}")
-                
-                # Add error match to predictions with error message
-                predictions.append({
-                    'player1_id': match['player1_id'],
-                    'player2_id': match['player2_id'],
-                    'surface': match['surface'],
-                    'error': str(e),
-                    'tournament_name': match.get('tournament_name', ''),
-                    'match_date': match.get('match_date', '')
-                })
-        
-        return predictions
-    
-    except Exception as e:
-        logger.error(f"Error in prediction process: {e}")
-        raise
-
-
-def main():
-    """Make predictions using the trained model on fresh data from the database."""
     start_time = time.time()
     
-    # Define total steps for progress tracking
-    total_steps = 7
-    progress_tracker = ProgressTracker(total_steps)
+    # Create output directories if they don't exist
+    os.makedirs(PREDICTIONS_DIR, exist_ok=True)
+    os.makedirs(PLOTS_DIR, exist_ok=True)
     
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Make predictions using the trained model.')
-    parser.add_argument('--use_file', action='store_true', help='Use file data instead of database')
-    parser.add_argument('--test_size', type=float, default=0.2, help='Proportion of data to use for testing')
-    parser.add_argument('--limit', type=int, default=None, help='Limit on number of test matches to use')
-    parser.add_argument('--cutoff_date', type=str, default=None, 
-                        help='Use matches after this date for testing (YYYY-MM-DD)')
+    # Log hardware information
+    logger.info(f"XGBoost version: {xgb.__version__}")
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"CPU count: {os.cpu_count()}")
+    logger.info(f"Memory: {psutil.virtual_memory().total / (1024 ** 3):.1f} GB")
     
-    # Add arguments for predicting specific matches
-    parser.add_argument('--predict_match', action='store_true', 
-                        help='Predict a specific upcoming match')
-    parser.add_argument('--player1_id', type=int, help='ID of player 1')
-    parser.add_argument('--player2_id', type=int, help='ID of player 2')
-    parser.add_argument('--surface', type=str, choices=SURFACES, 
-                        help='Match surface (hard, clay, grass, carpet)')
-    parser.add_argument('--tournament', type=str, default='', help='Tournament name')
-    
-    args = parser.parse_args()
-    
-    # If predicting a specific match
-    if args.predict_match:
-        if not (args.player1_id and args.player2_id and args.surface):
-            logger.error("Must provide player1_id, player2_id, and surface for match prediction")
-            return
-        
-        try:
-            # Prepare match information
-            match = {
-                'player1_id': args.player1_id,
-                'player2_id': args.player2_id,
-                'surface': args.surface,
-                'tournament_name': args.tournament,
-                'match_date': datetime.now().strftime("%Y-%m-%d")
-            }
-            
-            # Predict match outcome
-            predictions = predict_upcoming_matches(MODEL_PATH, [match])
-            
-            # Print prediction results
-            if predictions and len(predictions) > 0:
-                prediction = predictions[0]
-                
-                # Check for errors
-                if 'error' in prediction:
-                    logger.error(f"Error predicting match: {prediction['error']}")
-                    return
-                
-                # Print formatted prediction
-                print("\n---- Match Prediction ----")
-                print(f"Player 1 ID: {prediction['player1_id']}")
-                print(f"Player 2 ID: {prediction['player2_id']}")
-                print(f"Surface: {prediction['surface']}")
-                print(f"Tournament: {prediction.get('tournament_name', 'Unknown')}")
-                print(f"Date: {prediction.get('match_date', 'Unknown')}")
-                print("\nPrediction Results:")
-                print(f"Predicted Winner: {prediction['predicted_winner']}")
-                print(f"Win Probability: {prediction['predicted_proba']:.2f} ({prediction['predicted_proba']*100:.1f}%)")
-                print(f"Player 1 Win Probability: {prediction['player1_win_proba']:.2f} ({prediction['player1_win_proba']*100:.1f}%)")
-                print(f"Player 2 Win Probability: {prediction['player2_win_proba']:.2f} ({prediction['player2_win_proba']*100:.1f}%)")
-                print(f"Key Features Used: {', '.join(prediction['features_used'][:5])}...")
-                print("------------------------\n")
-            else:
-                logger.error("No prediction results returned")
-            
-            return
-        
-        except Exception as e:
-            logger.error(f"Error in match prediction: {e}")
-            raise
+    # Define the total number of processing steps for progress tracking
+    total_steps = 8
+    progress_tracker = ProgressTracker(total_steps, "Tennis Match Prediction")
     
     try:
-        # Step 1: Load model
-        logger.info(f"Step 1/{total_steps}: Loading model...")
-        model = load_model(MODEL_PATH, progress_tracker)
+        # Step 1: Load model pipeline
+        logger.info(f"Step 1/{total_steps}: Loading model pipeline")
+        pipeline = load_model_pipeline()
+        model = pipeline['model']
+        feature_names = pipeline['features']
+        categorical_features = [f for f in feature_names if any(cat in f.lower() for cat in ['surface', 'level', 'hand', 'court', 'round'])]
+        progress_tracker.update("Model pipeline loaded")
         
-        # Step 2: Load test data
-        logger.info(f"Step 2/{total_steps}: Loading test data...")
-        if args.use_file:
-            logger.info("Using file data as specified by --use_file flag")
-            test_df = load_test_data(FEATURES_PATH, args.test_size, progress_tracker)
-        else:
-            # First check if we have a saved test set from training
-            saved_test_path = OUTPUT_DIR / "test_data_v3.csv"
-            if os.path.exists(saved_test_path):
-                logger.info(f"Loading saved test set from {saved_test_path}")
-                test_df = pd.read_csv(saved_test_path)
-                if 'tournament_date' in test_df.columns:
-                    test_df['tournament_date'] = pd.to_datetime(test_df['tournament_date'])
-                logger.info(f"Loaded {len(test_df)} matches from saved test set")
-                if progress_tracker:
-                    progress_tracker.update("Test data loading complete")
-            else:
-                logger.info("No saved test set found. Using database data")
-                test_df = load_test_data_from_database(args.cutoff_date, args.limit, progress_tracker)
-            
-        if len(test_df) == 0:
-            logger.error("No test data found. Exiting.")
+        # Step 2: Load test data from database
+        logger.info(f"Step 2/{total_steps}: Loading test data")
+        
+        # Use training end date from args if provided, otherwise None will use auto-detection
+        training_end_date = None
+        if args.after_date:
+            try:
+                training_end_date = datetime.fromisoformat(args.after_date)
+                logger.info(f"Using specified date cutoff: {training_end_date.date()}")
+            except ValueError:
+                logger.error(f"Invalid date format: {args.after_date}, expected YYYY-MM-DD")
+                logger.info("Using auto-detection for training end date")
+        
+        # Load test data
+        df = load_test_data_from_database(
+            training_end_date=training_end_date,
+            limit=args.limit,
+            progress_tracker=progress_tracker
+        )
+        
+        # Check if we have data
+        if len(df) == 0:
+            logger.error("No test data available. Exiting.")
             return
-            
-        # Step 3: Get feature columns
-        logger.info(f"Step 3/{total_steps}: Identifying feature columns...")
-        feature_cols = get_feature_columns(test_df, progress_tracker)
         
-        # Check if we have all features the model expects
-        model_features = model.feature_names
-        missing_features = [f for f in model_features if f not in feature_cols]
-        if missing_features:
-            logger.warning(f"Missing {len(missing_features)} features expected by model: {missing_features[:5]}...")
-            logger.warning("This may lead to poor predictions. Consider regenerating features.")
+        # Step 3: Prepare features for prediction
+        logger.info(f"Step 3/{total_steps}: Preparing features")
+        X, y = prepare_features_for_prediction(
+            df, feature_names, categorical_features, progress_tracker
+        )
         
         # Step 4: Make predictions
-        logger.info(f"Step 4/{total_steps}: Making predictions...")
-        predictions_df, metrics = make_predictions(model, test_df, feature_cols, progress_tracker)
+        logger.info(f"Step 4/{total_steps}: Making predictions")
+        y_pred_proba = make_predictions(model, X, feature_names, progress_tracker)
         
-        # Step 5: Calculate match-level metrics
-        logger.info(f"Step 5/{total_steps}: Calculating match-level metrics...")
-        match_metrics = calculate_match_level_metrics(predictions_df, progress_tracker)
-        metrics['match_level'] = match_metrics
+        # Step 5: Evaluate predictions if we have ground truth
+        logger.info(f"Step 5/{total_steps}: Evaluating predictions")
+        if y is not None:
+            metrics = evaluate_predictions(y, y_pred_proba, threshold=0.5, progress_tracker=progress_tracker)
+        else:
+            logger.warning("No ground truth available for evaluation")
+            metrics = {}
         
-        # Step 6: Plot results
-        logger.info(f"Step 6/{total_steps}: Plotting results...")
-        plot_results(predictions_df, metrics, OUTPUT_DIR / "plots", progress_tracker)
+        # Step 6: Generate visualization plots
+        logger.info(f"Step 6/{total_steps}: Generating visualization plots")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Step 7: Save results
-        logger.info(f"Step 7/{total_steps}: Saving results...")
-        save_results(
-            predictions_df, 
-            metrics, 
-            PREDICTIONS_OUTPUT, 
-            OUTPUT_DIR / "prediction_metrics_v3.json", 
+        if y is not None:
+            y_pred = (y_pred_proba > 0.5).astype(int)
+            
+            # Confusion matrix
+            plot_confusion_matrix(
+                y, y_pred,
+                PLOTS_DIR / f"prediction_confusion_matrix_{timestamp}.png",
+                progress_tracker
+            )
+            
+            # ROC curve
+            plot_roc_curve(
+                y, y_pred_proba,
+                PLOTS_DIR / f"prediction_roc_curve_{timestamp}.png",
+                progress_tracker
+            )
+            
+            # Precision-recall curve
+            plot_precision_recall_curve(
+                y, y_pred_proba,
+                PLOTS_DIR / f"prediction_pr_curve_{timestamp}.png",
+                progress_tracker
+            )
+            
+            # Calibration curve
+            plot_calibration_curve(
+                y, y_pred_proba,
+                PLOTS_DIR / f"prediction_calibration_curve_{timestamp}.png",
+                progress_tracker
+            )
+            
+            # Probability distribution
+            plot_probability_distribution(
+                y, y_pred_proba,
+                PLOTS_DIR / f"prediction_probability_distribution_{timestamp}.png",
+                progress_tracker
+            )
+        else:
+            progress_tracker.update("Skipped visualization plots (no ground truth)")
+        
+        # Step 7: Analyze prediction quality
+        logger.info(f"Step 7/{total_steps}: Analyzing prediction quality")
+        analysis = analyze_prediction_quality(df, y_pred_proba, metrics, progress_tracker)
+        
+        # Step 8: Save predictions and analysis
+        logger.info(f"Step 8/{total_steps}: Saving predictions and analysis")
+        save_predictions_and_analysis(
+            df, y_pred_proba, metrics, analysis,
+            PREDICTIONS_DIR / f"predictions_{timestamp}.csv",
+            PREDICTIONS_DIR / f"prediction_metrics_{timestamp}.json",
             progress_tracker
         )
         
-        # Print final message
-        elapsed_time = time.time() - start_time
-        logger.info(f"Prediction completed in {elapsed_time:.2f} seconds")
-        logger.info(f"Overall accuracy: {metrics['overall']['accuracy']:.4f}")
+        # Print summary
+        total_time = time.time() - start_time
+        logger.info(f"Prediction completed in {total_time:.2f} seconds")
+        logger.info(f"Processed {len(df)} matches")
         
-        # Return metrics for potential further use
-        return metrics
-    
+        # Print performance summary
+        if y is not None:
+            logger.info(f"Accuracy: {metrics.get('accuracy', 'N/A'):.4f}")
+            logger.info(f"ROC AUC: {metrics.get('roc_auc', 'N/A'):.4f}")
+            logger.info(f"PR AUC: {metrics.get('pr_auc', 'N/A'):.4f}")
+        
+        # Print discrepancies summary
+        if 'discrepancies' in analysis and analysis['discrepancies']:
+            logger.info("Analysis found the following potential issues:")
+            for d in analysis['discrepancies']:
+                logger.info(f"  - {d['severity'].upper()}: {d['description']}")
+        else:
+            logger.info("No significant issues found in prediction analysis")
+        
     except Exception as e:
-        logger.error(f"Error in prediction process: {e}")
+        logger.error(f"Error in prediction process: {str(e)}")
+        logger.exception("Exception details:")
         raise
 
 
 if __name__ == "__main__":
-    main() 
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Tennis Match Prediction Script - V3")
+    
+    # Add arguments
+    parser.add_argument(
+        "--after-date",
+        type=str,
+        help="Only use matches after this date (format: YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit the number of matches to process"
+    )
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Run main function
+    main(args)

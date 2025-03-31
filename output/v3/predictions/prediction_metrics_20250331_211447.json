@@ -1,0 +1,94 @@
+{
+  "metrics": {
+    "accuracy": 0.8668,
+    "balanced_accuracy": 0.8667418773068628,
+    "precision": 0.8637254901960785,
+    "recall": 0.8736612455374851,
+    "f1": 0.8686649576020509,
+    "roc_auc": 0.9384158146198797,
+    "pr_auc": 0.9383276372162312,
+    "log_loss": 0.32328849272043597,
+    "brier_score": 0.09811966488564258,
+    "confusion_matrix": {
+      "true_negative": 4263,
+      "false_positive": 695,
+      "false_negative": 637,
+      "true_positive": 4405
+    },
+    "classification_report": {
+      "0": {
+        "precision": 0.87,
+        "recall": 0.8598225090762405,
+        "f1-score": 0.8648813146682898,
+        "support": 4958.0
+      },
+      "1": {
+        "precision": 0.8637254901960785,
+        "recall": 0.8736612455374851,
+        "f1-score": 0.8686649576020509,
+        "support": 5042.0
+      },
+      "accuracy": 0.8668,
+      "macro avg": {
+        "precision": 0.8668627450980393,
+        "recall": 0.8667418773068628,
+        "f1-score": 0.8667731361351703,
+        "support": 10000.0
+      },
+      "weighted avg": {
+        "precision": 0.8668363921568627,
+        "recall": 0.8668,
+        "f1-score": 0.8667890274354922,
+        "support": 10000.0
+      }
+    }
+  },
+  "analysis": {
+    "surface_analysis": {
+      "hard": {
+        "count": 7123,
+        "accuracy": 0.853853713323038,
+        "roc_auc": 0.9286538351159983
+      },
+      "clay": {
+        "count": 2685,
+        "accuracy": 0.8986964618249534,
+        "roc_auc": 0.9584907942913397
+      },
+      "grass": {
+        "count": 6,
+        "accuracy": 1.0,
+        "roc_auc": 1.0
+      },
+      "carpet": {
+        "count": 186,
+        "accuracy": 0.8978494623655914,
+        "roc_auc": 0.9761822175974102
+      }
+    },
+    "discrepancies": [],
+    "monthly_performance": [
+      {
+        "month": "2024-01",
+        "mean": 0.8341889117043121,
+        "count": 3896
+      },
+      {
+        "month": "2024-02",
+        "mean": 0.8882551753274187,
+        "count": 4734
+      },
+      {
+        "month": "2024-03",
+        "mean": 0.8854014598540146,
+        "count": 1370
+      }
+    ]
+  },
+  "timestamp": "2025-03-31T21:14:52.629878",
+  "prediction_count": 10000,
+  "data_range": {
+    "start": "2024-01-08T00:00:00",
+    "end": "2024-03-11T00:00:00"
+  }
+}
