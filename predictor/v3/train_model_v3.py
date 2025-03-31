@@ -760,17 +760,34 @@ def tune_hyperparameters(
             params['enable_categorical'] = True
         
         try:
+            # Ensure feature_names list matches the actual number of columns in X_train
+            feature_names_adjusted = feature_names.copy()
+            if len(feature_names_adjusted) != X_train.shape[1]:
+                logger.warning(f"Feature names length ({len(feature_names_adjusted)}) doesn't match data columns ({X_train.shape[1]}). Adjusting...")
+                # Option 1: Truncate feature_names if it's too long
+                if len(feature_names_adjusted) > X_train.shape[1]:
+                    feature_names_adjusted = feature_names_adjusted[:X_train.shape[1]]
+                # Option 2: Add generic names if feature_names is too short
+                else:
+                    additional_names = [f"feature_{i}" for i in range(len(feature_names_adjusted), X_train.shape[1])]
+                    feature_names_adjusted = feature_names_adjusted + additional_names
+                
+                # Update categorical indices if needed
+                categorical_indices_adjusted = [idx for idx in categorical_indices if idx < X_train.shape[1]] if categorical_indices else []
+            else:
+                categorical_indices_adjusted = categorical_indices
+
             # Create DMatrix objects - memory efficient data structure
-            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
+            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names_adjusted,
                                 enable_categorical=params.get('enable_categorical', False))
-            dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names,
+            dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names_adjusted,
                             enable_categorical=params.get('enable_categorical', False))
             
             # Set up categorical features if present
-            if categorical_indices:
-                for cat_idx in categorical_indices:
-                    dtrain.set_feature_types(['c' if i == cat_idx else 'q' for i in range(X_train.shape[1])])
-                    dval.set_feature_types(['c' if i == cat_idx else 'q' for i in range(X_val.shape[1])])
+            if categorical_indices_adjusted:
+                feature_types = ['c' if i in categorical_indices_adjusted else 'q' for i in range(X_train.shape[1])]
+                dtrain.set_feature_types(feature_types)
+                dval.set_feature_types(feature_types)
             
             # Train model with early stopping
             pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-logloss")
@@ -917,6 +934,24 @@ def train_model(
     
     # Create DMatrix format for better memory efficiency and faster processing
     logger.info("Creating DMatrix for efficient memory usage")
+    
+    # Ensure feature_names list matches the actual number of columns in X_train
+    if len(feature_names) != X_train.shape[1]:
+        logger.warning(f"Feature names length ({len(feature_names)}) doesn't match data columns ({X_train.shape[1]}). Adjusting...")
+        # Option 1: Truncate feature_names if it's too long
+        if len(feature_names) > X_train.shape[1]:
+            feature_names = feature_names[:X_train.shape[1]]
+            logger.warning(f"Truncated feature_names to {len(feature_names)} entries")
+        # Option 2: Add generic names if feature_names is too short
+        else:
+            additional_names = [f"feature_{i}" for i in range(len(feature_names), X_train.shape[1])]
+            feature_names = feature_names + additional_names
+            logger.warning(f"Extended feature_names with {len(additional_names)} generic names")
+        
+        # Update categorical features to match the new feature list if needed
+        if categorical_features:
+            categorical_features = [idx for idx in categorical_features if idx < X_train.shape[1]]
+    
     dtrain = xgb.DMatrix(
         X_train, 
         label=y_train, 
@@ -1020,6 +1055,17 @@ def evaluate_model(
     
     # Create DMatrix for efficient prediction
     device_params = detect_optimal_device()
+    
+    # Ensure feature names match the data dimensions
+    if len(feature_names) != X.shape[1]:
+        logger.warning(f"Feature names length ({len(feature_names)}) doesn't match data columns ({X.shape[1]}) in evaluation. Adjusting...")
+        # Truncate or extend feature names as needed
+        if len(feature_names) > X.shape[1]:
+            feature_names = feature_names[:X.shape[1]]
+        else:
+            additional_names = [f"feature_{i}" for i in range(len(feature_names), X.shape[1])]
+            feature_names = feature_names + additional_names
+    
     dtest = xgb.DMatrix(X, label=y, feature_names=feature_names)
     
     # Make predictions
