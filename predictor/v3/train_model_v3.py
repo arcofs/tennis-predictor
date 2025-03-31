@@ -83,7 +83,7 @@ TRAIN_SPLIT = 0.7
 VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
 RANDOM_SEED = 42
-TARGET_COLUMN = 'player1_win'
+TARGET_COLUMN = 'result'
 ID_COLUMNS = ['player1_id', 'player2_id', 'tournament_id', 'match_id']
 DATETIME_COLUMNS = ['tournament_date']
 CATEGORICAL_COLUMNS_PATTERN = [
@@ -452,7 +452,7 @@ def get_feature_columns(df: pd.DataFrame, progress_tracker: Optional[ProgressTra
     # Exclude non-feature columns
     exclude_columns = [
         'match_id', 'tournament_date', 'tournament_id', 'player1_id', 'player2_id', 
-        'player1_name', 'player2_name', 'player1_win'
+        'player1_name', 'player2_name', 'result'
     ]
     
     # Get all column names 
@@ -594,13 +594,13 @@ def prepare_features(
     
     # Extract features and labels as numpy arrays
     X_train = train_features.values
-    y_train = train_df['player1_win'].values
+    y_train = train_df['result'].values
     
     X_val = val_features.values
-    y_val = val_df['player1_win'].values
+    y_val = val_df['result'].values
     
     X_test = test_features.values
-    y_test = test_df['player1_win'].values
+    y_test = test_df['result'].values
     
     # Check for features with excessive missing values (>50%)
     # Generate_features_v3.py already handles most missing values, but we check anyway
