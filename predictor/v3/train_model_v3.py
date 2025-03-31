@@ -48,7 +48,7 @@ from sklearn.calibration import calibration_curve
 from psycopg2 import pool
 from dotenv import load_dotenv
 import psutil
-from .data_cache import get_cache_key, get_cached_data, save_to_cache
+from predictor.v3.data_cache import get_cache_key, get_cached_data, save_to_cache
 
 # Suppress warnings
 warnings.filterwarnings('ignore', category=UserWarning)
