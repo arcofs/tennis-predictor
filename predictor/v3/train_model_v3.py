@@ -48,6 +48,7 @@ from sklearn.calibration import calibration_curve
 from psycopg2 import pool
 from dotenv import load_dotenv
 import psutil
+from .data_cache import get_cache_key, get_cached_data, save_to_cache
 
 # Suppress warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -193,6 +194,7 @@ def load_data_from_database(limit: Optional[int] = None,
     """
     Load the tennis match features from the database efficiently.
     Handles the match_features table created by generate_features_v3.py.
+    Uses caching to avoid unnecessary database calls.
     
     Args:
         limit: Optional limit on number of rows to fetch
@@ -201,6 +203,25 @@ def load_data_from_database(limit: Optional[int] = None,
     Returns:
         DataFrame with tennis match features
     """
+    # Define the base query
+    base_query = """
+    SELECT *
+    FROM match_features
+    ORDER BY tournament_date ASC
+    """
+    
+    # Generate cache key
+    cache_key = get_cache_key(base_query, limit)
+    
+    # Try to load from cache first
+    cached_df = get_cached_data(cache_key)
+    if cached_df is not None:
+        logger.info("Using cached data")
+        if progress_tracker:
+            progress_tracker.update("Data loaded from cache")
+        return cached_df
+    
+    # If not in cache, load from database
     logger.info("Loading data from database (match_features table)...")
     
     # Connect to database
@@ -229,9 +250,7 @@ def load_data_from_database(limit: Optional[int] = None,
         while True:
             # Define batch query
             query = f"""
-            SELECT *
-            FROM match_features
-            ORDER BY tournament_date ASC
+            {base_query}
             {limit_clause}
             OFFSET {offset}
             LIMIT {DB_BATCH_SIZE}
@@ -296,7 +315,10 @@ def load_data_from_database(limit: Optional[int] = None,
             # Log sample values
             if len(df) > 0:
                 logger.info(f"Time span: {df['tournament_date'].min()} to {df['tournament_date'].max()}")
-                
+            
+            # Save to cache for future use
+            save_to_cache(df, cache_key)
+            
             if progress_tracker:
                 progress_tracker.update("Data loading complete")
             
@@ -458,7 +480,7 @@ def get_feature_columns(df: pd.DataFrame, progress_tracker: Optional[ProgressTra
     # Exclude non-feature columns
     exclude_columns = [
         'match_id', 'tournament_date', 'tournament_id', 'player1_id', 'player2_id', 
-        'player1_name', 'player2_name', 'result'
+        'player1_name', 'player2_name', 'result', 'created_at', 'updated_at'
     ]
     
     # Get all column names 
@@ -467,33 +489,40 @@ def get_feature_columns(df: pd.DataFrame, progress_tracker: Optional[ProgressTra
     # Filter out non-feature columns
     feature_cols = [col for col in all_columns if col not in exclude_columns]
     
+    # Ensure all features are numeric or categorical
+    numeric_features = []
+    categorical_features = []
+    
+    for col in feature_cols:
+        if df[col].dtype == 'object' or df[col].dtype.name == 'category':
+            categorical_features.append(col)
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            numeric_features.append(col)
+        else:
+            logger.warning(f"Removing non-numeric, non-categorical feature: {col}")
+            feature_cols.remove(col)
+    
     # Log feature types
-    elo_features = [col for col in feature_cols if 'elo' in col.lower()]
-    win_rate_features = [col for col in feature_cols if 'win_rate' in col.lower()]
-    streak_features = [col for col in feature_cols if 'streak' in col.lower()]
-    serve_features = [col for col in feature_cols if any(term in col.lower() for term in 
+    elo_features = [col for col in numeric_features if 'elo' in col.lower()]
+    win_rate_features = [col for col in numeric_features if 'win_rate' in col.lower()]
+    streak_features = [col for col in numeric_features if 'streak' in col.lower()]
+    serve_features = [col for col in numeric_features if any(term in col.lower() for term in 
                                                       ['serve', 'ace', 'bp_saved'])]
-    return_features = [col for col in feature_cols if any(term in col.lower() for term in 
+    return_features = [col for col in numeric_features if any(term in col.lower() for term in 
                                                        ['return', 'bp_conversion'])]
-    surface_features = [col for col in feature_cols if any(surface in col.lower() for surface in 
+    surface_features = [col for col in numeric_features if any(surface in col.lower() for surface in 
                                                        ['hard', 'clay', 'grass', 'carpet'])]
     
     # Log feature counts by category
     logger.info(f"Total features: {len(feature_cols)}")
+    logger.info(f"Numeric features: {len(numeric_features)}")
+    logger.info(f"Categorical features: {len(categorical_features)}")
     logger.info(f"Elo features: {len(elo_features)}")
     logger.info(f"Win rate features: {len(win_rate_features)}")
     logger.info(f"Streak features: {len(streak_features)}")
     logger.info(f"Serve features: {len(serve_features)}")
     logger.info(f"Return features: {len(return_features)}")
     logger.info(f"Surface-specific features: {len(surface_features)}")
-    
-    # Identify categorical features
-    categorical_features = []
-    
-    # Check for categorical features in DataFrame
-    for col in feature_cols:
-        if df[col].dtype == 'object' or df[col].dtype.name == 'category':
-            categorical_features.append(col)
     
     # Display categorical features
     if categorical_features:
@@ -2081,7 +2110,12 @@ def main() -> None:
         # Create feature matrices with selected features
         try:
             # Get indices of selected features
-            feature_indices = [feature_cols.index(f) for f in selected_features if f in feature_cols]
+            feature_indices = []
+            for f in selected_features:
+                if f in feature_cols:
+                    idx = feature_cols.index(f)
+                    if idx < X_train.shape[1]:  # Ensure index is valid
+                        feature_indices.append(idx)
             
             # Verify we have valid indices
             if not feature_indices:
