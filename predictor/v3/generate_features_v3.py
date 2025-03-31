@@ -1194,110 +1194,81 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
                 if f'win_rate_{surf}_overall_diff' in row:
                     match_dict[f'win_rate_{surf}_overall_diff'] = row[f'win_rate_{surf}_overall_diff']
             
-            # Add serve and return features
+            # Add serve and return metrics
             for metric in serve_return_metrics:
-                # General metric
                 if f'{metric}_diff' in row:
                     match_dict[f'{metric}_diff'] = row[f'{metric}_diff']
                 
-                # Surface-specific metric
-                if f'{metric}_{surface}_diff' in row:
-                    match_dict[f'{metric}_{surface}_diff'] = row[f'{metric}_{surface}_diff']
-            
-            # Add raw player features to ensure consistent prediction regardless of player order
-            if 'winner_win_rate_5' in row:
-                match_dict['player1_win_rate_5'] = row['winner_win_rate_5']
-                match_dict['player2_win_rate_5'] = row['loser_win_rate_5']
-                match_dict['player1_win_streak'] = row['winner_win_streak']
-                match_dict['player2_win_streak'] = row['loser_win_streak']
-                match_dict['player1_loss_streak'] = row['winner_loss_streak']
-                match_dict['player2_loss_streak'] = row['loser_loss_streak']
-                
-                # Surface-specific rates (use lowercase for surface names)
+                # Add surface-specific versions
                 for surf in STANDARD_SURFACES:
-                    if f'winner_win_rate_{surf}_5' in row:
-                        match_dict[f'player1_win_rate_{surf}_5'] = row[f'winner_win_rate_{surf}_5']
-                        match_dict[f'player2_win_rate_{surf}_5'] = row[f'loser_win_rate_{surf}_5']
-                        match_dict[f'player1_win_rate_{surf}_overall'] = row[f'winner_win_rate_{surf}_overall']
-                        match_dict[f'player2_win_rate_{surf}_overall'] = row[f'loser_win_rate_{surf}_overall']
+                    if f'{metric}_{surf}_diff' in row:
+                        match_dict[f'{metric}_{surf}_diff'] = row[f'{metric}_{surf}_diff']
             
-            # Add serve and return raw stats
-            for metric in serve_return_metrics:
-                if f'winner_{metric}' in row and f'loser_{metric}' in row:
-                    match_dict[f'player1_{metric}'] = row[f'winner_{metric}']
-                    match_dict[f'player2_{metric}'] = row[f'loser_{metric}']
+            # Add raw player stats
+            for col in row.index:
+                if col.startswith('winner_') and not col.endswith('_id'):
+                    player1_col = f'player1_{col[7:]}'  # Remove 'winner_' prefix
+                    match_dict[player1_col] = row[col]
+                elif col.startswith('loser_') and not col.endswith('_id'):
+                    player2_col = f'player2_{col[6:]}'  # Remove 'loser_' prefix
+                    match_dict[player2_col] = row[col]
             
             matches.append(match_dict)
-        
-        # Second pass: p1 = loser, p2 = winner (flipped match result)
-        for idx, row in batch_df.iterrows():
-            surface = row['surface'].lower() if isinstance(row['surface'], str) else row['surface']
-            match_dict = {
-                'match_id': row['match_id'],
+            
+            # Second pass: p1 = loser, p2 = winner (reversed match)
+            reversed_match = {
+                'match_id': row['match_id'] + 1_000_000_000,  # Add large offset to create unique match_id
                 'tournament_date': row['tournament_date'],
                 'surface': surface,
                 'player1_id': row['loser_id'],
-                'player2_id': row['winner_id'], 
+                'player2_id': row['winner_id'],
                 'result': 0  # player1 lost
             }
             
-            # Add features with reversed signs
-            match_dict['player_elo_diff'] = -row.get('elo_diff', 0)
-            match_dict['win_rate_5_diff'] = -row.get('win_rate_5_diff', 0)
-            match_dict['win_streak_diff'] = -row.get('win_streak_diff', 0)
-            match_dict['loss_streak_diff'] = -row.get('loss_streak_diff', 0)
+            # Add reversed features (negate all differences)
+            # Elo difference
+            reversed_match['player_elo_diff'] = -row.get('elo_diff', 0)
             
-            # Surface win rates with reversed signs (use lowercase)
+            # Win rates
+            reversed_match['win_rate_5_diff'] = -row.get('win_rate_5_diff', 0)
+            
+            # Streaks
+            reversed_match['win_streak_diff'] = -row.get('win_streak_diff', 0)
+            reversed_match['loss_streak_diff'] = -row.get('loss_streak_diff', 0)
+            
+            # Surface win rates (negate differences)
             for surf in STANDARD_SURFACES:
                 if f'win_rate_{surf}_5_diff' in row:
-                    match_dict[f'win_rate_{surf}_5_diff'] = -row[f'win_rate_{surf}_5_diff']
+                    reversed_match[f'win_rate_{surf}_5_diff'] = -row[f'win_rate_{surf}_5_diff']
                 
                 if f'win_rate_{surf}_overall_diff' in row:
-                    match_dict[f'win_rate_{surf}_overall_diff'] = -row[f'win_rate_{surf}_overall_diff']
+                    reversed_match[f'win_rate_{surf}_overall_diff'] = -row[f'win_rate_{surf}_overall_diff']
             
-            # Add serve and return features (with reversed signs)
+            # Add reversed serve and return metrics
             for metric in serve_return_metrics:
-                # General metric
                 if f'{metric}_diff' in row:
-                    match_dict[f'{metric}_diff'] = -row[f'{metric}_diff']
+                    reversed_match[f'{metric}_diff'] = -row[f'{metric}_diff']
                 
-                # Surface-specific metric
-                if f'{metric}_{surface}_diff' in row:
-                    match_dict[f'{metric}_{surface}_diff'] = -row[f'{metric}_{surface}_diff']
-            
-            # Add raw player features (swapped)
-            if 'winner_win_rate_5' in row:
-                match_dict['player1_win_rate_5'] = row['loser_win_rate_5']
-                match_dict['player2_win_rate_5'] = row['winner_win_rate_5']
-                match_dict['player1_win_streak'] = row['loser_win_streak']
-                match_dict['player2_win_streak'] = row['winner_win_streak']
-                match_dict['player1_loss_streak'] = row['loser_loss_streak']
-                match_dict['player2_loss_streak'] = row['winner_loss_streak']
-                
-                # Surface-specific rates (use lowercase)
+                # Add surface-specific versions
                 for surf in STANDARD_SURFACES:
-                    if f'winner_win_rate_{surf}_5' in row:
-                        match_dict[f'player1_win_rate_{surf}_5'] = row[f'loser_win_rate_{surf}_5']
-                        match_dict[f'player2_win_rate_{surf}_5'] = row[f'winner_win_rate_{surf}_5']
-                        match_dict[f'player1_win_rate_{surf}_overall'] = row[f'loser_win_rate_{surf}_overall']
-                        match_dict[f'player2_win_rate_{surf}_overall'] = row[f'winner_win_rate_{surf}_overall']
+                    if f'{metric}_{surf}_diff' in row:
+                        reversed_match[f'{metric}_{surf}_diff'] = -row[f'{metric}_{surf}_diff']
             
-            # Add serve and return raw stats (swapped)
-            for metric in serve_return_metrics:
-                if f'winner_{metric}' in row and f'loser_{metric}' in row:
-                    match_dict[f'player1_{metric}'] = row[f'loser_{metric}']
-                    match_dict[f'player2_{metric}'] = row[f'winner_{metric}']
+            # Add raw player stats (swap winner/loser)
+            for col in row.index:
+                if col.startswith('winner_') and not col.endswith('_id'):
+                    player2_col = f'player2_{col[7:]}'  # Remove 'winner_' prefix
+                    reversed_match[player2_col] = row[col]
+                elif col.startswith('loser_') and not col.endswith('_id'):
+                    player1_col = f'player1_{col[6:]}'  # Remove 'loser_' prefix
+                    reversed_match[player1_col] = row[col]
             
-            matches.append(match_dict)
-            
-            # Limit batch size to avoid memory issues
-            if len(matches) >= WORKER_BATCH_SIZE:
-                break
+            matches.append(reversed_match)
         
         return matches
     except Exception as e:
-        mp_logger.error(f"Error processing symmetric features batch {batch_idx}: {str(e)}")
-        return None
+        logger.error(f"Error in process_symmetric_features_batch: {str(e)}")
+        raise
 
 def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFrame:
     """
