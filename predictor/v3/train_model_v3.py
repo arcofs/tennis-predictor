@@ -1865,7 +1865,7 @@ def main() -> None:
     
     # Define the total number of processing steps for progress tracking
     total_steps = 10
-    progress_tracker = ProgressTracker(total_steps)
+    progress_tracker = ProgressTracker(total_steps, "Tennis Model Training")
     
     try:
         # Step 1: Load data from PostgreSQL database
