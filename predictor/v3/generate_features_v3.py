@@ -16,11 +16,11 @@ from psycopg2.extras import execute_values
 
 # Multiprocessing settings
 # Set to 0 to use all available cores, or specify a number to limit the cores used
-NUM_CORES = 120  # Default: use all cores
+NUM_CORES = 4  # Default: use a reasonable number of cores to prevent system overload
 
-# If NUM_CORES is set to 0, use all available cores
+# If NUM_CORES is set to 0, use a reasonable number of cores (not all available)
 if NUM_CORES <= 0:
-    NUM_CORES = multiprocessing.cpu_count()
+    NUM_CORES = min(8, multiprocessing.cpu_count())
 
 # Configure logging
 logging.basicConfig(
@@ -48,10 +48,10 @@ OUTPUT_FILE = OUTPUT_DIR / "features_v3.csv"
 ROLLING_WINDOWS = [5, 10]
 
 # Standard surface definitions
-SURFACE_HARD = 'Hard'
-SURFACE_CLAY = 'Clay'
-SURFACE_GRASS = 'Grass'
-SURFACE_CARPET = 'Carpet'
+SURFACE_HARD = 'hard'
+SURFACE_CLAY = 'clay'
+SURFACE_GRASS = 'grass'
+SURFACE_CARPET = 'carpet'
 STANDARD_SURFACES = [SURFACE_HARD, SURFACE_CLAY, SURFACE_GRASS, SURFACE_CARPET]
 
 # Updated column mappings for database
@@ -119,7 +119,7 @@ def create_features_table(conn):
         
         if not table_exists:
             logger.info("Creating match_features table...")
-            # Create the table with all required columns
+            # Create the table with all required columns, using lowercase for all column names
             cur.execute("""
             CREATE TABLE match_features (
                 id SERIAL PRIMARY KEY,
@@ -133,14 +133,14 @@ def create_features_table(conn):
                 win_rate_5_diff DOUBLE PRECISION,
                 win_streak_diff BIGINT,
                 loss_streak_diff BIGINT,
-                win_rate_Hard_5_diff DOUBLE PRECISION,
-                win_rate_Clay_5_diff DOUBLE PRECISION,
-                win_rate_Grass_5_diff DOUBLE PRECISION,
-                win_rate_Carpet_5_diff DOUBLE PRECISION,
-                win_rate_Hard_overall_diff DOUBLE PRECISION,
-                win_rate_Clay_overall_diff DOUBLE PRECISION,
-                win_rate_Grass_overall_diff DOUBLE PRECISION,
-                win_rate_Carpet_overall_diff DOUBLE PRECISION,
+                win_rate_hard_5_diff DOUBLE PRECISION,
+                win_rate_clay_5_diff DOUBLE PRECISION,
+                win_rate_grass_5_diff DOUBLE PRECISION,
+                win_rate_carpet_5_diff DOUBLE PRECISION,
+                win_rate_hard_overall_diff DOUBLE PRECISION,
+                win_rate_clay_overall_diff DOUBLE PRECISION,
+                win_rate_grass_overall_diff DOUBLE PRECISION,
+                win_rate_carpet_overall_diff DOUBLE PRECISION,
                 serve_efficiency_5_diff DOUBLE PRECISION,
                 first_serve_pct_5_diff DOUBLE PRECISION,
                 first_serve_win_pct_5_diff DOUBLE PRECISION,
@@ -155,22 +155,22 @@ def create_features_table(conn):
                 player2_win_streak BIGINT,
                 player1_loss_streak BIGINT,
                 player2_loss_streak BIGINT,
-                player1_win_rate_Hard_5 DOUBLE PRECISION,
-                player2_win_rate_Hard_5 DOUBLE PRECISION,
-                player1_win_rate_Clay_5 DOUBLE PRECISION,
-                player2_win_rate_Clay_5 DOUBLE PRECISION,
-                player1_win_rate_Grass_5 DOUBLE PRECISION,
-                player2_win_rate_Grass_5 DOUBLE PRECISION,
-                player1_win_rate_Carpet_5 DOUBLE PRECISION,
-                player2_win_rate_Carpet_5 DOUBLE PRECISION,
-                player1_win_rate_Hard_overall DOUBLE PRECISION,
-                player2_win_rate_Hard_overall DOUBLE PRECISION,
-                player1_win_rate_Clay_overall DOUBLE PRECISION,
-                player2_win_rate_Clay_overall DOUBLE PRECISION,
-                player1_win_rate_Grass_overall DOUBLE PRECISION,
-                player2_win_rate_Grass_overall DOUBLE PRECISION,
-                player1_win_rate_Carpet_overall DOUBLE PRECISION,
-                player2_win_rate_Carpet_overall DOUBLE PRECISION,
+                player1_win_rate_hard_5 DOUBLE PRECISION,
+                player2_win_rate_hard_5 DOUBLE PRECISION,
+                player1_win_rate_clay_5 DOUBLE PRECISION,
+                player2_win_rate_clay_5 DOUBLE PRECISION,
+                player1_win_rate_grass_5 DOUBLE PRECISION,
+                player2_win_rate_grass_5 DOUBLE PRECISION,
+                player1_win_rate_carpet_5 DOUBLE PRECISION,
+                player2_win_rate_carpet_5 DOUBLE PRECISION,
+                player1_win_rate_hard_overall DOUBLE PRECISION,
+                player2_win_rate_hard_overall DOUBLE PRECISION,
+                player1_win_rate_clay_overall DOUBLE PRECISION,
+                player2_win_rate_clay_overall DOUBLE PRECISION,
+                player1_win_rate_grass_overall DOUBLE PRECISION,
+                player2_win_rate_grass_overall DOUBLE PRECISION,
+                player1_win_rate_carpet_overall DOUBLE PRECISION,
+                player2_win_rate_carpet_overall DOUBLE PRECISION,
                 player1_serve_efficiency_5 DOUBLE PRECISION,
                 player2_serve_efficiency_5 DOUBLE PRECISION,
                 player1_first_serve_pct_5 DOUBLE PRECISION,
@@ -203,7 +203,7 @@ def create_features_table(conn):
             # Check for missing columns and add them if needed
             logger.info("Table already exists. Checking for missing columns...")
             
-            # Define all columns that should exist in the table with their types
+            # Define all columns that should exist in the table with their types (all lowercase)
             expected_columns = {
                 'match_id': 'BIGINT',
                 'player1_id': 'BIGINT',
@@ -215,14 +215,14 @@ def create_features_table(conn):
                 'win_rate_5_diff': 'DOUBLE PRECISION',
                 'win_streak_diff': 'BIGINT',
                 'loss_streak_diff': 'BIGINT',
-                'win_rate_Hard_5_diff': 'DOUBLE PRECISION',
-                'win_rate_Clay_5_diff': 'DOUBLE PRECISION',
-                'win_rate_Grass_5_diff': 'DOUBLE PRECISION',
-                'win_rate_Carpet_5_diff': 'DOUBLE PRECISION',
-                'win_rate_Hard_overall_diff': 'DOUBLE PRECISION',
-                'win_rate_Clay_overall_diff': 'DOUBLE PRECISION',
-                'win_rate_Grass_overall_diff': 'DOUBLE PRECISION',
-                'win_rate_Carpet_overall_diff': 'DOUBLE PRECISION',
+                'win_rate_hard_5_diff': 'DOUBLE PRECISION',
+                'win_rate_clay_5_diff': 'DOUBLE PRECISION',
+                'win_rate_grass_5_diff': 'DOUBLE PRECISION',
+                'win_rate_carpet_5_diff': 'DOUBLE PRECISION',
+                'win_rate_hard_overall_diff': 'DOUBLE PRECISION',
+                'win_rate_clay_overall_diff': 'DOUBLE PRECISION',
+                'win_rate_grass_overall_diff': 'DOUBLE PRECISION',
+                'win_rate_carpet_overall_diff': 'DOUBLE PRECISION',
                 'serve_efficiency_5_diff': 'DOUBLE PRECISION',
                 'first_serve_pct_5_diff': 'DOUBLE PRECISION',
                 'first_serve_win_pct_5_diff': 'DOUBLE PRECISION',
@@ -237,22 +237,22 @@ def create_features_table(conn):
                 'player2_win_streak': 'BIGINT',
                 'player1_loss_streak': 'BIGINT',
                 'player2_loss_streak': 'BIGINT',
-                'player1_win_rate_Hard_5': 'DOUBLE PRECISION',
-                'player2_win_rate_Hard_5': 'DOUBLE PRECISION',
-                'player1_win_rate_Clay_5': 'DOUBLE PRECISION',
-                'player2_win_rate_Clay_5': 'DOUBLE PRECISION',
-                'player1_win_rate_Grass_5': 'DOUBLE PRECISION',
-                'player2_win_rate_Grass_5': 'DOUBLE PRECISION',
-                'player1_win_rate_Carpet_5': 'DOUBLE PRECISION',
-                'player2_win_rate_Carpet_5': 'DOUBLE PRECISION',
-                'player1_win_rate_Hard_overall': 'DOUBLE PRECISION',
-                'player2_win_rate_Hard_overall': 'DOUBLE PRECISION',
-                'player1_win_rate_Clay_overall': 'DOUBLE PRECISION',
-                'player2_win_rate_Clay_overall': 'DOUBLE PRECISION',
-                'player1_win_rate_Grass_overall': 'DOUBLE PRECISION',
-                'player2_win_rate_Grass_overall': 'DOUBLE PRECISION',
-                'player1_win_rate_Carpet_overall': 'DOUBLE PRECISION',
-                'player2_win_rate_Carpet_overall': 'DOUBLE PRECISION',
+                'player1_win_rate_hard_5': 'DOUBLE PRECISION',
+                'player2_win_rate_hard_5': 'DOUBLE PRECISION',
+                'player1_win_rate_clay_5': 'DOUBLE PRECISION',
+                'player2_win_rate_clay_5': 'DOUBLE PRECISION',
+                'player1_win_rate_grass_5': 'DOUBLE PRECISION',
+                'player2_win_rate_grass_5': 'DOUBLE PRECISION',
+                'player1_win_rate_carpet_5': 'DOUBLE PRECISION',
+                'player2_win_rate_carpet_5': 'DOUBLE PRECISION',
+                'player1_win_rate_hard_overall': 'DOUBLE PRECISION',
+                'player2_win_rate_hard_overall': 'DOUBLE PRECISION',
+                'player1_win_rate_clay_overall': 'DOUBLE PRECISION',
+                'player2_win_rate_clay_overall': 'DOUBLE PRECISION',
+                'player1_win_rate_grass_overall': 'DOUBLE PRECISION',
+                'player2_win_rate_grass_overall': 'DOUBLE PRECISION',
+                'player1_win_rate_carpet_overall': 'DOUBLE PRECISION',
+                'player2_win_rate_carpet_overall': 'DOUBLE PRECISION',
                 'player1_serve_efficiency_5': 'DOUBLE PRECISION',
                 'player2_serve_efficiency_5': 'DOUBLE PRECISION',
                 'player1_first_serve_pct_5': 'DOUBLE PRECISION',
@@ -271,17 +271,17 @@ def create_features_table(conn):
                 'player2_bp_conversion_pct_5': 'DOUBLE PRECISION'
             }
             
-            # Get existing columns
+            # Get existing columns (convert to lowercase for case-insensitive comparison)
             cur.execute("""
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_name = 'match_features'
             """)
-            existing_columns = {row[0] for row in cur.fetchall()}
+            existing_columns = {row[0].lower() for row in cur.fetchall()}
             
             # Find missing columns
             missing_columns = {col: data_type for col, data_type in expected_columns.items() 
-                              if col not in existing_columns}
+                              if col.lower() not in existing_columns}
             
             # Add missing columns
             for col_name, data_type in missing_columns.items():
@@ -360,9 +360,6 @@ def load_data() -> pd.DataFrame:
     
     logger.info("Loading data from database...")
     
-    # For testing, limit to 5000 rows
-    logger.info("TEST MODE: Only loading first 5000 matches")
-    
     query = """
         SELECT 
             id as match_id,
@@ -409,7 +406,6 @@ def load_data() -> pd.DataFrame:
         WHERE winner_id IS NOT NULL 
         AND loser_id IS NOT NULL
         ORDER BY tournament_date ASC
-        LIMIT 5000  -- TEST MODE: Limit to first 5000 matches
     """
     
     df = pd.read_sql(query, engine)
@@ -424,14 +420,14 @@ def load_data() -> pd.DataFrame:
         
         # Map non-standard surfaces to standard ones
         surface_mapping = {
-            'carpet': 'carpet',
-            'hard court': 'hard',
-            'clay court': 'clay',
-            'grass court': 'grass'
+            'carpet': SURFACE_CARPET,
+            'hard court': SURFACE_HARD,
+            'clay court': SURFACE_CLAY,
+            'grass court': SURFACE_GRASS
         }
         df['surface'] = df['surface'].map(lambda x: surface_mapping.get(x, x))
         
-        # Convert to title case with standard surface names
+        # Ensure all surfaces are in the standard list
         df['surface'] = df['surface'].replace({
             'hard': SURFACE_HARD,
             'clay': SURFACE_CLAY,
@@ -463,13 +459,16 @@ def calculate_win_rates(df: pd.DataFrame) -> pd.DataFrame:
                           total=len(df), 
                           desc="Processing matches for win rates", 
                           unit="match"):
+        # Make sure surface is lowercase
+        surface = row['surface'].lower() if isinstance(row['surface'], str) else row['surface']
+        
         # Process winner
         winner_dict = {
             'match_id': row['match_id'],
             'player_id': row['winner_id'],
             'opponent_id': row['loser_id'],
             'tournament_date': row['tournament_date'],
-            'surface': row['surface'],
+            'surface': surface,
             'result': 1  # 1 means win
         }
         matches.append(winner_dict)
@@ -480,7 +479,7 @@ def calculate_win_rates(df: pd.DataFrame) -> pd.DataFrame:
             'player_id': row['loser_id'],
             'opponent_id': row['winner_id'],
             'tournament_date': row['tournament_date'], 
-            'surface': row['surface'],
+            'surface': surface,
             'result': 0  # 0 means loss
         }
         matches.append(loser_dict)
@@ -504,7 +503,7 @@ def calculate_win_rates(df: pd.DataFrame) -> pd.DataFrame:
             .reset_index(level=0, drop=True)
         )
     
-    # Surface-specific win rates
+    # Surface-specific win rates (using lowercase surfaces)
     for surface in tqdm(STANDARD_SURFACES, desc="Processing surface-specific win rates", unit="surface"):
         # Create mask for this surface
         surface_mask = player_df['surface'] == surface
@@ -796,7 +795,7 @@ def calculate_serve_return_rolling_stats(player_df: pd.DataFrame) -> pd.DataFram
                 
                 # Calculate surface-specific rolling average
                 for surface in STANDARD_SURFACES:
-                    # Create mask for this surface
+                    # Create mask for this surface (using lowercase surface)
                     surface_mask = df['surface'] == surface
                     
                     # Initialize column with NaN values
@@ -842,7 +841,7 @@ def calculate_serve_return_rolling_stats(player_df: pd.DataFrame) -> pd.DataFram
                 
                 # Calculate surface-specific rolling average
                 for surface in STANDARD_SURFACES:
-                    # Create mask for this surface
+                    # Create mask for this surface (using lowercase surface)
                     surface_mask = df['surface'] == surface
                     
                     # Initialize column with NaN values
@@ -885,125 +884,129 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
     Returns:
         List of match features
     """
-    batch_idx, batch_df = batch_data
-    
-    # Define serve and return metrics we'll use for feature differences
-    serve_return_metrics = [
-        'serve_efficiency_5',
-        'first_serve_pct_5',
-        'first_serve_win_pct_5',
-        'second_serve_win_pct_5',
-        'ace_pct_5',
-        'bp_saved_pct_5',
-        'return_efficiency_5',
-        'bp_conversion_pct_5'
-    ]
-    
-    features = []
-    for idx, match in batch_df.iterrows():
-        match_date = match['tournament_date']
-        winner_id = match['winner_id']
-        loser_id = match['loser_id']
-        surface = match['surface']
+    try:
+        batch_idx, batch_df = batch_data
         
-        # Get player win/loss stats just before this match (exclude the current match)
-        winner_prev = player_df[(player_df['player_id'] == winner_id) & 
-                              (player_df['tournament_date'] < match_date)]
+        # Define serve and return metrics we'll use for feature differences
+        serve_return_metrics = [
+            'serve_efficiency_5',
+            'first_serve_pct_5',
+            'first_serve_win_pct_5',
+            'second_serve_win_pct_5',
+            'ace_pct_5',
+            'bp_saved_pct_5',
+            'return_efficiency_5',
+            'bp_conversion_pct_5'
+        ]
         
-        loser_prev = player_df[(player_df['player_id'] == loser_id) & 
-                             (player_df['tournament_date'] < match_date)]
-        
-        # Get player serve/return stats just before this match
-        winner_sr_prev = serve_return_df[(serve_return_df['player_id'] == winner_id) & 
-                                      (serve_return_df['tournament_date'] < match_date)]
-        
-        loser_sr_prev = serve_return_df[(serve_return_df['player_id'] == loser_id) & 
-                                     (serve_return_df['tournament_date'] < match_date)]
-        
-        # Initialize match features
-        match_features = {
-            'match_id': idx,
-            'tournament_date': match_date,
-            'surface': surface,
-            'winner_id': winner_id,
-            'loser_id': loser_id,
-        }
-        
-        # Add Elo rating difference
-        match_features['elo_diff'] = match['winner_elo'] - match['loser_elo']
-        
-        # If we have previous win/loss stats for both players
-        if not winner_prev.empty and not loser_prev.empty:
-            # Get most recent stats
-            winner_stats = winner_prev.iloc[-1]
-            loser_stats = loser_prev.iloc[-1]
+        features = []
+        for idx, match in batch_df.iterrows():
+            match_date = match['tournament_date']
+            winner_id = match['winner_id']
+            loser_id = match['loser_id']
+            surface = match['surface'].lower()  # Ensure lowercase surface name
             
-            # Add win rate and streak features
-            match_features.update({
-                # Win rate differences
-                'win_rate_5_diff': winner_stats.get('win_rate_5', 0) - loser_stats.get('win_rate_5', 0),
-                
-                # Win/loss streak differences
-                'win_streak_diff': winner_stats.get('win_streak', 0) - loser_stats.get('win_streak', 0),
-                'loss_streak_diff': winner_stats.get('loss_streak', 0) - loser_stats.get('loss_streak', 0),
-                
-                # Surface-specific win rates
-                f'win_rate_{surface}_5_diff': 
-                    winner_stats.get(f'win_rate_{surface}_5', np.nan) - 
-                    loser_stats.get(f'win_rate_{surface}_5', np.nan),
-                
-                # Overall surface win rates
-                f'win_rate_{surface}_overall_diff': 
-                    winner_stats.get(f'win_rate_{surface}_overall', np.nan) - 
-                    loser_stats.get(f'win_rate_{surface}_overall', np.nan),
-                
-                # Raw player win/loss stats
-                'winner_win_rate_5': winner_stats.get('win_rate_5', 0),
-                'loser_win_rate_5': loser_stats.get('win_rate_5', 0),
-                'winner_win_streak': winner_stats.get('win_streak', 0),
-                'loser_win_streak': loser_stats.get('win_streak', 0),
-                'winner_loss_streak': winner_stats.get('loss_streak', 0),
-                'loser_loss_streak': loser_stats.get('loss_streak', 0),
-            })
+            # Get player win/loss stats just before this match (exclude the current match)
+            winner_prev = player_df[(player_df['player_id'] == winner_id) & 
+                                   (player_df['tournament_date'] < match_date)]
             
-            # Add surface-specific win rates for all surfaces
-            for surf in STANDARD_SURFACES:
+            loser_prev = player_df[(player_df['player_id'] == loser_id) & 
+                                   (player_df['tournament_date'] < match_date)]
+            
+            # Get player serve/return stats just before this match
+            winner_sr_prev = serve_return_df[(serve_return_df['player_id'] == winner_id) & 
+                                           (serve_return_df['tournament_date'] < match_date)]
+            
+            loser_sr_prev = serve_return_df[(serve_return_df['player_id'] == loser_id) & 
+                                           (serve_return_df['tournament_date'] < match_date)]
+            
+            # Initialize match features
+            match_features = {
+                'match_id': idx,
+                'tournament_date': match_date,
+                'surface': surface,
+                'winner_id': winner_id,
+                'loser_id': loser_id,
+            }
+            
+            # Add Elo rating difference
+            match_features['elo_diff'] = match['winner_elo'] - match['loser_elo']
+            
+            # If we have previous win/loss stats for both players
+            if not winner_prev.empty and not loser_prev.empty:
+                # Get most recent stats
+                winner_stats = winner_prev.iloc[-1]
+                loser_stats = loser_prev.iloc[-1]
+                
+                # Add win rate and streak features
                 match_features.update({
-                    f'winner_win_rate_{surf}_5': winner_stats.get(f'win_rate_{surf}_5', np.nan),
-                    f'loser_win_rate_{surf}_5': loser_stats.get(f'win_rate_{surf}_5', np.nan),
-                    f'winner_win_rate_{surf}_overall': winner_stats.get(f'win_rate_{surf}_overall', np.nan),
-                    f'loser_win_rate_{surf}_overall': loser_stats.get(f'win_rate_{surf}_overall', np.nan),
-                })
-        
-        # If we have previous serve/return stats for both players
-        if not winner_sr_prev.empty and not loser_sr_prev.empty:
-            # Get most recent stats
-            winner_sr_stats = winner_sr_prev.iloc[-1]
-            loser_sr_stats = loser_sr_prev.iloc[-1]
-            
-            # Add serve and return metric differences
-            for metric in serve_return_metrics:
-                if metric in winner_sr_stats and metric in loser_sr_stats:
-                    match_features[f'{metric}_diff'] = (
-                        winner_sr_stats.get(metric, np.nan) - 
-                        loser_sr_stats.get(metric, np.nan)
-                    )
+                    # Win rate differences
+                    'win_rate_5_diff': winner_stats.get('win_rate_5', 0) - loser_stats.get('win_rate_5', 0),
                     
-                    # Surface-specific version
-                    surf_metric = f'{metric}_{surface}'
-                    if surf_metric in winner_sr_stats and surf_metric in loser_sr_stats:
-                        match_features[f'{surf_metric}_diff'] = (
-                            winner_sr_stats.get(surf_metric, np.nan) - 
-                            loser_sr_stats.get(surf_metric, np.nan)
-                        )
+                    # Win/loss streak differences
+                    'win_streak_diff': winner_stats.get('win_streak', 0) - loser_stats.get('win_streak', 0),
+                    'loss_streak_diff': winner_stats.get('loss_streak', 0) - loser_stats.get('loss_streak', 0),
+                    
+                    # Surface-specific win rates (use lowercase surface)
+                    f'win_rate_{surface}_5_diff': 
+                        winner_stats.get(f'win_rate_{surface}_5', np.nan) - 
+                        loser_stats.get(f'win_rate_{surface}_5', np.nan),
+                    
+                    # Overall surface win rates
+                    f'win_rate_{surface}_overall_diff': 
+                        winner_stats.get(f'win_rate_{surface}_overall', np.nan) - 
+                        loser_stats.get(f'win_rate_{surface}_overall', np.nan),
+                    
+                    # Raw player win/loss stats
+                    'winner_win_rate_5': winner_stats.get('win_rate_5', 0),
+                    'loser_win_rate_5': loser_stats.get('win_rate_5', 0),
+                    'winner_win_streak': winner_stats.get('win_streak', 0),
+                    'loser_win_streak': loser_stats.get('win_streak', 0),
+                    'winner_loss_streak': winner_stats.get('loss_streak', 0),
+                    'loser_loss_streak': loser_stats.get('loss_streak', 0),
+                })
+                
+                # Add surface-specific win rates for all surfaces
+                for surf in STANDARD_SURFACES:
+                    match_features.update({
+                        f'winner_win_rate_{surf}_5': winner_stats.get(f'win_rate_{surf}_5', np.nan),
+                        f'loser_win_rate_{surf}_5': loser_stats.get(f'win_rate_{surf}_5', np.nan),
+                        f'winner_win_rate_{surf}_overall': winner_stats.get(f'win_rate_{surf}_overall', np.nan),
+                        f'loser_win_rate_{surf}_overall': loser_stats.get(f'win_rate_{surf}_overall', np.nan),
+                    })
             
-            # Add raw player serve/return stats
-            for metric in serve_return_metrics:
-                if metric in winner_sr_stats and metric in loser_sr_stats:
-                    match_features[f'winner_{metric}'] = winner_sr_stats.get(metric, np.nan)
-                    match_features[f'loser_{metric}'] = loser_sr_stats.get(metric, np.nan)
-        
-        features.append(match_features)
+            # If we have previous serve/return stats for both players
+            if not winner_sr_prev.empty and not loser_sr_prev.empty:
+                # Get most recent stats
+                winner_sr_stats = winner_sr_prev.iloc[-1]
+                loser_sr_stats = loser_sr_prev.iloc[-1]
+                
+                # Add serve and return metric differences
+                for metric in serve_return_metrics:
+                    if metric in winner_sr_stats and metric in loser_sr_stats:
+                        match_features[f'{metric}_diff'] = (
+                            winner_sr_stats.get(metric, np.nan) - 
+                            loser_sr_stats.get(metric, np.nan)
+                        )
+                        
+                        # Surface-specific version
+                        surf_metric = f'{metric}_{surface}'
+                        if surf_metric in winner_sr_stats and surf_metric in loser_sr_stats:
+                            match_features[f'{surf_metric}_diff'] = (
+                                winner_sr_stats.get(surf_metric, np.nan) - 
+                                loser_sr_stats.get(surf_metric, np.nan)
+                            )
+                
+                # Add raw player serve/return stats
+                for metric in serve_return_metrics:
+                    if metric in winner_sr_stats and metric in loser_sr_stats:
+                        match_features[f'winner_{metric}'] = winner_sr_stats.get(metric, np.nan)
+                        match_features[f'loser_{metric}'] = loser_sr_stats.get(metric, np.nan)
+            
+            features.append(match_features)
+    except Exception as e:
+        logger.error(f"Error processing batch: {str(e)}")
+        return None
     
     return features
 
@@ -1028,27 +1031,39 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     # Sort by date to ensure chronological processing
     match_df = match_df.sort_values('tournament_date').reset_index(drop=True)
     
-    # Split the data into chunks for parallel processing
-    chunk_size = max(1, len(match_df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
+    # Split the data into smaller chunks for parallel processing to reduce memory pressure
+    chunk_size = max(1, min(1000, len(match_df) // (NUM_CORES * 4)))  # Smaller chunks for better load balancing and memory usage
     chunks = [(i, match_df.iloc[i:i+chunk_size]) for i in range(0, len(match_df), chunk_size)]
     
-    # Create a pool of workers
-    with multiprocessing.Pool(processes=NUM_CORES) as pool:
-        # Process each chunk in parallel
-        results = list(tqdm(
-            pool.imap(
-                partial(process_match_features_batch, player_df=player_df, serve_return_df=serve_return_df),
-                chunks
-            ),
-            total=len(chunks),
-            desc="Preparing match features (parallel)",
-            unit="chunk"
-        ))
-    
-    # Combine all results
+    # Create a pool of workers with maxtasksperchild to prevent memory leaks
     all_features = []
-    for chunk_features in results:
-        all_features.extend(chunk_features)
+    
+    try:
+        with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
+            # Process each chunk in parallel with error handling
+            for chunk_result in tqdm(
+                pool.imap(
+                    partial(process_match_features_batch, player_df=player_df, serve_return_df=serve_return_df),
+                    chunks
+                ),
+                total=len(chunks),
+                desc="Preparing match features (parallel)",
+                unit="chunk"
+            ):
+                if chunk_result:  # Check if result is not None
+                    all_features.extend(chunk_result)
+    except Exception as e:
+        logger.error(f"Error in multiprocessing: {str(e)}")
+        # Fallback to sequential processing if parallel processing fails
+        logger.info("Falling back to sequential processing...")
+        all_features = []
+        for chunk_data in tqdm(chunks, desc="Processing sequentially"):
+            try:
+                result = process_match_features_batch(chunk_data, player_df, serve_return_df)
+                all_features.extend(result)
+            except Exception as e:
+                logger.error(f"Error processing chunk: {str(e)}")
+                continue
     
     # Create dataframe with all features
     features_df = pd.DataFrame(all_features)
@@ -1069,137 +1084,142 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
     Returns:
         List of symmetric match features
     """
-    batch_idx, batch_df = batch_data
-    matches = []
-    
-    # First pass: p1 = winner, p2 = loser (actual match result)
-    for idx, row in batch_df.iterrows():
-        surface = row['surface']
-        match_dict = {
-            'match_id': row['match_id'],
-            'tournament_date': row['tournament_date'],
-            'surface': surface,
-            'player1_id': row['winner_id'],
-            'player2_id': row['loser_id'],
-            'result': 1  # player1 won
-        }
+    try:
+        batch_idx, batch_df = batch_data
+        matches = []
         
-        # Add traditional features
-        # Elo difference
-        match_dict['player_elo_diff'] = row.get('elo_diff', 0)
-        
-        # Win rates
-        match_dict['win_rate_5_diff'] = row.get('win_rate_5_diff', 0)
-        
-        # Streaks
-        match_dict['win_streak_diff'] = row.get('win_streak_diff', 0)
-        match_dict['loss_streak_diff'] = row.get('loss_streak_diff', 0)
-        
-        # Surface win rates (preserve NaN values for proper XGBoost handling)
-        for surf in STANDARD_SURFACES:
-            if f'win_rate_{surf}_5_diff' in row:
-                match_dict[f'win_rate_{surf}_5_diff'] = row[f'win_rate_{surf}_5_diff']
+        # First pass: p1 = winner, p2 = loser (actual match result)
+        for idx, row in batch_df.iterrows():
+            surface = row['surface'].lower() if isinstance(row['surface'], str) else row['surface']
+            match_dict = {
+                'match_id': row['match_id'],
+                'tournament_date': row['tournament_date'],
+                'surface': surface,
+                'player1_id': row['winner_id'],
+                'player2_id': row['loser_id'],
+                'result': 1  # player1 won
+            }
             
-            if f'win_rate_{surf}_overall_diff' in row:
-                match_dict[f'win_rate_{surf}_overall_diff'] = row[f'win_rate_{surf}_overall_diff']
-        
-        # Add serve and return features
-        for metric in serve_return_metrics:
-            # General metric
-            if f'{metric}_diff' in row:
-                match_dict[f'{metric}_diff'] = row[f'{metric}_diff']
+            # Add traditional features
+            # Elo difference
+            match_dict['player_elo_diff'] = row.get('elo_diff', 0)
             
-            # Surface-specific metric
-            if f'{metric}_{surface}_diff' in row:
-                match_dict[f'{metric}_{surface}_diff'] = row[f'{metric}_{surface}_diff']
-        
-        # Add raw player features to ensure consistent prediction regardless of player order
-        if 'winner_win_rate_5' in row:
-            match_dict['player1_win_rate_5'] = row['winner_win_rate_5']
-            match_dict['player2_win_rate_5'] = row['loser_win_rate_5']
-            match_dict['player1_win_streak'] = row['winner_win_streak']
-            match_dict['player2_win_streak'] = row['loser_win_streak']
-            match_dict['player1_loss_streak'] = row['winner_loss_streak']
-            match_dict['player2_loss_streak'] = row['loser_loss_streak']
+            # Win rates
+            match_dict['win_rate_5_diff'] = row.get('win_rate_5_diff', 0)
             
-            # Surface-specific rates
+            # Streaks
+            match_dict['win_streak_diff'] = row.get('win_streak_diff', 0)
+            match_dict['loss_streak_diff'] = row.get('loss_streak_diff', 0)
+            
+            # Surface win rates (preserve NaN values for proper XGBoost handling)
             for surf in STANDARD_SURFACES:
-                if f'winner_win_rate_{surf}_5' in row:
-                    match_dict[f'player1_win_rate_{surf}_5'] = row[f'winner_win_rate_{surf}_5']
-                    match_dict[f'player2_win_rate_{surf}_5'] = row[f'loser_win_rate_{surf}_5']
-                    match_dict[f'player1_win_rate_{surf}_overall'] = row[f'winner_win_rate_{surf}_overall']
-                    match_dict[f'player2_win_rate_{surf}_overall'] = row[f'loser_win_rate_{surf}_overall']
-        
-        # Add serve and return raw stats
-        for metric in serve_return_metrics:
-            if f'winner_{metric}' in row and f'loser_{metric}' in row:
-                match_dict[f'player1_{metric}'] = row[f'winner_{metric}']
-                match_dict[f'player2_{metric}'] = row[f'loser_{metric}']
-        
-        matches.append(match_dict)
-    
-    # Second pass: p1 = loser, p2 = winner (flipped match result)
-    for idx, row in batch_df.iterrows():
-        surface = row['surface']
-        match_dict = {
-            'match_id': row['match_id'],
-            'tournament_date': row['tournament_date'],
-            'surface': surface,
-            'player1_id': row['loser_id'],
-            'player2_id': row['winner_id'], 
-            'result': 0  # player1 lost
-        }
-        
-        # Add features with reversed signs
-        match_dict['player_elo_diff'] = -row.get('elo_diff', 0)
-        match_dict['win_rate_5_diff'] = -row.get('win_rate_5_diff', 0)
-        match_dict['win_streak_diff'] = -row.get('win_streak_diff', 0)
-        match_dict['loss_streak_diff'] = -row.get('loss_streak_diff', 0)
-        
-        # Surface win rates with reversed signs
-        for surf in STANDARD_SURFACES:
-            if f'win_rate_{surf}_5_diff' in row:
-                match_dict[f'win_rate_{surf}_5_diff'] = -row[f'win_rate_{surf}_5_diff']
+                # Use lowercase for surface-related column names
+                if f'win_rate_{surf}_5_diff' in row:
+                    match_dict[f'win_rate_{surf}_5_diff'] = row[f'win_rate_{surf}_5_diff']
+                
+                if f'win_rate_{surf}_overall_diff' in row:
+                    match_dict[f'win_rate_{surf}_overall_diff'] = row[f'win_rate_{surf}_overall_diff']
             
-            if f'win_rate_{surf}_overall_diff' in row:
-                match_dict[f'win_rate_{surf}_overall_diff'] = -row[f'win_rate_{surf}_overall_diff']
-        
-        # Add serve and return features (with reversed signs)
-        for metric in serve_return_metrics:
-            # General metric
-            if f'{metric}_diff' in row:
-                match_dict[f'{metric}_diff'] = -row[f'{metric}_diff']
+            # Add serve and return features
+            for metric in serve_return_metrics:
+                # General metric
+                if f'{metric}_diff' in row:
+                    match_dict[f'{metric}_diff'] = row[f'{metric}_diff']
+                
+                # Surface-specific metric
+                if f'{metric}_{surface}_diff' in row:
+                    match_dict[f'{metric}_{surface}_diff'] = row[f'{metric}_{surface}_diff']
             
-            # Surface-specific metric
-            if f'{metric}_{surface}_diff' in row:
-                match_dict[f'{metric}_{surface}_diff'] = -row[f'{metric}_{surface}_diff']
-        
-        # Add raw player features (swapped)
-        if 'winner_win_rate_5' in row:
-            match_dict['player1_win_rate_5'] = row['loser_win_rate_5']
-            match_dict['player2_win_rate_5'] = row['winner_win_rate_5']
-            match_dict['player1_win_streak'] = row['loser_win_streak']
-            match_dict['player2_win_streak'] = row['winner_win_streak']
-            match_dict['player1_loss_streak'] = row['loser_loss_streak']
-            match_dict['player2_loss_streak'] = row['winner_loss_streak']
+            # Add raw player features to ensure consistent prediction regardless of player order
+            if 'winner_win_rate_5' in row:
+                match_dict['player1_win_rate_5'] = row['winner_win_rate_5']
+                match_dict['player2_win_rate_5'] = row['loser_win_rate_5']
+                match_dict['player1_win_streak'] = row['winner_win_streak']
+                match_dict['player2_win_streak'] = row['loser_win_streak']
+                match_dict['player1_loss_streak'] = row['winner_loss_streak']
+                match_dict['player2_loss_streak'] = row['loser_loss_streak']
+                
+                # Surface-specific rates (use lowercase for surface names)
+                for surf in STANDARD_SURFACES:
+                    if f'winner_win_rate_{surf}_5' in row:
+                        match_dict[f'player1_win_rate_{surf}_5'] = row[f'winner_win_rate_{surf}_5']
+                        match_dict[f'player2_win_rate_{surf}_5'] = row[f'loser_win_rate_{surf}_5']
+                        match_dict[f'player1_win_rate_{surf}_overall'] = row[f'winner_win_rate_{surf}_overall']
+                        match_dict[f'player2_win_rate_{surf}_overall'] = row[f'loser_win_rate_{surf}_overall']
             
-            # Surface-specific rates
+            # Add serve and return raw stats
+            for metric in serve_return_metrics:
+                if f'winner_{metric}' in row and f'loser_{metric}' in row:
+                    match_dict[f'player1_{metric}'] = row[f'winner_{metric}']
+                    match_dict[f'player2_{metric}'] = row[f'loser_{metric}']
+            
+            matches.append(match_dict)
+        
+        # Second pass: p1 = loser, p2 = winner (flipped match result)
+        for idx, row in batch_df.iterrows():
+            surface = row['surface'].lower() if isinstance(row['surface'], str) else row['surface']
+            match_dict = {
+                'match_id': row['match_id'],
+                'tournament_date': row['tournament_date'],
+                'surface': surface,
+                'player1_id': row['loser_id'],
+                'player2_id': row['winner_id'], 
+                'result': 0  # player1 lost
+            }
+            
+            # Add features with reversed signs
+            match_dict['player_elo_diff'] = -row.get('elo_diff', 0)
+            match_dict['win_rate_5_diff'] = -row.get('win_rate_5_diff', 0)
+            match_dict['win_streak_diff'] = -row.get('win_streak_diff', 0)
+            match_dict['loss_streak_diff'] = -row.get('loss_streak_diff', 0)
+            
+            # Surface win rates with reversed signs (use lowercase)
             for surf in STANDARD_SURFACES:
-                if f'winner_win_rate_{surf}_5' in row:
-                    match_dict[f'player1_win_rate_{surf}_5'] = row[f'loser_win_rate_{surf}_5']
-                    match_dict[f'player2_win_rate_{surf}_5'] = row[f'winner_win_rate_{surf}_5']
-                    match_dict[f'player1_win_rate_{surf}_overall'] = row[f'loser_win_rate_{surf}_overall']
-                    match_dict[f'player2_win_rate_{surf}_overall'] = row[f'winner_win_rate_{surf}_overall']
+                if f'win_rate_{surf}_5_diff' in row:
+                    match_dict[f'win_rate_{surf}_5_diff'] = -row[f'win_rate_{surf}_5_diff']
+                
+                if f'win_rate_{surf}_overall_diff' in row:
+                    match_dict[f'win_rate_{surf}_overall_diff'] = -row[f'win_rate_{surf}_overall_diff']
+            
+            # Add serve and return features (with reversed signs)
+            for metric in serve_return_metrics:
+                # General metric
+                if f'{metric}_diff' in row:
+                    match_dict[f'{metric}_diff'] = -row[f'{metric}_diff']
+                
+                # Surface-specific metric
+                if f'{metric}_{surface}_diff' in row:
+                    match_dict[f'{metric}_{surface}_diff'] = -row[f'{metric}_{surface}_diff']
+            
+            # Add raw player features (swapped)
+            if 'winner_win_rate_5' in row:
+                match_dict['player1_win_rate_5'] = row['loser_win_rate_5']
+                match_dict['player2_win_rate_5'] = row['winner_win_rate_5']
+                match_dict['player1_win_streak'] = row['loser_win_streak']
+                match_dict['player2_win_streak'] = row['winner_win_streak']
+                match_dict['player1_loss_streak'] = row['loser_loss_streak']
+                match_dict['player2_loss_streak'] = row['winner_loss_streak']
+                
+                # Surface-specific rates (use lowercase)
+                for surf in STANDARD_SURFACES:
+                    if f'winner_win_rate_{surf}_5' in row:
+                        match_dict[f'player1_win_rate_{surf}_5'] = row[f'loser_win_rate_{surf}_5']
+                        match_dict[f'player2_win_rate_{surf}_5'] = row[f'winner_win_rate_{surf}_5']
+                        match_dict[f'player1_win_rate_{surf}_overall'] = row[f'loser_win_rate_{surf}_overall']
+                        match_dict[f'player2_win_rate_{surf}_overall'] = row[f'winner_win_rate_{surf}_overall']
+            
+            # Add serve and return raw stats (swapped)
+            for metric in serve_return_metrics:
+                if f'winner_{metric}' in row and f'loser_{metric}' in row:
+                    match_dict[f'player1_{metric}'] = row[f'loser_{metric}']
+                    match_dict[f'player2_{metric}'] = row[f'winner_{metric}']
+            
+            matches.append(match_dict)
         
-        # Add serve and return raw stats (swapped)
-        for metric in serve_return_metrics:
-            if f'winner_{metric}' in row and f'loser_{metric}' in row:
-                match_dict[f'player1_{metric}'] = row[f'loser_{metric}']
-                match_dict[f'player2_{metric}'] = row[f'winner_{metric}']
-        
-        matches.append(match_dict)
-    
-    return matches
+        return matches
+    except Exception as e:
+        logger.error(f"Error processing batch: {str(e)}")
+        return None
 
 def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -1229,27 +1249,39 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
         'bp_conversion_pct_5'
     ]
     
-    # Split the data into chunks for parallel processing
-    chunk_size = max(1, len(df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
+    # Split the data into smaller chunks for parallel processing
+    chunk_size = max(1, min(1000, len(df) // (NUM_CORES * 4)))  # Smaller chunks for better memory management
     chunks = [(i, df.iloc[i:i+chunk_size]) for i in range(0, len(df), chunk_size)]
     
-    # Create a pool of workers
-    with multiprocessing.Pool(processes=NUM_CORES) as pool:
-        # Process each chunk in parallel
-        results = list(tqdm(
-            pool.imap(
-                partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
-                chunks
-            ),
-            total=len(chunks),
-            desc="Generating symmetric features (parallel)",
-            unit="chunk"
-        ))
-    
-    # Combine all results
     all_matches = []
-    for chunk_matches in results:
-        all_matches.extend(chunk_matches)
+    
+    try:
+        # Create a pool of workers with maxtasksperchild to prevent memory leaks
+        with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
+            # Process each chunk in parallel with error handling
+            for chunk_result in tqdm(
+                pool.imap(
+                    partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
+                    chunks
+                ),
+                total=len(chunks),
+                desc="Generating symmetric features (parallel)",
+                unit="chunk"
+            ):
+                if chunk_result:  # Check if result is not None
+                    all_matches.extend(chunk_result)
+    except Exception as e:
+        logger.error(f"Error in multiprocessing: {str(e)}")
+        # Fallback to sequential processing if parallel processing fails
+        logger.info("Falling back to sequential processing...")
+        all_matches = []
+        for chunk_data in tqdm(chunks, desc="Processing sequentially"):
+            try:
+                result = process_symmetric_features_batch(chunk_data, serve_return_metrics)
+                all_matches.extend(result)
+            except Exception as e:
+                logger.error(f"Error processing chunk: {str(e)}")
+                continue
     
     # Convert to DataFrame
     symmetric_df = pd.DataFrame(all_matches)
@@ -1267,7 +1299,7 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
     Args:
         symmetric_df: DataFrame with player-symmetric features
     """
-    logger.info("Saving features to database...")
+    logger.info("Saving features to database (with duplicate prevention via ON CONFLICT DO NOTHING)...")
     
     # Get database connection
     conn = get_psycopg2_connection()
@@ -1290,24 +1322,24 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
         
         logger.info(f"Found {len(new_df)} new matches to process out of {len(symmetric_df)} total matches")
         
-        # Define all possible columns we expect to have
+        # Define all possible columns we expect to have (using lowercase for surface names)
         all_possible_columns = [
             'match_id', 'player1_id', 'player2_id', 'surface', 'tournament_date', 'result',
             'player_elo_diff', 'win_rate_5_diff', 'win_streak_diff', 'loss_streak_diff',
-            'win_rate_Hard_5_diff', 'win_rate_Clay_5_diff', 'win_rate_Grass_5_diff', 'win_rate_Carpet_5_diff',
-            'win_rate_Hard_overall_diff', 'win_rate_Clay_overall_diff', 'win_rate_Grass_overall_diff', 'win_rate_Carpet_overall_diff',
+            'win_rate_hard_5_diff', 'win_rate_clay_5_diff', 'win_rate_grass_5_diff', 'win_rate_carpet_5_diff',
+            'win_rate_hard_overall_diff', 'win_rate_clay_overall_diff', 'win_rate_grass_overall_diff', 'win_rate_carpet_overall_diff',
             'serve_efficiency_5_diff', 'first_serve_pct_5_diff', 'first_serve_win_pct_5_diff', 'second_serve_win_pct_5_diff',
             'ace_pct_5_diff', 'bp_saved_pct_5_diff', 'return_efficiency_5_diff', 'bp_conversion_pct_5_diff',
             'player1_win_rate_5', 'player2_win_rate_5', 'player1_win_streak', 'player2_win_streak',
             'player1_loss_streak', 'player2_loss_streak',
-            'player1_win_rate_Hard_5', 'player2_win_rate_Hard_5',
-            'player1_win_rate_Clay_5', 'player2_win_rate_Clay_5',
-            'player1_win_rate_Grass_5', 'player2_win_rate_Grass_5',
-            'player1_win_rate_Carpet_5', 'player2_win_rate_Carpet_5',
-            'player1_win_rate_Hard_overall', 'player2_win_rate_Hard_overall',
-            'player1_win_rate_Clay_overall', 'player2_win_rate_Clay_overall',
-            'player1_win_rate_Grass_overall', 'player2_win_rate_Grass_overall',
-            'player1_win_rate_Carpet_overall', 'player2_win_rate_Carpet_overall',
+            'player1_win_rate_hard_5', 'player2_win_rate_hard_5',
+            'player1_win_rate_clay_5', 'player2_win_rate_clay_5',
+            'player1_win_rate_grass_5', 'player2_win_rate_grass_5',
+            'player1_win_rate_carpet_5', 'player2_win_rate_carpet_5',
+            'player1_win_rate_hard_overall', 'player2_win_rate_hard_overall',
+            'player1_win_rate_clay_overall', 'player2_win_rate_clay_overall',
+            'player1_win_rate_grass_overall', 'player2_win_rate_grass_overall',
+            'player1_win_rate_carpet_overall', 'player2_win_rate_carpet_overall',
             'player1_serve_efficiency_5', 'player2_serve_efficiency_5',
             'player1_first_serve_pct_5', 'player2_first_serve_pct_5',
             'player1_first_serve_win_pct_5', 'player2_first_serve_win_pct_5',
@@ -1317,6 +1349,19 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
             'player1_return_efficiency_5', 'player2_return_efficiency_5',
             'player1_bp_conversion_pct_5', 'player2_bp_conversion_pct_5'
         ]
+        
+        # Convert any surface-related column names to lowercase
+        for col in list(new_df.columns):
+            if any(surface.capitalize() in col for surface in STANDARD_SURFACES):
+                # Create lowercase version
+                lowercase_col = col
+                for surface in STANDARD_SURFACES:
+                    if surface.capitalize() in col:
+                        lowercase_col = col.replace(surface.capitalize(), surface)
+                
+                # If the column name changed, rename it
+                if lowercase_col != col:
+                    new_df.rename(columns={col: lowercase_col}, inplace=True)
         
         # Check which columns actually exist in the dataframe
         available_columns = [col for col in all_possible_columns if col in new_df.columns]
@@ -1425,6 +1470,14 @@ def main():
     logger.info("Step 1/5 (0%): Loading data...")
     df = load_data()
     logger.info(f"Loaded {len(df)} matches")
+    
+    # TEST MODE: Limit to first 5000 rows
+    test_mode = True  # Set to False to process all data
+    if test_mode:
+        original_len = len(df)
+        df = df.head(5000)
+        logger.info(f"TEST MODE: Limiting to first 5000 rows out of {original_len}")
+    
     progress_tracker.update()
     
     # Step 2: Calculate player win rates and streaks
@@ -1456,7 +1509,7 @@ def main():
     progress_tracker.update()
     
     # Print feature statistics
-    logger.info(f"Total matches: {len(df)}")
+    logger.info(f"Total matches processed: {len(df)}")
     logger.info(f"Total features: {len(symmetric_df.columns) - 6}")  # Exclude match_id, tournament_date, player1_id, player2_id, surface, result
     
     # Print example features for a match
