@@ -16,8 +16,10 @@ from psycopg2.extras import execute_values
 
 # Multiprocessing settings
 # Set to 0 to use all available cores, or specify a number to limit the cores used
-NUM_CORES = 100
-CHUNK_MULTIPLIER = 4  # Controls chunk size for better load balancing
+NUM_CORES = 96  # Optimized for 128-core system (leave some cores for OS)
+CHUNK_MULTIPLIER = 8  # Controls chunk size for better load balancing
+WORKER_BATCH_SIZE = 8000  # Maximum records to process in a worker
+POOL_BATCH_SIZE = 16  # Number of chunks to process per pool creation
 
 # If NUM_CORES is set to 0, use all available cores
 if NUM_CORES <= 0:
@@ -1016,7 +1018,7 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
             features.append(match_features)
             
             # Limit batch size to avoid memory issues
-            if len(features) >= 5000:
+            if len(features) >= WORKER_BATCH_SIZE:
                 break
     except Exception as e:
         mp_logger.error(f"Error processing batch {batch_idx}: {str(e)}")
@@ -1037,7 +1039,7 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
         DataFrame with match features
     """
     logger.info("Preparing match features using multiprocessing...")
-    logger.info(f"Using {NUM_CORES} CPU cores")
+    logger.info(f"Using {NUM_CORES} CPU cores for processing ~{len(df)} matches")
     
     # Create a copy of the match dataframe
     match_df = df.copy()
@@ -1048,6 +1050,8 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     # Smaller chunks for better load balancing and to reduce data size
     chunk_size = max(1, len(match_df) // (NUM_CORES * CHUNK_MULTIPLIER))
     chunks = [(i, match_df.iloc[i:i+chunk_size]) for i in range(0, len(match_df), chunk_size)]
+    
+    logger.info(f"Created {len(chunks)} chunks with approximately {chunk_size} matches each")
     
     # Filter dataframes to include only necessary columns to reduce memory usage
     player_cols = ['player_id', 'tournament_date', 'surface', 'win_rate_5', 'win_streak', 'loss_streak']
@@ -1085,13 +1089,18 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     all_features = []
     
     # Process in sequential chunks to avoid memory issues
-    batch_size = 10
-    for i in range(0, len(chunks), batch_size):
-        batch_chunks = chunks[i:i+batch_size]
+    num_batches = (len(chunks) + POOL_BATCH_SIZE - 1) // POOL_BATCH_SIZE
+    logger.info(f"Processing data in {num_batches} batches of {POOL_BATCH_SIZE} chunks each")
+    
+    for i in range(0, len(chunks), POOL_BATCH_SIZE):
+        batch_chunks = chunks[i:i+POOL_BATCH_SIZE]
+        batch_num = i // POOL_BATCH_SIZE + 1
+        
+        logger.info(f"Starting batch {batch_num}/{num_batches} with {len(batch_chunks)} chunks")
         
         try:
             # Create a pool of workers with maxtasksperchild to free resources
-            with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=1) as pool:
+            with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
                 # Process each chunk in parallel
                 results = list(tqdm(
                     pool.imap(
@@ -1103,24 +1112,33 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
                         batch_chunks
                     ),
                     total=len(batch_chunks),
-                    desc=f"Processing batch {i//batch_size + 1}/{(len(chunks) + batch_size - 1)//batch_size}",
+                    desc=f"Processing batch {batch_num}/{num_batches}",
                     unit="chunk"
                 ))
             
+            # Count valid results
+            valid_results = [r for r in results if r is not None]
+            logger.info(f"Batch {batch_num}: processed {len(valid_results)}/{len(batch_chunks)} chunks successfully")
+            
             # Combine results from this batch
+            batch_features_count = 0
             for chunk_features in results:
                 if chunk_features is not None:
                     all_features.extend(chunk_features)
+                    batch_features_count += len(chunk_features)
+            
+            logger.info(f"Batch {batch_num}: added {batch_features_count} features, total so far: {len(all_features)}")
             
             # Free memory
             del results
             
         except Exception as e:
-            logger.error(f"Error processing batch {i//batch_size + 1}: {str(e)}")
+            logger.error(f"Error processing batch {batch_num}: {str(e)}")
             # Continue with next batch instead of failing completely
             continue
     
     # Create dataframe with all features
+    logger.info(f"Creating DataFrame with {len(all_features)} feature records")
     features_df = pd.DataFrame(all_features)
     
     # Sort by date
@@ -1273,7 +1291,7 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
             matches.append(match_dict)
             
             # Limit batch size to avoid memory issues
-            if len(matches) >= 5000:
+            if len(matches) >= WORKER_BATCH_SIZE:
                 break
         
         return matches
@@ -1292,7 +1310,7 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
         DataFrame with player-symmetric features
     """
     logger.info("Generating player-symmetric features using multiprocessing...")
-    logger.info(f"Using {NUM_CORES} CPU cores")
+    logger.info(f"Using {NUM_CORES} CPU cores for processing {len(features_df)} features")
     
     # Create a copy with only necessary columns to reduce memory usage
     essential_cols = ['match_id', 'tournament_date', 'surface', 'winner_id', 'loser_id', 
@@ -1346,16 +1364,23 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
     chunk_size = max(1, len(df) // (NUM_CORES * CHUNK_MULTIPLIER))
     chunks = [(i, df.iloc[i:i+chunk_size]) for i in range(0, len(df), chunk_size)]
     
+    logger.info(f"Created {len(chunks)} chunks with approximately {chunk_size} rows each")
+    
     all_matches = []
     
     # Process in sequential batches to avoid memory issues
-    batch_size = 10
-    for i in range(0, len(chunks), batch_size):
-        batch_chunks = chunks[i:i+batch_size]
+    num_batches = (len(chunks) + POOL_BATCH_SIZE - 1) // POOL_BATCH_SIZE
+    logger.info(f"Processing data in {num_batches} batches of {POOL_BATCH_SIZE} chunks each")
+    
+    for i in range(0, len(chunks), POOL_BATCH_SIZE):
+        batch_chunks = chunks[i:i+POOL_BATCH_SIZE]
+        batch_num = i // POOL_BATCH_SIZE + 1
+        
+        logger.info(f"Starting symmetric batch {batch_num}/{num_batches} with {len(batch_chunks)} chunks")
         
         try:
             # Create a pool of workers with maxtasksperchild to free resources
-            with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=1) as pool:
+            with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
                 # Process each chunk in parallel
                 results = list(tqdm(
                     pool.imap(
@@ -1363,24 +1388,33 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
                         batch_chunks
                     ),
                     total=len(batch_chunks),
-                    desc=f"Processing symmetric batch {i//batch_size + 1}/{(len(chunks) + batch_size - 1)//batch_size}",
+                    desc=f"Processing symmetric batch {batch_num}/{num_batches}",
                     unit="chunk"
                 ))
             
+            # Count valid results
+            valid_results = [r for r in results if r is not None]
+            logger.info(f"Batch {batch_num}: processed {len(valid_results)}/{len(batch_chunks)} chunks successfully")
+            
             # Combine results from this batch
+            batch_matches_count = 0
             for chunk_matches in results:
                 if chunk_matches is not None:
                     all_matches.extend(chunk_matches)
+                    batch_matches_count += len(chunk_matches)
+            
+            logger.info(f"Batch {batch_num}: added {batch_matches_count} matches, total so far: {len(all_matches)}")
             
             # Free memory
             del results
             
         except Exception as e:
-            logger.error(f"Error processing symmetric batch {i//batch_size + 1}: {str(e)}")
+            logger.error(f"Error processing symmetric batch {batch_num}: {str(e)}")
             # Continue with next batch instead of failing completely
             continue
     
     # Convert to DataFrame
+    logger.info(f"Creating DataFrame with {len(all_matches)} symmetric matches")
     symmetric_df = pd.DataFrame(all_matches)
     
     # Sort by date and match_id
