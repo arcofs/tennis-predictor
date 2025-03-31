@@ -1,0 +1,233 @@
+{
+    "test": {
+        "overall": {
+            "accuracy": 0.8519809942417955,
+            "balanced_accuracy": 0.8519788719436734,
+            "precision": 0.8527995134139926,
+            "recall": 0.8503532381529988,
+            "f1": 0.851574618964371,
+            "roc_auc": 0.9238879565025375,
+            "pr_auc": 0.9224205449094282,
+            "log_loss": 0.35080484882106294,
+            "brier_score": 0.10856548218288856,
+            "tn": 104424,
+            "fp": 17909,
+            "fn": 18259,
+            "tp": 103755,
+            "confusion_matrix": [
+                [
+                    104424,
+                    17909
+                ],
+                [
+                    18259,
+                    103755
+                ]
+            ],
+            "classification_report": {
+                "0": {
+                    "precision": 0.8511692736564969,
+                    "recall": 0.8536045057343481,
+                    "f1-score": 0.8523851503575277,
+                    "support": 122333.0
+                },
+                "1": {
+                    "precision": 0.8527995134139926,
+                    "recall": 0.8503532381529988,
+                    "f1-score": 0.851574618964371,
+                    "support": 122014.0
+                },
+                "accuracy": 0.8519809942417955,
+                "macro avg": {
+                    "precision": 0.8519843935352447,
+                    "recall": 0.8519788719436734,
+                    "f1-score": 0.8519798846609494,
+                    "support": 244347.0
+                },
+                "weighted avg": {
+                    "precision": 0.8519833293795919,
+                    "recall": 0.8519809942417955,
+                    "f1-score": 0.851980413743595,
+                    "support": 244347.0
+                }
+            }
+        },
+        "by_surface": {}
+    },
+    "validation": {
+        "overall": {
+            "accuracy": 0.860361945765431,
+            "balanced_accuracy": 0.8603623435220176,
+            "precision": 0.8615226759696286,
+            "recall": 0.8588437461642322,
+            "f1": 0.860181125271483,
+            "roc_auc": 0.9318582650867377,
+            "pr_auc": 0.9308154640158717,
+            "log_loss": 0.33312588742628163,
+            "brier_score": 0.10233787781388366,
+            "tn": 105271,
+            "fp": 16870,
+            "fn": 17250,
+            "tp": 104955,
+            "confusion_matrix": [
+                [
+                    105271,
+                    16870
+                ],
+                [
+                    17250,
+                    104955
+                ]
+            ],
+            "classification_report": {
+                "0": {
+                    "precision": 0.8592078092735123,
+                    "recall": 0.8618809408798028,
+                    "f1-score": 0.8605422991719188,
+                    "support": 122141.0
+                },
+                "1": {
+                    "precision": 0.8615226759696286,
+                    "recall": 0.8588437461642322,
+                    "f1-score": 0.860181125271483,
+                    "support": 122205.0
+                },
+                "accuracy": 0.860361945765431,
+                "macro avg": {
+                    "precision": 0.8603652426215704,
+                    "recall": 0.8603623435220176,
+                    "f1-score": 0.8603617122217009,
+                    "support": 244346.0
+                },
+                "weighted avg": {
+                    "precision": 0.8603655457807557,
+                    "recall": 0.860361945765431,
+                    "f1-score": 0.8603616649217048,
+                    "support": 244346.0
+                }
+            }
+        },
+        "by_surface": null
+    },
+    "selected_features": [
+        "player_elo_diff",
+        "win_rate_5_diff",
+        "player1_win_rate_5",
+        "player2_win_rate_5",
+        "loss_streak_diff",
+        "player1_serve_efficiency_5",
+        "player2_serve_efficiency_5",
+        "player2_loss_streak",
+        "win_rate_clay_overall_diff",
+        "win_rate_hard_overall_diff",
+        "player1_win_rate_clay_overall",
+        "player2_win_rate_clay_overall",
+        "player1_loss_streak",
+        "win_streak_diff",
+        "player2_win_rate_clay_5",
+        "player1_win_rate_clay_5",
+        "player2_win_rate_grass_overall",
+        "player2_win_rate_hard_5",
+        "player1_win_rate_hard_5",
+        "player1_win_rate_grass_overall",
+        "player1_win_rate_hard_overall",
+        "player2_win_rate_hard_overall",
+        "id",
+        "player2_bp_conversion_pct_5",
+        "player1_second_serve_win_pct_5",
+        "player1_bp_conversion_pct_5",
+        "player1_first_serve_win_pct_5",
+        "player2_second_serve_win_pct_5",
+        "win_rate_grass_overall_diff",
+        "player2_return_efficiency_5",
+        "player2_first_serve_win_pct_5",
+        "player1_return_efficiency_5",
+        "serve_efficiency_5_diff",
+        "player2_win_rate_carpet_overall",
+        "player1_win_rate_carpet_overall",
+        "player2_win_streak",
+        "player1_win_streak",
+        "win_rate_carpet_overall_diff",
+        "win_rate_clay_5_diff",
+        "player2_ace_pct_5",
+        "player1_win_rate_grass_5",
+        "player2_bp_saved_pct_5",
+        "player1_ace_pct_5",
+        "player1_bp_saved_pct_5",
+        "win_rate_hard_5_diff",
+        "player2_win_rate_grass_5",
+        "first_serve_win_pct_5_diff"
+    ],
+    "feature_importance": {
+        "player_elo_diff": 777.4867553710938,
+        "win_rate_5_diff": 254.59523010253906,
+        "player1_win_rate_5": 171.80508422851562,
+        "player2_win_rate_5": 170.82247924804688,
+        "loss_streak_diff": 73.23204803466797,
+        "player1_serve_efficiency_5": 56.22453689575195,
+        "player2_serve_efficiency_5": 53.67461395263672,
+        "player2_loss_streak": 44.6688232421875,
+        "win_rate_clay_overall_diff": 44.09840393066406,
+        "win_rate_hard_overall_diff": 43.973243713378906,
+        "player1_win_rate_clay_overall": 43.413570404052734,
+        "player2_win_rate_clay_overall": 43.20444107055664,
+        "player1_loss_streak": 41.93612289428711,
+        "win_streak_diff": 38.040531158447266,
+        "player2_win_rate_clay_5": 33.2625846862793,
+        "player1_win_rate_clay_5": 32.963462829589844,
+        "player2_win_rate_grass_overall": 32.907188415527344,
+        "player2_win_rate_hard_5": 32.49617004394531,
+        "player1_win_rate_hard_5": 31.690561294555664,
+        "player1_win_rate_grass_overall": 31.641395568847656,
+        "player1_win_rate_hard_overall": 31.08304786682129,
+        "player2_win_rate_hard_overall": 30.727651596069336,
+        "id": 25.872289657592773,
+        "player2_bp_conversion_pct_5": 25.473331451416016,
+        "player1_second_serve_win_pct_5": 25.062612533569336,
+        "player1_bp_conversion_pct_5": 24.413467407226562,
+        "player1_first_serve_win_pct_5": 23.44111442565918,
+        "player2_second_serve_win_pct_5": 23.093320846557617,
+        "win_rate_grass_overall_diff": 22.505054473876953,
+        "player2_return_efficiency_5": 22.088239669799805,
+        "player2_first_serve_win_pct_5": 21.958139419555664,
+        "player1_return_efficiency_5": 20.725902557373047,
+        "serve_efficiency_5_diff": 20.670560836791992,
+        "player2_win_rate_carpet_overall": 19.014646530151367,
+        "player1_win_rate_carpet_overall": 18.932559967041016,
+        "player2_win_streak": 18.49388313293457,
+        "player1_win_streak": 16.384233474731445,
+        "win_rate_carpet_overall_diff": 16.3679141998291,
+        "win_rate_clay_5_diff": 15.847624778747559,
+        "player2_ace_pct_5": 15.344926834106445,
+        "player1_win_rate_grass_5": 15.09018325805664,
+        "player2_bp_saved_pct_5": 15.007469177246094,
+        "player1_ace_pct_5": 14.813236236572266,
+        "player1_bp_saved_pct_5": 14.4113187789917,
+        "win_rate_hard_5_diff": 13.75216007232666,
+        "player2_win_rate_grass_5": 13.289706230163574,
+        "first_serve_win_pct_5_diff": 12.615370750427246,
+        "player2_win_rate_carpet_5": 12.34378433227539,
+        "surface": 12.032673835754395,
+        "player1_win_rate_carpet_5": 11.705451965332031,
+        "win_rate_grass_5_diff": 11.606273651123047,
+        "player1_first_serve_pct_5": 11.068244934082031,
+        "player2_first_serve_pct_5": 10.71664810180664,
+        "win_rate_carpet_5_diff": 9.872523307800293,
+        "return_efficiency_5_diff": 9.67163372039795,
+        "ace_pct_5_diff": 9.466460227966309,
+        "bp_conversion_pct_5_diff": 8.693886756896973,
+        "first_serve_pct_5_diff": 8.662221908569336,
+        "second_serve_win_pct_5_diff": 8.633002281188965,
+        "bp_saved_pct_5_diff": 8.483734130859375
+    },
+    "training_info": {
+        "training_samples": 1140283,
+        "validation_samples": 244346,
+        "test_samples": 244347,
+        "training_date": "2025-03-31T10:19:24.783621",
+        "data_date_range": {
+            "start": "1990-01-01T00:00:00",
+            "end": "2024-12-18T00:00:00"
+        }
+    }
+}

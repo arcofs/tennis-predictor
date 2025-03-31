@@ -1,67 +1,44 @@
 {
   "overall": {
-    "accuracy": 0.658174282097739,
-    "precision": 0.6582561402637396,
-    "recall": 0.6578803673368081,
-    "f1": 0.658068200156411,
-    "count": 80582
+    "accuracy": 0.7164162001113185,
+    "precision": 0.6982886373039455,
+    "recall": 0.7608084516969782,
+    "f1": 0.7282091109489853,
+    "count": 244344
   },
-  "by_surface": {
-    "Hard": {
-      "accuracy": 0.6595458619659397,
-      "count": 40164
-    },
-    "Clay": {
-      "accuracy": 0.6568578691423519,
-      "count": 36192
-    },
-    "Grass": {
-      "accuracy": 0.658560794044665,
-      "count": 4030
-    },
-    "Carpet": {
-      "accuracy": 0.6122448979591837,
-      "count": 196
-    }
-  },
+  "by_surface": {},
   "by_confidence": [
     {
       "confidence_range": "0.5-0.6",
-      "accuracy": 0.5501924367077433,
-      "count": 28321,
-      "percentage": 35.145566007296914
+      "accuracy": 0.6607175593922205,
+      "count": 185462,
+      "percentage": 75.9020070065154
     },
     {
       "confidence_range": "0.6-0.7",
-      "accuracy": 0.6358125537403267,
-      "count": 23260,
-      "percentage": 28.865007073539996
+      "accuracy": 0.885286170474085,
+      "count": 52923,
+      "percentage": 21.6592181514586
     },
     {
       "confidence_range": "0.7-0.8",
-      "accuracy": 0.7319611337894555,
-      "count": 17393,
-      "percentage": 21.58422476483582
+      "accuracy": 0.9497764017887856,
+      "count": 5814,
+      "percentage": 2.3794322758078774
     },
     {
       "confidence_range": "0.8-0.9",
-      "accuracy": 0.8316757831924416,
-      "count": 8044,
-      "percentage": 9.982378198605147
-    },
-    {
-      "confidence_range": "0.9-1.0",
-      "accuracy": 0.9104938271604939,
-      "count": 3564,
-      "percentage": 4.422823955722121
+      "accuracy": 0.9655172413793104,
+      "count": 145,
+      "percentage": 0.05934256621811871
     }
   ],
   "match_level": {
-    "match_level_accuracy": 0.6703484908657665,
-    "prediction_consistency_pct": 97.56006751389992,
-    "consistent_predictions": 39305,
-    "inconsistent_predictions": 983,
-    "total_matches": 40288
+    "match_level_accuracy": 0,
+    "prediction_consistency_pct": 0,
+    "consistent_predictions": 0,
+    "inconsistent_predictions": 0,
+    "total_matches": 0
   },
-  "timestamp": "2025-03-30T14:07:12.546284"
+  "timestamp": "2025-03-31T19:42:15.259403"
 }

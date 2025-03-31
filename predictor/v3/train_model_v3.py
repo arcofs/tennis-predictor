@@ -105,7 +105,7 @@ CATEGORICAL_COLUMNS_PATTERN = [
 ]
 
 # Tennis surfaces for surface-specific evaluation
-SURFACES = ["Hard", "Clay", "Grass", "Carpet"]
+SURFACES = ["hard", "clay", "grass", "carpet"]
 
 # Database configuration
 DB_BATCH_SIZE = 10000  # Number of records to fetch in each database batch
@@ -516,8 +516,8 @@ def get_feature_columns(df: pd.DataFrame, progress_tracker: Optional[ProgressTra
                                                       ['serve', 'ace', 'bp_saved'])]
     return_features = [col for col in numeric_features if any(term in col.lower() for term in 
                                                        ['return', 'bp_conversion'])]
-    surface_features = [col for col in numeric_features if any(surface in col.lower() for surface in 
-                                                       ['hard', 'clay', 'grass', 'carpet'])]
+    # Identify surface features - using lowercase surface names
+    surface_features = [col for col in numeric_features if any(surface in col.lower() for surface in SURFACES)]
     
     # Log feature counts by category
     logger.info(f"Total features: {len(feature_cols)}")
@@ -1112,7 +1112,7 @@ def evaluate_model(
         feature_names: List of feature names
         dataset_name: Name of the dataset for reporting
         threshold: Classification threshold
-        surfaces: List of surfaces to evaluate separately
+        surfaces: List of surfaces to evaluate separately (should be lowercase)
         progress_tracker: Optional progress tracker
         
     Returns:
@@ -1139,29 +1139,22 @@ def evaluate_model(
     # Create DMatrix for efficient prediction
     device_params = detect_optimal_device()
     
-    # Ensure feature names match the data dimensions
-    if len(feature_names) != X.shape[1]:
-        logger.warning(f"Feature names length ({len(feature_names)}) doesn't match data columns ({X.shape[1]}) in evaluation. Adjusting...")
-        # Truncate or extend feature names as needed
-        if len(feature_names) > X.shape[1]:
-            feature_names = feature_names[:X.shape[1]]
-        else:
-            additional_names = [f"feature_{i}" for i in range(len(feature_names), X.shape[1])]
-            feature_names = feature_names + additional_names
+    # Set device in parameters
+    params = {}
+    params.update(device_params)
     
     try:
-        dtest = xgb.DMatrix(X, label=y, feature_names=feature_names)
+        dmatrix = xgb.DMatrix(X, label=y, feature_names=feature_names)
         
         # Make predictions
-        y_pred_proba = model.predict(dtest)
+        y_pred_proba = model.predict(dmatrix, **params)
         y_pred = (y_pred_proba > threshold).astype(int)
     except Exception as e:
-        logger.error(f"Error during prediction: {str(e)}")
-        return {"error": f"Prediction error: {str(e)}"}
+        logger.error(f"Prediction failed: {e}")
+        return {"error": str(e)}
     
-    # Initialize results dictionary
+    # Initialize metrics dictionary
     metrics = {
-        "overall": {},
         "by_surface": {} if surfaces else None
     }
     
@@ -1243,47 +1236,43 @@ def evaluate_model(
                 if name.lower() == 'surface':
                     surface_col_idx = i
                     break
-            
+                    
+            # If we found the surface column, evaluate by surface
             if surface_col_idx is not None:
-                logger.info("Evaluating performance by surface...")
-                surface_values = X[:, surface_col_idx]
+                # Extract surface values from raw features
+                all_surfaces = X[:, surface_col_idx]
                 
+                # Only evaluate for surfaces we're asked for (convert to lowercase for consistency)
                 for surface_idx, surface in enumerate(surfaces):
-                    # Find rows with this surface
-                    surface_mask = surface_values == surface_idx
-                    if np.sum(surface_mask) > 0:
+                    # Use lowercase surface name for consistency
+                    surface_lower = surface.lower()
+                    
+                    # Find samples for this surface
+                    # This handles both cases where surface may be stored as lowercase string or numeric code
+                    surface_mask = np.array([str(s).lower() == surface_lower for s in all_surfaces])
+                    surface_count = np.sum(surface_mask)
+                    
+                    if surface_count > 100:  # Only evaluate if we have enough samples
+                        # Extract surface-specific data
                         surface_y = y[surface_mask]
-                        surface_pred = y_pred[surface_mask]
-                        surface_pred_proba = y_pred_proba[surface_mask]
+                        surface_y_pred = y_pred[surface_mask]
+                        surface_y_pred_proba = y_pred_proba[surface_mask]
                         
                         # Calculate metrics for this surface
-                        surface_metrics = {
-                            "count": int(np.sum(surface_mask)),
-                            "accuracy": accuracy_score(surface_y, surface_pred),
-                            "balanced_accuracy": balanced_accuracy_score(surface_y, surface_pred),
-                            "precision": precision_score(surface_y, surface_pred, zero_division=0),
-                            "recall": recall_score(surface_y, surface_pred, zero_division=0),
-                            "f1": f1_score(surface_y, surface_pred, zero_division=0)
+                        metrics["by_surface"][surface_lower] = {
+                            "accuracy": accuracy_score(surface_y, surface_y_pred),
+                            "precision": precision_score(surface_y, surface_y_pred),
+                            "recall": recall_score(surface_y, surface_y_pred),
+                            "f1": f1_score(surface_y, surface_y_pred),
+                            "count": int(surface_count)
                         }
                         
-                        # Add ROC AUC and PR AUC if possible
-                        if len(np.unique(surface_y)) > 1:
-                            try:
-                                surface_metrics["roc_auc"] = roc_auc_score(surface_y, surface_pred_proba)
-                                surface_metrics["pr_auc"] = average_precision_score(surface_y, surface_pred_proba)
-                            except Exception as e:
-                                logger.warning(f"Could not calculate AUC metrics for surface {surface}: {e}")
-                        
-                        metrics["by_surface"][surface] = surface_metrics
-                        
-                        # Log surface metrics
-                        logger.info(f"Surface '{surface}' metrics:")
-                        logger.info(f"  Count: {surface_metrics['count']}")
-                        logger.info(f"  Accuracy: {surface_metrics['accuracy']:.4f}")
-                        if "roc_auc" in surface_metrics:
-                            logger.info(f"  ROC AUC: {surface_metrics['roc_auc']:.4f}")
+                        # Log surface-specific metrics
+                        logger.info(f"{surface_lower.capitalize()} surface accuracy: {metrics['by_surface'][surface_lower]['accuracy']:.4f} (n={surface_count})")
+                    else:
+                        logger.info(f"Skipping {surface_lower} evaluation due to insufficient samples (n={surface_count})")
             else:
-                logger.warning("Surface column not found in feature names. Skipping surface-specific evaluation.")
+                logger.warning("Surface column not found in feature names, skipping surface-specific evaluation")
     except Exception as e:
         logger.error(f"Error calculating evaluation metrics: {str(e)}")
         metrics["error"] = str(e)

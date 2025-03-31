@@ -1,0 +1,24 @@
+{
+    "eta": 0.03887599074070557,
+    "max_depth": 9,
+    "max_leaves": 86,
+    "min_child_weight": 2.439762140767209,
+    "gamma": 0.24024401120252303,
+    "subsample": 0.7621224033915835,
+    "colsample_bytree": 0.9030436337200113,
+    "lambda": 2.9789772709023694,
+    "alpha": 2.844128168440849,
+    "scale_pos_weight": 1.0498167121247397,
+    "max_bin": 408,
+    "max_cat_to_onehot": 5,
+    "objective": "binary:logistic",
+    "eval_metric": [
+        "logloss",
+        "auc"
+    ],
+    "grow_policy": "lossguide",
+    "missing": NaN,
+    "tree_method": "gpu_hist",
+    "gpu_id": 0,
+    "enable_categorical": true
+}
