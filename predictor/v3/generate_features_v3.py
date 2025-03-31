@@ -1086,6 +1086,7 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
 def save_features_to_db(symmetric_df: pd.DataFrame):
     """
     Save the generated features to the database in batches.
+    Only saves features for matches that don't already exist in the database.
     
     Args:
         symmetric_df: DataFrame with player-symmetric features
@@ -1098,6 +1099,20 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
     try:
         # Create the features table if it doesn't exist
         create_features_table(conn)
+        
+        # Get existing match_ids from the database
+        with conn.cursor() as cur:
+            cur.execute("SELECT match_id FROM match_features")
+            existing_match_ids = set(row[0] for row in cur.fetchall())
+        
+        # Filter out matches that already exist in the database
+        new_df = symmetric_df[~symmetric_df['match_id'].isin(existing_match_ids)].copy()
+        
+        if len(new_df) == 0:
+            logger.info("No new matches to process. All matches already exist in the database.")
+            return
+        
+        logger.info(f"Found {len(new_df)} new matches to process out of {len(symmetric_df)} total matches")
         
         # Prepare the data for insertion
         columns = [
@@ -1127,11 +1142,8 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
             'player1_bp_conversion_pct_5', 'player2_bp_conversion_pct_5'
         ]
         
-        # Create a copy of the dataframe to avoid modifying the original
-        df = symmetric_df.copy()
-        
         # Convert tournament_date to datetime if it's not already
-        df['tournament_date'] = pd.to_datetime(df['tournament_date'])
+        new_df['tournament_date'] = pd.to_datetime(new_df['tournament_date'])
         
         # Define column types and fill values
         integer_columns = {
@@ -1151,24 +1163,24 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
         
         # Handle integer columns - fill NaN with defaults and convert
         for col, default_value in integer_columns.items():
-            if col in df.columns:
-                df[col] = df[col].fillna(default_value).astype('int64')
+            if col in new_df.columns:
+                new_df[col] = new_df[col].fillna(default_value).astype('int64')
         
         # Handle float columns - fill NaN with 0 and convert to float64
         for col in float_columns:
-            if col in df.columns:
-                df[col] = df[col].fillna(0.0).astype('float64')
+            if col in new_df.columns:
+                new_df[col] = new_df[col].fillna(0.0).astype('float64')
         
         # Ensure surface is a string
-        if 'surface' in df.columns:
-            df['surface'] = df['surface'].fillna('Unknown')
+        if 'surface' in new_df.columns:
+            new_df['surface'] = new_df['surface'].fillna('Unknown')
         
         # Process in batches
-        total_rows = len(df)
+        total_rows = len(new_df)
         with conn.cursor() as cur:
             for start_idx in tqdm(range(0, total_rows, DB_BATCH_SIZE), desc="Saving features to database"):
                 end_idx = min(start_idx + DB_BATCH_SIZE, total_rows)
-                batch_df = df.iloc[start_idx:end_idx]
+                batch_df = new_df.iloc[start_idx:end_idx]
                 
                 try:
                     # Convert DataFrame to list of tuples
@@ -1181,8 +1193,7 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
                         INSERT INTO match_features (
                             {', '.join(columns)}
                         ) VALUES %s
-                        ON CONFLICT (match_id) DO UPDATE SET
-                            {', '.join(f"{col} = EXCLUDED.{col}" for col in columns if col != 'match_id')}
+                        ON CONFLICT (match_id) DO NOTHING
                         """,
                         values,
                         page_size=DB_PAGE_SIZE
@@ -1199,7 +1210,7 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
                     conn.rollback()
                     raise
         
-        logger.info("Successfully saved all features to database")
+        logger.info(f"Successfully saved {total_rows} new matches to database")
         
     except Exception as e:
         logger.error(f"Error saving features to database: {str(e)}")
