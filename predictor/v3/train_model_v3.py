@@ -39,8 +39,9 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, average_precision_score, roc_curve, auc,
     precision_recall_curve, log_loss, brier_score_loss,
-    confusion_matrix, balanced_accuracy_score, calibration_curve
+    confusion_matrix, balanced_accuracy_score
 )
+from sklearn.calibration import calibration_curve
 from psycopg2 import pool
 from dotenv import load_dotenv
 import psutil
