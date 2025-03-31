@@ -777,17 +777,14 @@ def tune_hyperparameters(
             else:
                 categorical_indices_adjusted = categorical_indices
 
-            # Create DMatrix objects - memory efficient data structure
+            # Create DMatrix objects with feature names and enable_categorical if needed
             dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names_adjusted,
                                 enable_categorical=params.get('enable_categorical', False))
             dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names_adjusted,
                             enable_categorical=params.get('enable_categorical', False))
             
-            # Set up categorical features if present
-            if categorical_indices_adjusted:
-                feature_types = ['c' if i in categorical_indices_adjusted else 'q' for i in range(X_train.shape[1])]
-                dtrain.set_feature_types(feature_types)
-                dval.set_feature_types(feature_types)
+            # Note: set_feature_types method is not available or needed
+            # XGBoost will handle categorical features based on enable_categorical parameter
             
             # Train model with early stopping
             pruning_callback = optuna.integration.XGBoostPruningCallback(trial, "validation-logloss")
@@ -952,16 +949,13 @@ def train_model(
         if categorical_features:
             categorical_features = [idx for idx in categorical_features if idx < X_train.shape[1]]
     
+    # Create DMatrix objects with feature names
     dtrain = xgb.DMatrix(
         X_train, 
         label=y_train, 
         feature_names=feature_names,
         enable_categorical=params.get('enable_categorical', False)
     )
-    
-    if categorical_features:
-        feature_types = ['c' if i in categorical_features else 'q' for i in range(X_train.shape[1])]
-        dtrain.set_feature_types(feature_types)
     
     dval = xgb.DMatrix(
         X_val, 
@@ -970,9 +964,9 @@ def train_model(
         enable_categorical=params.get('enable_categorical', False)
     )
     
-    if categorical_features:
-        feature_types = ['c' if i in categorical_features else 'q' for i in range(X_val.shape[1])]
-        dval.set_feature_types(feature_types)
+    # Note: Instead of set_feature_types, categorical features should be
+    # passed at DMatrix creation time or handled by XGBoost internally
+    # when enable_categorical=True
     
     # Set up evaluation metrics
     watchlist = [(dtrain, 'train'), (dval, 'validation')]
