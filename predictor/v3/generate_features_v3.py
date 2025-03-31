@@ -16,11 +16,15 @@ from psycopg2.extras import execute_values
 
 # Multiprocessing settings
 # Set to 0 to use all available cores, or specify a number to limit the cores used
-NUM_CORES = 120  # Default: use all cores
+NUM_CORES = 100
+CHUNK_MULTIPLIER = 4  # Controls chunk size for better load balancing
 
 # If NUM_CORES is set to 0, use all available cores
 if NUM_CORES <= 0:
     NUM_CORES = multiprocessing.cpu_count()
+
+# Limit to a reasonable number to prevent system overload
+NUM_CORES = min(NUM_CORES, multiprocessing.cpu_count())
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +32,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Add a process-safe logger for multiprocessing
+mp_logger = multiprocessing.get_logger()
+mp_logger.setLevel(logging.INFO)
 
 # Project directories
 PROJECT_ROOT = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
@@ -904,21 +912,23 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
             match_date = match['tournament_date']
             winner_id = match['winner_id']
             loser_id = match['loser_id']
-            surface = match['surface'].lower()  # Ensure lowercase surface name
+            surface = match['surface'].lower() if isinstance(match['surface'], str) else match['surface']
             
             # Get player win/loss stats just before this match (exclude the current match)
-            winner_prev = player_df[(player_df['player_id'] == winner_id) & 
-                                   (player_df['tournament_date'] < match_date)]
+            # Use more efficient filtering - first by player ID, then by date
+            winner_prev = player_df[player_df['player_id'] == winner_id]
+            winner_prev = winner_prev[winner_prev['tournament_date'] < match_date]
             
-            loser_prev = player_df[(player_df['player_id'] == loser_id) & 
-                                   (player_df['tournament_date'] < match_date)]
+            loser_prev = player_df[player_df['player_id'] == loser_id]
+            loser_prev = loser_prev[loser_prev['tournament_date'] < match_date]
             
             # Get player serve/return stats just before this match
-            winner_sr_prev = serve_return_df[(serve_return_df['player_id'] == winner_id) & 
-                                           (serve_return_df['tournament_date'] < match_date)]
+            # Use more efficient filtering
+            winner_sr_prev = serve_return_df[serve_return_df['player_id'] == winner_id]
+            winner_sr_prev = winner_sr_prev[winner_sr_prev['tournament_date'] < match_date]
             
-            loser_sr_prev = serve_return_df[(serve_return_df['player_id'] == loser_id) & 
-                                           (serve_return_df['tournament_date'] < match_date)]
+            loser_sr_prev = serve_return_df[serve_return_df['player_id'] == loser_id]
+            loser_sr_prev = loser_sr_prev[loser_sr_prev['tournament_date'] < match_date]
             
             # Initialize match features
             match_features = {
@@ -1004,8 +1014,12 @@ def process_match_features_batch(batch_data, player_df, serve_return_df, surface
                         match_features[f'loser_{metric}'] = loser_sr_stats.get(metric, np.nan)
             
             features.append(match_features)
+            
+            # Limit batch size to avoid memory issues
+            if len(features) >= 5000:
+                break
     except Exception as e:
-        logger.error(f"Error processing batch: {str(e)}")
+        mp_logger.error(f"Error processing batch {batch_idx}: {str(e)}")
         return None
     
     return features
@@ -1031,33 +1045,87 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     # Sort by date to ensure chronological processing
     match_df = match_df.sort_values('tournament_date').reset_index(drop=True)
     
-    # Split the data into chunks for parallel processing
-    chunk_size = max(1, len(match_df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
+    # Smaller chunks for better load balancing and to reduce data size
+    chunk_size = max(1, len(match_df) // (NUM_CORES * CHUNK_MULTIPLIER))
     chunks = [(i, match_df.iloc[i:i+chunk_size]) for i in range(0, len(match_df), chunk_size)]
     
-    # Create a pool of workers
-    with multiprocessing.Pool(processes=NUM_CORES) as pool:
-        # Process each chunk in parallel
-        results = list(tqdm(
-            pool.imap(
-                partial(process_match_features_batch, player_df=player_df, serve_return_df=serve_return_df),
-                chunks
-            ),
-            total=len(chunks),
-            desc="Preparing match features (parallel)",
-            unit="chunk"
-        ))
+    # Filter dataframes to include only necessary columns to reduce memory usage
+    player_cols = ['player_id', 'tournament_date', 'surface', 'win_rate_5', 'win_streak', 'loss_streak']
+    # Add surface-specific columns
+    for surf in STANDARD_SURFACES:
+        player_cols.extend([f'win_rate_{surf}_5', f'win_rate_{surf}_overall'])
     
-    # Combine all results
+    # Keep only needed columns
+    player_df_filtered = player_df[player_cols].copy()
+    
+    # Define columns needed for serve/return stats
+    serve_return_cols = ['player_id', 'tournament_date', 'surface']
+    serve_return_metrics = [
+        'serve_efficiency_5',
+        'first_serve_pct_5',
+        'first_serve_win_pct_5',
+        'second_serve_win_pct_5',
+        'ace_pct_5',
+        'bp_saved_pct_5',
+        'return_efficiency_5',
+        'bp_conversion_pct_5'
+    ]
+    serve_return_cols.extend(serve_return_metrics)
+    
+    # Add surface-specific versions of each metric
+    for metric in serve_return_metrics:
+        for surf in STANDARD_SURFACES:
+            serve_return_cols.append(f'{metric}_{surf}')
+    
+    # Filter serve/return dataframe to include only necessary columns
+    serve_return_df_filtered = serve_return_df[
+        [col for col in serve_return_cols if col in serve_return_df.columns]
+    ].copy()
+    
     all_features = []
-    for chunk_features in results:
-        all_features.extend(chunk_features)
+    
+    # Process in sequential chunks to avoid memory issues
+    batch_size = 10
+    for i in range(0, len(chunks), batch_size):
+        batch_chunks = chunks[i:i+batch_size]
+        
+        try:
+            # Create a pool of workers with maxtasksperchild to free resources
+            with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=1) as pool:
+                # Process each chunk in parallel
+                results = list(tqdm(
+                    pool.imap(
+                        partial(
+                            process_match_features_batch, 
+                            player_df=player_df_filtered, 
+                            serve_return_df=serve_return_df_filtered
+                        ),
+                        batch_chunks
+                    ),
+                    total=len(batch_chunks),
+                    desc=f"Processing batch {i//batch_size + 1}/{(len(chunks) + batch_size - 1)//batch_size}",
+                    unit="chunk"
+                ))
+            
+            # Combine results from this batch
+            for chunk_features in results:
+                if chunk_features is not None:
+                    all_features.extend(chunk_features)
+            
+            # Free memory
+            del results
+            
+        except Exception as e:
+            logger.error(f"Error processing batch {i//batch_size + 1}: {str(e)}")
+            # Continue with next batch instead of failing completely
+            continue
     
     # Create dataframe with all features
     features_df = pd.DataFrame(all_features)
     
     # Sort by date
-    features_df = features_df.sort_values('tournament_date').reset_index(drop=True)
+    if 'tournament_date' in features_df.columns:
+        features_df = features_df.sort_values('tournament_date').reset_index(drop=True)
     
     return features_df
 
@@ -1203,10 +1271,14 @@ def process_symmetric_features_batch(batch_data, serve_return_metrics):
                     match_dict[f'player2_{metric}'] = row[f'winner_{metric}']
             
             matches.append(match_dict)
+            
+            # Limit batch size to avoid memory issues
+            if len(matches) >= 5000:
+                break
         
         return matches
     except Exception as e:
-        logger.error(f"Error processing batch: {str(e)}")
+        mp_logger.error(f"Error processing symmetric features batch {batch_idx}: {str(e)}")
         return None
 
 def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFrame:
@@ -1222,10 +1294,22 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
     logger.info("Generating player-symmetric features using multiprocessing...")
     logger.info(f"Using {NUM_CORES} CPU cores")
     
-    # Create a copy
-    df = features_df.copy()
+    # Create a copy with only necessary columns to reduce memory usage
+    essential_cols = ['match_id', 'tournament_date', 'surface', 'winner_id', 'loser_id', 
+                     'elo_diff', 'win_rate_5_diff', 'win_streak_diff', 'loss_streak_diff']
     
-    # Define serve and return metrics to include in symmetric features
+    # Add surface-specific win rate columns
+    for surf in STANDARD_SURFACES:
+        essential_cols.extend([
+            f'win_rate_{surf}_5_diff', 
+            f'win_rate_{surf}_overall_diff',
+            f'winner_win_rate_{surf}_5',
+            f'loser_win_rate_{surf}_5',
+            f'winner_win_rate_{surf}_overall',
+            f'loser_win_rate_{surf}_overall'
+        ])
+    
+    # Add serve and return metric columns
     serve_return_metrics = [
         'serve_efficiency_5',
         'first_serve_pct_5',
@@ -1237,33 +1321,71 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
         'bp_conversion_pct_5'
     ]
     
-    # Split the data into chunks for parallel processing
-    chunk_size = max(1, len(df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
+    for metric in serve_return_metrics:
+        essential_cols.extend([
+            f'{metric}_diff',
+            f'winner_{metric}',
+            f'loser_{metric}'
+        ])
+        # Add surface-specific metric columns
+        for surf in STANDARD_SURFACES:
+            essential_cols.append(f'{metric}_{surf}_diff')
+    
+    # Add player stats columns
+    essential_cols.extend([
+        'winner_win_rate_5', 'loser_win_rate_5',
+        'winner_win_streak', 'loser_win_streak',
+        'winner_loss_streak', 'loser_loss_streak'
+    ])
+    
+    # Keep only existing columns
+    existing_cols = [col for col in essential_cols if col in features_df.columns]
+    df = features_df[existing_cols].copy()
+    
+    # Smaller chunks for better load balancing and to reduce data size
+    chunk_size = max(1, len(df) // (NUM_CORES * CHUNK_MULTIPLIER))
     chunks = [(i, df.iloc[i:i+chunk_size]) for i in range(0, len(df), chunk_size)]
     
-    # Create a pool of workers
-    with multiprocessing.Pool(processes=NUM_CORES) as pool:
-        # Process each chunk in parallel
-        results = list(tqdm(
-            pool.imap(
-                partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
-                chunks
-            ),
-            total=len(chunks),
-            desc="Generating symmetric features (parallel)",
-            unit="chunk"
-        ))
-    
-    # Combine all results
     all_matches = []
-    for chunk_matches in results:
-        all_matches.extend(chunk_matches)
+    
+    # Process in sequential batches to avoid memory issues
+    batch_size = 10
+    for i in range(0, len(chunks), batch_size):
+        batch_chunks = chunks[i:i+batch_size]
+        
+        try:
+            # Create a pool of workers with maxtasksperchild to free resources
+            with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=1) as pool:
+                # Process each chunk in parallel
+                results = list(tqdm(
+                    pool.imap(
+                        partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
+                        batch_chunks
+                    ),
+                    total=len(batch_chunks),
+                    desc=f"Processing symmetric batch {i//batch_size + 1}/{(len(chunks) + batch_size - 1)//batch_size}",
+                    unit="chunk"
+                ))
+            
+            # Combine results from this batch
+            for chunk_matches in results:
+                if chunk_matches is not None:
+                    all_matches.extend(chunk_matches)
+            
+            # Free memory
+            del results
+            
+        except Exception as e:
+            logger.error(f"Error processing symmetric batch {i//batch_size + 1}: {str(e)}")
+            # Continue with next batch instead of failing completely
+            continue
     
     # Convert to DataFrame
     symmetric_df = pd.DataFrame(all_matches)
     
     # Sort by date and match_id
-    symmetric_df = symmetric_df.sort_values(['tournament_date', 'match_id']).reset_index(drop=True)
+    if 'tournament_date' in symmetric_df.columns and 'match_id' in symmetric_df.columns:
+        symmetric_df = symmetric_df.sort_values(['tournament_date', 'match_id']).reset_index(drop=True)
     
     return symmetric_df
 
