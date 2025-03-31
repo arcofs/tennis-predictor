@@ -2036,15 +2036,27 @@ def main() -> None:
         # Step 7: Extract feature importance
         logger.info(f"Step 7/{total_steps}: Extracting feature importance...")
         try:
+            # Get feature importance scores
             importance_scores = model.get_score(importance_type='gain')
-            importances = {feature: score for feature, score in importance_scores.items() if feature in feature_cols}
+            
+            # Convert to dictionary and ensure feature names match
+            importances = {}
+            for feature, score in importance_scores.items():
+                if feature in feature_cols:
+                    importances[feature] = float(score)
+            
+            # Sort by importance
             importances = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
             
             # Log top features
-            top_features = list(importances.items())[:10]
-            logger.info("Top 10 features by importance:")
-            for feature, importance in top_features:
-                logger.info(f"  - {feature}: {importance:.4f}")
+            if importances:
+                top_features = list(importances.items())[:10]
+                logger.info("Top 10 features by importance:")
+                for feature, importance in top_features:
+                    logger.info(f"  - {feature}: {importance:.4f}")
+            else:
+                logger.warning("No feature importance scores were extracted")
+                
         except Exception as e:
             logger.error(f"Error extracting feature importance: {str(e)}")
             importances = {}
@@ -2052,52 +2064,59 @@ def main() -> None:
         
         # Step 8: Select most important features
         logger.info(f"Step 8/{total_steps}: Selecting top features...")
-        selected_features = select_features_by_importance(importances, threshold=0.95, min_features=20)
         
-        # If no features were selected, use all feature columns
-        if not selected_features:
-            logger.warning("No features were selected. Using all feature columns for retraining.")
+        # If no feature importance was extracted, use all features
+        if not importances:
+            logger.warning("No feature importance was extracted. Using all features.")
             selected_features = feature_cols
+        else:
+            selected_features = select_features_by_importance(importances, threshold=0.95, min_features=20)
+            if not selected_features:
+                logger.warning("No features were selected. Using all feature columns.")
+                selected_features = feature_cols
         
-        # Step 9: Retrain with selected features (improves model performance and reduces size)
+        # Step 9: Retrain with selected features
         logger.info(f"Step 9/{total_steps}: Retraining with selected features...")
         
-        # Check if we have at least one feature to use
-        if len(selected_features) == 0:
-            logger.error("No features available for retraining. Cannot continue.")
-            raise ValueError("No features available for retraining")
-            
         # Create feature matrices with selected features
-        X_train_selected = X_train[:, [feature_cols.index(f) for f in selected_features if f in feature_cols]]
-        X_val_selected = X_val[:, [feature_cols.index(f) for f in selected_features if f in feature_cols]]
-        X_test_selected = X_test[:, [feature_cols.index(f) for f in selected_features if f in feature_cols]]
-        
-        # Verify we have features to work with
-        if X_train_selected.shape[1] == 0:
-            logger.error("No valid features remained after selection. Cannot continue.")
-            raise ValueError("No valid features for training")
-            
-        # Log the selected features and data shape
-        logger.info(f"Training with {X_train_selected.shape[1]} selected features")
-        logger.info(f"Selected features: {selected_features[:10]}{'...' if len(selected_features) > 10 else ''}")
-        
-        # Update categorical indices for selected features
-        selected_categorical_indices = []
-        for i, feature in enumerate(selected_features):
-            if feature in feature_cols and feature_cols.index(feature) in categorical_indices:
-                selected_categorical_indices.append(i)
-        
-        # Retrain
         try:
+            # Get indices of selected features
+            feature_indices = [feature_cols.index(f) for f in selected_features if f in feature_cols]
+            
+            # Verify we have valid indices
+            if not feature_indices:
+                logger.error("No valid feature indices found. Cannot continue.")
+                raise ValueError("No valid feature indices for retraining")
+            
+            # Create selected feature matrices
+            X_train_selected = X_train[:, feature_indices]
+            X_val_selected = X_val[:, feature_indices]
+            X_test_selected = X_test[:, feature_indices]
+            
+            # Verify shapes
+            logger.info(f"Selected feature shapes - Train: {X_train_selected.shape}, Val: {X_val_selected.shape}, Test: {X_test_selected.shape}")
+            
+            # Update categorical indices for selected features
+            selected_categorical_indices = []
+            for i, feature in enumerate(selected_features):
+                if feature in feature_cols and feature_cols.index(feature) in categorical_indices:
+                    selected_categorical_indices.append(i)
+            
+            # Retrain with selected features
             final_model, final_evals_result = train_model(
                 X_train_selected, y_train, X_val_selected, y_val, selected_features, 
                 selected_categorical_indices, best_params, 50, progress_tracker
             )
+            
         except Exception as e:
             logger.error(f"Error in retraining with selected features: {str(e)}")
             logger.warning("Falling back to original model")
             final_model = model
             final_evals_result = evals_result
+            selected_features = feature_cols
+            X_train_selected = X_train
+            X_val_selected = X_val
+            X_test_selected = X_test
         
         # Step 10: Evaluate model
         logger.info(f"Step 10/{total_steps}: Evaluating model...")
