@@ -16,11 +16,11 @@ from psycopg2.extras import execute_values
 
 # Multiprocessing settings
 # Set to 0 to use all available cores, or specify a number to limit the cores used
-NUM_CORES = 4  # Default: use a reasonable number of cores to prevent system overload
+NUM_CORES = 120  # Default: use all cores
 
-# If NUM_CORES is set to 0, use a reasonable number of cores (not all available)
+# If NUM_CORES is set to 0, use all available cores
 if NUM_CORES <= 0:
-    NUM_CORES = min(8, multiprocessing.cpu_count())
+    NUM_CORES = multiprocessing.cpu_count()
 
 # Configure logging
 logging.basicConfig(
@@ -347,10 +347,13 @@ def create_features_table(conn):
                         logger.warning(f"Could not add index {idx_name}: {str(e)}")
                         conn.rollback()
 
-def load_data() -> pd.DataFrame:
+def load_data(limit_rows: int = None) -> pd.DataFrame:
     """
     Load the tennis match dataset from the database.
     
+    Args:
+        limit_rows: Optional limit on number of rows to load (for testing)
+        
     Returns:
         DataFrame with tennis match data
     """
@@ -358,9 +361,11 @@ def load_data() -> pd.DataFrame:
     engine = get_database_connection()
     logger.info("Successfully connected to database")
     
-    logger.info("Loading data from database...")
+    # Determine if we should limit rows for testing
+    limit_clause = f"LIMIT {limit_rows}" if limit_rows is not None else ""
+    logger.info(f"Loading data from database{' (limited to ' + str(limit_rows) + ' rows)' if limit_rows else ''}...")
     
-    query = """
+    query = f"""
         SELECT 
             id as match_id,
             tournament_date,
@@ -406,6 +411,7 @@ def load_data() -> pd.DataFrame:
         WHERE winner_id IS NOT NULL 
         AND loser_id IS NOT NULL
         ORDER BY tournament_date ASC
+        {limit_clause}
     """
     
     df = pd.read_sql(query, engine)
@@ -1031,39 +1037,27 @@ def prepare_features_for_matches(df: pd.DataFrame, player_df: pd.DataFrame, serv
     # Sort by date to ensure chronological processing
     match_df = match_df.sort_values('tournament_date').reset_index(drop=True)
     
-    # Split the data into smaller chunks for parallel processing to reduce memory pressure
-    chunk_size = max(1, min(1000, len(match_df) // (NUM_CORES * 4)))  # Smaller chunks for better load balancing and memory usage
+    # Split the data into chunks for parallel processing
+    chunk_size = max(1, len(match_df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
     chunks = [(i, match_df.iloc[i:i+chunk_size]) for i in range(0, len(match_df), chunk_size)]
     
-    # Create a pool of workers with maxtasksperchild to prevent memory leaks
-    all_features = []
+    # Create a pool of workers
+    with multiprocessing.Pool(processes=NUM_CORES) as pool:
+        # Process each chunk in parallel
+        results = list(tqdm(
+            pool.imap(
+                partial(process_match_features_batch, player_df=player_df, serve_return_df=serve_return_df),
+                chunks
+            ),
+            total=len(chunks),
+            desc="Preparing match features (parallel)",
+            unit="chunk"
+        ))
     
-    try:
-        with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
-            # Process each chunk in parallel with error handling
-            for chunk_result in tqdm(
-                pool.imap(
-                    partial(process_match_features_batch, player_df=player_df, serve_return_df=serve_return_df),
-                    chunks
-                ),
-                total=len(chunks),
-                desc="Preparing match features (parallel)",
-                unit="chunk"
-            ):
-                if chunk_result:  # Check if result is not None
-                    all_features.extend(chunk_result)
-    except Exception as e:
-        logger.error(f"Error in multiprocessing: {str(e)}")
-        # Fallback to sequential processing if parallel processing fails
-        logger.info("Falling back to sequential processing...")
-        all_features = []
-        for chunk_data in tqdm(chunks, desc="Processing sequentially"):
-            try:
-                result = process_match_features_batch(chunk_data, player_df, serve_return_df)
-                all_features.extend(result)
-            except Exception as e:
-                logger.error(f"Error processing chunk: {str(e)}")
-                continue
+    # Combine all results
+    all_features = []
+    for chunk_features in results:
+        all_features.extend(chunk_features)
     
     # Create dataframe with all features
     features_df = pd.DataFrame(all_features)
@@ -1249,39 +1243,27 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
         'bp_conversion_pct_5'
     ]
     
-    # Split the data into smaller chunks for parallel processing
-    chunk_size = max(1, min(1000, len(df) // (NUM_CORES * 4)))  # Smaller chunks for better memory management
+    # Split the data into chunks for parallel processing
+    chunk_size = max(1, len(df) // (NUM_CORES * 2))  # Smaller chunks for better load balancing
     chunks = [(i, df.iloc[i:i+chunk_size]) for i in range(0, len(df), chunk_size)]
     
-    all_matches = []
+    # Create a pool of workers
+    with multiprocessing.Pool(processes=NUM_CORES) as pool:
+        # Process each chunk in parallel
+        results = list(tqdm(
+            pool.imap(
+                partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
+                chunks
+            ),
+            total=len(chunks),
+            desc="Generating symmetric features (parallel)",
+            unit="chunk"
+        ))
     
-    try:
-        # Create a pool of workers with maxtasksperchild to prevent memory leaks
-        with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
-            # Process each chunk in parallel with error handling
-            for chunk_result in tqdm(
-                pool.imap(
-                    partial(process_symmetric_features_batch, serve_return_metrics=serve_return_metrics),
-                    chunks
-                ),
-                total=len(chunks),
-                desc="Generating symmetric features (parallel)",
-                unit="chunk"
-            ):
-                if chunk_result:  # Check if result is not None
-                    all_matches.extend(chunk_result)
-    except Exception as e:
-        logger.error(f"Error in multiprocessing: {str(e)}")
-        # Fallback to sequential processing if parallel processing fails
-        logger.info("Falling back to sequential processing...")
-        all_matches = []
-        for chunk_data in tqdm(chunks, desc="Processing sequentially"):
-            try:
-                result = process_symmetric_features_batch(chunk_data, serve_return_metrics)
-                all_matches.extend(result)
-            except Exception as e:
-                logger.error(f"Error processing chunk: {str(e)}")
-                continue
+    # Combine all results
+    all_matches = []
+    for chunk_matches in results:
+        all_matches.extend(chunk_matches)
     
     # Convert to DataFrame
     symmetric_df = pd.DataFrame(all_matches)
@@ -1299,7 +1281,7 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
     Args:
         symmetric_df: DataFrame with player-symmetric features
     """
-    logger.info("Saving features to database (with duplicate prevention via ON CONFLICT DO NOTHING)...")
+    logger.info("Saving features to database...")
     
     # Get database connection
     conn = get_psycopg2_connection()
@@ -1466,18 +1448,13 @@ def main():
     start_time = time.time()
     progress_tracker = ProgressTracker(total_steps=5)
     
+    # Test with only 5000 rows
+    test_row_limit = 5000
+    
     # Step 1: Load data
     logger.info("Step 1/5 (0%): Loading data...")
-    df = load_data()
+    df = load_data(limit_rows=test_row_limit)
     logger.info(f"Loaded {len(df)} matches")
-    
-    # TEST MODE: Limit to first 5000 rows
-    test_mode = True  # Set to False to process all data
-    if test_mode:
-        original_len = len(df)
-        df = df.head(5000)
-        logger.info(f"TEST MODE: Limiting to first 5000 rows out of {original_len}")
-    
     progress_tracker.update()
     
     # Step 2: Calculate player win rates and streaks
@@ -1509,7 +1486,7 @@ def main():
     progress_tracker.update()
     
     # Print feature statistics
-    logger.info(f"Total matches processed: {len(df)}")
+    logger.info(f"Total matches: {len(df)}")
     logger.info(f"Total features: {len(symmetric_df.columns) - 6}")  # Exclude match_id, tournament_date, player1_id, player2_id, surface, result
     
     # Print example features for a match
