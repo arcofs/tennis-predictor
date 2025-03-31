@@ -1147,7 +1147,7 @@ def evaluate_model(
         dmatrix = xgb.DMatrix(X, label=y, feature_names=feature_names)
         
         # Make predictions
-        y_pred_proba = model.predict(dmatrix, **params)
+        y_pred_proba = model.predict(dmatrix)
         y_pred = (y_pred_proba > threshold).astype(int)
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
