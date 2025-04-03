@@ -1,0 +1,320 @@
+Notes:
+
+curl --request GET \
+--url "https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/tournament/calendar/2025?pageNo=1&pageSize=50" \
+--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+Note the pageSize and pageNo
+
+{
+  "data": [
+    {
+      "id": 20376,
+      "name": "Next Gen ATP Finals - Jeddah",
+      "courtId": 3,
+      "date": "2025-12-15T00:00:00.000Z",
+      "rankId": 6,
+      "court": {
+        "id": 3,
+        "name": "I.hard"
+      },
+      "round": {
+        "id": 6,
+        "name": "Non ATP/WTA Events + Juniors"
+      },
+      "coutry": {
+        "acronym": "KSA",
+        "name": "Saudi Arabia"
+      }
+    },
+    {
+      "id": 20375,
+      "name": "Nitto ATP Finals - Turin",
+      "courtId": 3,
+      "date": "2025-11-10T00:00:00.000Z",
+      "rankId": 7,
+      "court": {
+        "id": 3,
+        "name": "I.hard"
+      },
+      "round": {
+        "id": 7,
+        "name": "Tour finals"
+      },
+      "coutry": {
+        "acronym": "ITA",
+        "name": "Italy"
+      }
+    }
+  ]
+}
+
+
+
+getAllFixtures:
+curl --request GET \
+	--url 'https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/fixtures/tournament/19358?pageSize=10&pageNo=1&filter=PlayerGroup%3Aboth%3B' \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+    "data": [
+        {
+            "id": 1236,
+            "date": null,
+            "roundId": 4,
+            "player1Id": 79810,
+            "player2Id": 104898,
+            "tournamentId": 20330,
+            "player1": {
+                "id": 79810,
+                "name": "Marcel Granollers/Horacio Zeballos",
+                "countryAcr": "N/A"
+            },
+            "player2": {
+                "id": 104898,
+                "name": "Cezar Cretu/Bogdan Pavel",
+                "countryAcr": "N/A"
+            }
+        },
+        {
+            "id": 1269,
+            "date": null,
+            "roundId": 5,
+            "player1Id": 30087,
+            "player2Id": 40609,
+            "tournamentId": 20331,
+            "player1": {
+                "id": 30087,
+                "name": "Alejandro Tabilo",
+                "countryAcr": "CHI"
+            },
+            "player2": {
+                "id": 40609,
+                "name": "Jenson Brooksby",
+                "countryAcr": "USA"
+            }
+        }
+    ],
+    "hasNextPage": true
+}
+
+getTournamentFixtures:
+curl --request GET \
+	--url 'https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/fixtures/tournament/20331?pageSize=10&pageNo=1&filter=PlayerGroup%3Aboth%3B' \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+    "data": [
+        {
+            "id": 1267,
+            "date": null,
+            "roundId": 5,
+            "player1Id": 29935,
+            "player2Id": 24840,
+            "tournamentId": 20331,
+            "player1": {
+                "id": 29935,
+                "name": "Tommy Paul",
+                "countryAcr": "USA"
+            },
+            "player2": {
+                "id": 24840,
+                "name": "Cristian Garin",
+                "countryAcr": "CHI"
+            }
+        },
+        {
+            "id": 1294,
+            "date": "2025-04-02T00:30:00.000Z",
+            "roundId": 4,
+            "player1Id": 112836,
+            "player2Id": 118483,
+            "tournamentId": 20331,
+            "player1": {
+                "id": 112836,
+                "name": "Mackenzie McDonald/Alex Michelsen",
+                "countryAcr": "N/A"
+            },
+            "player2": {
+                "id": 118483,
+                "name": "Matthew Christopher Romios/Adam Walton",
+                "countryAcr": "N/A"
+            }
+        }
+    ],
+    "hasNextPage": true
+}
+
+getPlayerMatchStats:
+curl --request GET \
+	--url https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/player/match-stats/5992 \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+  "data": {
+    "serviceStats": {
+      "acesGm": 7464,
+      "doubleFaultsGm": 3013,
+      "firstServeGm": 65815,
+      "firstServeOfGm": 101359,
+      "winningOnFirstServeGm": 48899,
+      "winningOnFirstServeOfGm": 65815,
+      "winningOnSecondServeGm": 19781,
+      "winningOnSecondServeOfGm": 35547
+    },
+    "rtnStats": {
+      "acesGm": 7102,
+      "doubleFaultsGm": 3698,
+      "firstServeGm": 65225,
+      "firstServeOfGm": 106941,
+      "winningOnFirstServeGm": 43222,
+      "winningOnFirstServeOfGm": 65225,
+      "winningOnSecondServeGm": 18686,
+      "winningOnSecondServeOfGm": 41738
+    },
+    "breakPointsServeStats": {
+      "breakPointFacedGm": 6582,
+      "breakPointSavedGm": 4325
+    },
+    "breakPointsRtnStats": {
+      "breakPointChanceGm": 11588,
+      "breakPointWonGm": 5121
+    }
+  }
+}
+
+getH2HMatches:
+
+curl --request GET \
+	--url https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/h2h/matches/5992/677/?pageNo=1&pageSize=100 \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+getTournamentResults:
+
+curl --request GET \
+	--url https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/tournament/results/18440 \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+  "data": {
+    "singles": [
+      {
+        "id": 976143,
+        "date": "2023-07-16T00:00:00.000Z",
+        "roundId": 12,
+        "player1Id": 68074,
+        "player2Id": 5992,
+        "tournamentId": 18440,
+        "match_winner": 68074,
+        "result": "1-6 7-6(6) 6-1 3-6 6-4",
+        "player1": {
+          "id": 68074,
+          "name": "Carlos Alcaraz",
+          "countryAcr": "ESP"
+        },
+        "player2": {
+          "id": 5992,
+          "name": "Novak Djokovic",
+          "countryAcr": "SRB"
+        }
+      }
+    ],
+    "doubles": [
+      {
+        "id": 976420,
+        "date": "2023-07-15T00:00:00.000Z",
+        "roundId": 12,
+        "player1Id": 91747,
+        "player2Id": 79810,
+        "tournamentId": 18440,
+        "match_winner": 91747,
+        "result": "6-4 6-4",
+        "player1": {
+          "id": 91747,
+          "name": "Wesley Koolhof/Neal Skupski",
+          "countryAcr": "N/A"
+        },
+        "player2": {
+          "id": 79810,
+          "name": "Marcel Granollers/Horacio Zeballos",
+          "countryAcr": "N/A"
+        }
+      }
+    ],
+    "qualifying": [
+      {
+        "id": 976169,
+        "date": "2023-06-29T00:00:00.000Z",
+        "roundId": 3,
+        "player1Id": 39863,
+        "player2Id": 13429,
+        "tournamentId": 18440,
+        "match_winner": 39863,
+        "result": "6-4 6-4 6-4",
+        "player1": {
+          "id": 39863,
+          "name": "Sho Shimabukuro",
+          "countryAcr": "JPN"
+        },
+        "player2": {
+          "id": 13429,
+          "name": "Denis Kudla",
+          "countryAcr": "USA"
+        }
+      },
+      {
+        "id": 976199,
+        "date": "2023-06-29T00:00:00.000Z",
+        "roundId": 3,
+        "player1Id": 58327,
+        "player2Id": 20193,
+        "tournamentId": 18440,
+        "match_winner": 58327,
+        "result": "3-6 3-0 ret.",
+        "player1": {
+          "id": 58327,
+          "name": "Tomas Machac",
+          "countryAcr": "CZE"
+        }
+      }
+    ],
+    "doublesQualifying": []
+  }
+}
+
+getPlayerInfo:
+
+curl --request GET \
+	--url https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/player/profile/5992 \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+  "data": {
+    "playerStatus": "Active",
+    "id": 5992,
+    "name": "Novak Djokovic",
+    "countryAcr": "SRB",
+    "country": {
+      "name": "Serbia",
+      "acronym": "SRB"
+    },
+    "information": {
+      "id": 5992,
+      "turnedPro": "2003",
+      "weight": "170 lbs (77 kg)",
+      "height": "6'2\" (188 cm)",
+      "birthplace": "Belgrade, Serbia",
+      "residence": "Monte Carlo, Monaco",
+      "plays": "Right-Handed, Two-Handed Backhand",
+      "coach": "Marian Vajda, Goran Ivanisevic"
+    }
+  }
+}
+

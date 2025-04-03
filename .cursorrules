@@ -3,14 +3,11 @@
 ## Project Structure
 - Raw data must be stored in the `data/` directory
 - All prediction-related scripts must be in the `predictor/` directory
-- Jupyter notebooks are allowed for data exploration and prototyping
+- All database related scripts and information must be in the `database/` directory
+- Versions of each are stored in the appropriate version number, for example version 3 is v3 folders etc
+- Refer to the `database/schema.py` file for database tables and columns structure. If we make changes to the database, ensure you update this file
 
 ## Code Style and Type Safety
-- Strict type hints are required for all variables and function returns
-- Use type annotations when first declaring variables: `variable_name: type = value`
-- Function return types must be explicitly declared: `def function_name() -> return_type:`
-- Avoid using `Any` type - use specific types instead
-- Use Pydantic models for all data structures
 - No `@staticmethod` decorators allowed
 - Prefer functional programming over OOP when possible
 
@@ -18,12 +15,6 @@
 - Use `requirements.txt` for dependency management
 - If runnings commands, always ensure you are using the virtual environment: .venv located in the root of the project
 - Use latest versions of packages
-- Required packages:
-  - pandas
-  - numpy
-  - xgboost
-  - pydantic
-  - scikit-learn
 
 ## Error Handling
 - All functions must include proper error handling
@@ -35,11 +26,6 @@
 - All data processing functions must handle missing values explicitly
 - Data validation must be performed using Pydantic models
 - Raw data should not be modified - create new processed datasets instead
-
-## Model Development
-- Use type hints for all model parameters and return values
-- Model configurations should be defined using Pydantic models
-- Feature engineering functions must be pure functions where possible
 
 ## Code Organization
 - Keep functions small and focused
@@ -57,12 +43,6 @@
 - Use type hints to improve code readability
 - Break down complex operations into smaller, well-named functions
 
-## Data Types
-- Use specific types instead of generic ones
-- Prefer built-in types over custom types when possible
-- Use Pydantic models for complex data structures
-- Use enums for fixed sets of values
-
 ## Function Design
 - Functions should have a single responsibility
 - Use pure functions when possible
@@ -74,22 +54,3 @@
 # Variable declarations
 player_names: list[str] = ["Player1", "Player2"]
 match_scores: dict[str, int] = {"Player1": 6, "Player2": 4}
-
-# Function definitions
-def calculate_elo_rating(player_rating: float, opponent_rating: float, result: int) -> float:
-    ...
-
-# Pydantic models
-class MatchData(BaseModel):
-    player1: str
-    player2: str
-    surface: str
-    tournament: str
-    date: datetime
-```
-
-## IDE Settings
-- Enable strict type checking
-- Enable Pydantic validation
-- Show type hints inline
-- Enable auto-imports for type hints 
