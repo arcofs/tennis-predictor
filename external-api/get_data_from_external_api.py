@@ -45,14 +45,26 @@ import re
 from tqdm import tqdm
 
 # Date range for filtering tournaments (format: 'YYYY-MM-DD')
-START_DATE = '2025-01-01'
-END_DATE = '2025-01-15'
+START_DATE = '2025-02-28'
+END_DATE = '2025-04-03'
+
+# Maximum allowed API requests per second across all API endpoints combined
+API_REQUESTS_PER_SECOND = 7
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# Add file handler for warnings and errors
+file_handler = logging.FileHandler('tennis_api_errors.log')
+file_handler.setLevel(logging.WARNING)  # Only log WARNING and above (WARNING, ERROR, CRITICAL)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+# Get the root logger and add the file handler
+root_logger = logging.getLogger()
+root_logger.addHandler(file_handler)
 
 # Load environment variables
 load_dotenv()
@@ -106,7 +118,31 @@ class TennisAPIClient:
             'x-rapidapi-key': self.api_key
         }
         
+        # Rate limiting variables
+        self.last_request_time = time.time()
+        self.request_count = 0
+        
         logging.info(f"TennisAPIClient initialized with API key: {self.api_key[:5]}...")
+        
+    def _apply_rate_limiting(self):
+        """
+        Apply rate limiting to ensure we don't exceed API_REQUESTS_PER_SECOND.
+        """
+        self.request_count += 1
+        if self.request_count >= API_REQUESTS_PER_SECOND:
+            elapsed = time.time() - self.last_request_time
+            if elapsed < 1.0:
+                sleep_time = 1.0 - elapsed
+                if not self.quiet_mode:
+                    logging.debug(f"Rate limiting: sleeping for {sleep_time:.3f} seconds")
+                time.sleep(sleep_time)
+            self.last_request_time = time.time()
+            self.request_count = 0
+        
+        # If it's been more than 1 second since our last reset, reset the counter
+        if time.time() - self.last_request_time > 1.0:
+            self.last_request_time = time.time()
+            self.request_count = 1
 
     def get_tournament_calendar(self, start_date: str, end_date: str, page: int = 1, page_size: int = 1000) -> Optional[Dict[str, Any]]:
         """
@@ -122,6 +158,9 @@ class TennisAPIClient:
             Dictionary containing the API response data or None if request fails
         """
         try:
+            # Apply rate limiting
+            self._apply_rate_limiting()
+            
             # Extract year from start_date - if provided
             year = datetime.now().year
             if start_date:
@@ -162,6 +201,9 @@ class TennisAPIClient:
             Dictionary containing the tournament results or None if request fails
         """
         try:
+            # Apply rate limiting
+            self._apply_rate_limiting()
+            
             url = f"{self.base_url}/atp/tournament/results/{tournament_id}"
             params = {'pageSize': page_size}
             
@@ -197,6 +239,9 @@ class TennisAPIClient:
         logging.info(f"Fetching match statistics for tournament {tournament_id}, players {player1_id} vs {player2_id}")
         
         try:
+            # Apply rate limiting
+            self._apply_rate_limiting()
+            
             url = f"{self.base_url}/atp/h2h/match-stats/{tournament_id}/{player1_id}/{player2_id}"
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
@@ -225,6 +270,9 @@ class TennisAPIClient:
         logging.info(f"Fetching player profile for player ID: {player_id}")
         
         try:
+            # Apply rate limiting
+            self._apply_rate_limiting()
+            
             url = f"{self.base_url}/atp/player/profile/{player_id}"
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
@@ -251,6 +299,9 @@ class TennisAPIClient:
             dict: Tournament information data, or None if not found
         """
         try:
+            # Apply rate limiting
+            self._apply_rate_limiting()
+            
             url = f"{self.base_url}/atp/tournament/info/{tournament_id}"
             
             logging.info(f"Fetching tournament info for tournament ID: {tournament_id}")
@@ -553,12 +604,16 @@ def print_calculated_serve_return_stats(player1_stats: Dict[str, Any], player2_s
     print("-" * 100)
     
     # Calculate total serve points (if not directly available)
-    p1_serve_points = player1_stats.get('firstServeOf', 0)
-    p2_serve_points = player2_stats.get('firstServeOf', 0)
+    p1_serve_points = player1_stats.get('firstServeOf', 0) or 0
+    p2_serve_points = player2_stats.get('firstServeOf', 0) or 0
     
     # Calculate total points won on serve
-    p1_serve_points_won = player1_stats.get('winningOnFirstServe', 0) + player1_stats.get('winningOnSecondServe', 0)
-    p2_serve_points_won = player2_stats.get('winningOnFirstServe', 0) + player2_stats.get('winningOnSecondServe', 0)
+    p1_first_serve_points_won = player1_stats.get('winningOnFirstServe', 0) or 0
+    p2_first_serve_points_won = player2_stats.get('winningOnFirstServe', 0) or 0
+    p1_second_serve_points_won = player1_stats.get('winningOnSecondServe', 0) or 0
+    p2_second_serve_points_won = player2_stats.get('winningOnSecondServe', 0) or 0
+    p1_serve_points_won = p1_first_serve_points_won + p1_second_serve_points_won
+    p2_serve_points_won = p2_first_serve_points_won + p2_second_serve_points_won
     
     # 1. Serve Efficiency (% of service points won)
     if p1_serve_points > 0:
@@ -600,8 +655,8 @@ def print_calculated_serve_return_stats(player1_stats: Dict[str, Any], player2_s
     print(f"{'Double Fault %':<30} {p1_df_pct:<20} {p2_df_pct:<20}")
     
     # 4. Break Points Saved Percentage
-    p1_bp_faced = player1_stats.get('breakPointFacedGm', 0)
-    p2_bp_faced = player2_stats.get('breakPointFacedGm', 0)
+    p1_bp_faced = player1_stats.get('breakPointFacedGm', 0) or 0
+    p2_bp_faced = player2_stats.get('breakPointFacedGm', 0) or 0
     
     if p1_bp_faced > 0:
         p1_bp_saved_pct = round(player1_stats.get('breakPointSavedGm', 0) / p1_bp_faced * 100, 1)
@@ -824,16 +879,20 @@ def get_calculated_serve_return_stats_for_db(player1_stats: Dict[str, Any], play
     result = {}
     
     # Calculate basic stats for player 1 (winner)
-    p1_serve_points = player1_stats.get('firstServeOf', 0)
-    p1_serve_points_won = player1_stats.get('winningOnFirstServe', 0) + player1_stats.get('winningOnSecondServe', 0)
-    p1_bp_faced = player1_stats.get('breakPointFacedGm', 0)
-    p1_bp_saved = player1_stats.get('breakPointSavedGm', 0)
+    p1_serve_points = player1_stats.get('firstServeOf', 0) or 0
+    p1_first_serve_points_won = player1_stats.get('winningOnFirstServe', 0) or 0
+    p1_second_serve_points_won = player1_stats.get('winningOnSecondServe', 0) or 0
+    p1_serve_points_won = p1_first_serve_points_won + p1_second_serve_points_won
+    p1_bp_faced = player1_stats.get('breakPointFacedGm', 0) or 0
+    p1_bp_saved = player1_stats.get('breakPointSavedGm', 0) or 0
     
     # Calculate basic stats for player 2 (loser)
-    p2_serve_points = player2_stats.get('firstServeOf', 0)
-    p2_serve_points_won = player2_stats.get('winningOnFirstServe', 0) + player2_stats.get('winningOnSecondServe', 0)
-    p2_bp_faced = player2_stats.get('breakPointFacedGm', 0)
-    p2_bp_saved = player2_stats.get('breakPointSavedGm', 0)
+    p2_serve_points = player2_stats.get('firstServeOf', 0) or 0
+    p2_first_serve_points_won = player2_stats.get('winningOnFirstServe', 0) or 0
+    p2_second_serve_points_won = player2_stats.get('winningOnSecondServe', 0) or 0
+    p2_serve_points_won = p2_first_serve_points_won + p2_second_serve_points_won
+    p2_bp_faced = player2_stats.get('breakPointFacedGm', 0) or 0
+    p2_bp_saved = player2_stats.get('breakPointSavedGm', 0) or 0
     
     # Estimate service games if not available
     estimated_games = (p1_serve_points + p2_serve_points) / 10  # Rough estimate: ~10 points per game on average
@@ -842,23 +901,23 @@ def get_calculated_serve_return_stats_for_db(player1_stats: Dict[str, Any], play
     
     # Map to database column names (based on schema.py)
     # Winner stats
-    result['winner_aces'] = int(player1_stats.get('aces', 0))
-    result['winner_double_faults'] = int(player1_stats.get('doubleFaults', 0))
+    result['winner_aces'] = int(player1_stats.get('aces', 0) or 0)
+    result['winner_double_faults'] = int(player1_stats.get('doubleFaults', 0) or 0)
     result['winner_serve_points'] = int(p1_serve_points)
-    result['winner_first_serves_in'] = int(player1_stats.get('firstServe', 0))
-    result['winner_first_serve_points_won'] = int(player1_stats.get('winningOnFirstServe', 0))
-    result['winner_second_serve_points_won'] = int(player1_stats.get('winningOnSecondServe', 0))
+    result['winner_first_serves_in'] = int(player1_stats.get('firstServe', 0) or 0)
+    result['winner_first_serve_points_won'] = int(p1_first_serve_points_won)
+    result['winner_second_serve_points_won'] = int(p1_second_serve_points_won)
     result['winner_service_games'] = int(p1_service_games)
     result['winner_break_points_saved'] = int(p1_bp_saved)
     result['winner_break_points_faced'] = int(p1_bp_faced)
     
     # Loser stats
-    result['loser_aces'] = int(player2_stats.get('aces', 0))
-    result['loser_double_faults'] = int(player2_stats.get('doubleFaults', 0))
+    result['loser_aces'] = int(player2_stats.get('aces', 0) or 0)
+    result['loser_double_faults'] = int(player2_stats.get('doubleFaults', 0) or 0)
     result['loser_serve_points'] = int(p2_serve_points)
-    result['loser_first_serves_in'] = int(player2_stats.get('firstServe', 0))
-    result['loser_first_serve_points_won'] = int(player2_stats.get('winningOnFirstServe', 0))
-    result['loser_second_serve_points_won'] = int(player2_stats.get('winningOnSecondServe', 0))
+    result['loser_first_serves_in'] = int(player2_stats.get('firstServe', 0) or 0)
+    result['loser_first_serve_points_won'] = int(p2_first_serve_points_won)
+    result['loser_second_serve_points_won'] = int(p2_second_serve_points_won)
     result['loser_service_games'] = int(p2_service_games)
     result['loser_break_points_saved'] = int(p2_bp_saved)
     result['loser_break_points_faced'] = int(p2_bp_faced)
@@ -1195,8 +1254,14 @@ def get_match_stats_for_db(match_stats: Dict[str, Any], tournament_info: Dict[st
     p1_stats = data.get("player1Stats", {}) or {}
     p2_stats = data.get("player2Stats", {}) or {}
     
+    # Check if match stats are available
+    has_match_stats = p1_stats and p2_stats
+    
     # Calculate serve/return stats
     serve_return_stats = get_calculated_serve_return_stats_for_db(p1_stats, p2_stats)
+    
+    # Get the match info
+    match_info = data.get("match", {}) or {}
     
     # Format match data
     match_data = {
@@ -1214,8 +1279,15 @@ def get_match_stats_for_db(match_stats: Dict[str, Any], tournament_info: Dict[st
         "loser_height_cm": format_height(player2_profile.get("height")),
         "loser_country_code": player2_profile.get("country", {}).get("acronym"),
         "loser_age": calculate_player_age(player2_profile.get("birthDate"), tournament_data.get("date")),
-        **serve_return_stats  # Include all serve/return statistics
+        "score": match_info.get("result", ""),
+        "best_of": 3,  # Default for most matches
+        "round": match_info.get("round", {}).get("name"),
+        "match_type": "singles" if '/' not in player1_profile.get("name", "") else "doubles"
     }
+    
+    # Add serve/return stats only if they are available
+    if has_match_stats and serve_return_stats and len(serve_return_stats) > 0:
+        match_data.update(serve_return_stats)
     
     return match_data
 
@@ -1347,6 +1419,44 @@ def get_player_from_db(engine: create_engine, player_name: str) -> Optional[Dict
         logging.error(f"Error querying player from database: {str(e)}")
         return None
 
+def check_tournament_exists(engine: create_engine, tournament_id: str) -> bool:
+    """
+    Check if a tournament ID already exists in the database.
+    
+    Args:
+        engine: SQLAlchemy engine
+        tournament_id: Tournament ID to check
+        
+    Returns:
+        bool: True if tournament exists in database, False otherwise
+    """
+    try:
+        # Convert tournament_id to string to match VARCHAR column type
+        tournament_id_str = str(tournament_id)
+        
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE tournament_id = :tournament_id
+                LIMIT 1
+            """), {"tournament_id": tournament_id_str})
+            
+            row = result.fetchone()
+            count = row.count if row else 0
+            
+            exists = count > 0
+            if exists:
+                logging.info(f"Tournament ID {tournament_id} already exists in database")
+            else:
+                logging.info(f"Tournament ID {tournament_id} not found in database")
+                
+            return exists
+            
+    except SQLAlchemyError as e:
+        logging.error(f"Error checking tournament in database: {str(e)}")
+        return False
+
 def update_player_in_db(engine: create_engine, player_data: Dict[str, Any]) -> bool:
     """
     Update or insert player data in database.
@@ -1467,6 +1577,44 @@ def get_or_create_player(api_client: TennisAPIClient, engine: create_engine, pla
     
     return None
 
+def check_match_exists(engine: create_engine, match_id: str) -> bool:
+    """
+    Check if a match ID already exists in the database.
+    
+    Args:
+        engine: SQLAlchemy engine
+        match_id: Match ID to check
+        
+    Returns:
+        bool: True if match exists in database, False otherwise
+    """
+    try:
+        # Convert match_id to string as a precaution
+        match_id_str = str(match_id)
+        
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_num = :match_id
+                LIMIT 1
+            """), {"match_id": match_id_str})
+            
+            row = result.fetchone()
+            count = row.count if row else 0
+            
+            exists = count > 0
+            if exists:
+                logging.info(f"Match ID {match_id} already exists in database")
+            else:
+                logging.info(f"Match ID {match_id} not found in database")
+                
+            return exists
+            
+    except SQLAlchemyError as e:
+        logging.error(f"Error checking match in database: {str(e)}")
+        return False
+
 def insert_match_data_to_db(engine: create_engine, match_data: Dict[str, Any], tournament_info: Dict[str, Any], 
                            match_stats: Dict[str, Any], player1_data: Dict[str, Any], player2_data: Dict[str, Any]) -> bool:
     """
@@ -1476,7 +1624,7 @@ def insert_match_data_to_db(engine: create_engine, match_data: Dict[str, Any], t
         engine: SQLAlchemy engine
         match_data: Match data from API
         tournament_info: Tournament info from API
-        match_stats: Match statistics from API
+        match_stats: Match statistics from API (can be empty if stats are not available)
         player1_data: Player 1 (winner) data
         player2_data: Player 2 (loser) data
         
@@ -1496,13 +1644,22 @@ def insert_match_data_to_db(engine: create_engine, match_data: Dict[str, Any], t
         round_info = tournament_data.get("round", {})
         tournament_level = format_tournament_level(round_info.get("name")) if round_info else None
         
-        # Extract match statistics
-        stats_data = match_stats.get("data", {})
-        player1_stats = stats_data.get("player1Stats", {})
-        player2_stats = stats_data.get("player2Stats", {})
+        # Check if match stats are available
+        has_match_stats = match_stats is not None and "data" in match_stats
         
-        # Get calculated serve/return stats
-        serve_return_stats = get_calculated_serve_return_stats_for_db(player1_stats, player2_stats)
+        # Extract match statistics if available
+        stats_data = {}
+        player1_stats = {}
+        player2_stats = {}
+        serve_return_stats = {}
+        
+        if has_match_stats:
+            stats_data = match_stats.get("data", {})
+            player1_stats = stats_data.get("player1Stats", {})
+            player2_stats = stats_data.get("player2Stats", {})
+            
+            # Get calculated serve/return stats
+            serve_return_stats = get_calculated_serve_return_stats_for_db(player1_stats, player2_stats)
         
         # Extract match round information
         match_round = match_data.get("round", {}).get("name")
@@ -1586,10 +1743,12 @@ def insert_match_data_to_db(engine: create_engine, match_data: Dict[str, Any], t
             "score": score,
             "best_of": best_of,
             "round": match_round,
-            "match_type": match_type,
-            # Add serve/return stats
-            **serve_return_stats
+            "match_type": match_type
         }
+        
+        # Add serve/return stats only if they are available
+        if has_match_stats and serve_return_stats and len(serve_return_stats) > 0:
+            db_match_data.update(serve_return_stats)
         
         # Clean up any empty strings to NULL
         clean_match_data = {}
@@ -1657,42 +1816,52 @@ def insert_match_data_to_db(engine: create_engine, match_data: Dict[str, Any], t
         return False
 
 def main():
-    """Main function to handle command-line arguments and execute API requests."""
-    # Parse command-line arguments
-    args = parse_arguments()
-    
-    # Configure logging
-    log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
-    
-    # Create API client
-    api_client = TennisAPIClient(quiet_mode=args.quiet)
-    
-    # Load environment variables and get database URL
-    load_dotenv()
-    
-    # Setup database engine - prioritize environment variable if available
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and not args.db_url:
-        # Check if we need to convert postgres:// to postgresql://
-        if database_url.startswith('postgres://'):
-            database_url = database_url.replace('postgres://', 'postgresql://', 1)
-            logging.info(f"Modified database URL to use postgresql:// prefix")
-        
-        logging.info(f"Using database URL from environment: {database_url[:20]}...")
-        db_url = database_url
-    else:
-        db_url = args.db_url if args.db_url else f"postgresql://{args.db_user}:{args.db_password}@{args.db_host}:{args.db_port}/{args.db_name}"
-        logging.info(f"Using database URL from command-line arguments")
-    
-    engine = create_engine(db_url)
-    
-    # Create necessary tables
-    create_players_table(engine)
-    create_matches_table(engine)
-    
+    """
+    Main function for the API data collection process.
+    """
     try:
-        # Use the date range directly from arguments (defaults are now set in parse_arguments)
+        # Parse command line arguments
+        args = parse_arguments()
+        
+        # Configure logging
+        log_level = logging.DEBUG if args.verbose else logging.INFO
+        logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
+        
+        # Set rate limit (requests per second)
+        rate_limit = API_REQUESTS_PER_SECOND
+        
+        # Initialize API client
+        api_client = TennisAPIClient(quiet_mode=args.quiet)
+        
+        # Initialize database connection if not skipping
+        engine = None
+        if not args.skip_db_write:
+            # Create SQLAlchemy engine
+            # Setup database engine - prioritize environment variable if available
+            database_url = os.environ.get('DATABASE_URL')
+            if database_url and not args.db_url:
+                # Check if we need to convert postgres:// to postgresql://
+                if database_url.startswith('postgres://'):
+                    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+                    logging.info(f"Modified database URL to use postgresql:// prefix")
+                
+                logging.info(f"Using database URL from environment: {database_url[:20]}...")
+                db_url = database_url
+            else:
+                db_url = args.db_url if args.db_url else f"postgresql://{args.db_user}:{args.db_password}@{args.db_host}:{args.db_port}/{args.db_name}"
+                logging.info(f"Using database URL from command-line arguments")
+            
+            logging.info(f"Connecting to database: {db_url}")
+            engine = create_engine(db_url)
+            
+            # Create tables if they don't exist
+            create_matches_table(engine)
+            create_players_table(engine)
+            
+        # Dictionary to store API responses if save_responses is True
+        api_responses = {}
+        
+        # Use the date range directly from arguments (defaults are set in parse_arguments)
         start_date = args.start_date
         end_date = args.end_date
         
@@ -1754,13 +1923,9 @@ def main():
         # Use filtered tournaments instead of all tournaments
         tournaments = filtered_tournaments
         
-        # Store API responses for reference
-        api_responses = {}
-        
-        # Set up rate limiting
-        rate_limit = args.rate_limit
-        request_count = 0
-        last_request_time = time.time()
+        # Track rate limiting - no longer needed as it's handled by the TennisAPIClient
+        # request_count = 0
+        # last_request_time = time.time()
 
         # Set up progress tracking
         total_tournaments = len(tournaments)
@@ -1790,16 +1955,11 @@ def main():
                 
             logging.info(f"Processing tournament {t_idx+1}/{total_tournaments}: {tournament_name} (ID: {tournament_id})")
             
+            # We no longer skip tournaments that exist in the database
+            # Instead we'll check individual matches
+            
             # 2. Get tournament details
-            # Apply rate limiting
-            request_count += 1
-            if request_count >= rate_limit:
-                elapsed = time.time() - last_request_time
-                if elapsed < 1.0:
-                    time.sleep(1.0 - elapsed)
-                last_request_time = time.time()
-                request_count = 0
-                
+            # Rate limiting is now handled by the TennisAPIClient
             tournament_info = api_client.get_tournament_info(tournament_id)
             if not tournament_info or "data" not in tournament_info:
                 logging.error(f"Failed to fetch info for tournament {tournament_id}")
@@ -1812,15 +1972,7 @@ def main():
             print_tournament_info(tournament_info)
             
             # 3. Get tournament results
-            # Apply rate limiting
-            request_count += 1
-            if request_count >= rate_limit:
-                elapsed = time.time() - last_request_time
-                if elapsed < 1.0:
-                    time.sleep(1.0 - elapsed)
-                last_request_time = time.time()
-                request_count = 0
-                
+            # Rate limiting is now handled by the TennisAPIClient
             tournament_results = api_client.get_tournament_results(tournament_id)
             if not tournament_results or "data" not in tournament_results:
                 logging.error(f"Failed to fetch results for tournament {tournament_id}")
@@ -1907,25 +2059,25 @@ def main():
                 if not player1_id or not player2_id:
                     logging.warning(f"Match {match_id} found with missing player ID(s) in tournament {tournament_id}, skipping")
                     continue
+                
+                # Check if match already exists in the database
+                if not args.skip_db_write and check_match_exists(engine, match_id):
+                    logging.info(f"Match {match_id} already exists in database, skipping")
+                    continue
                     
                 logging.info(f"Processing match {m_idx+1}/{num_matches}: {player1_name} vs {player2_name}")
                 
                 # 4. Get match statistics
-                # Apply rate limiting
-                request_count += 1
-                if request_count >= rate_limit:
-                    elapsed = time.time() - last_request_time
-                    if elapsed < 1.0:
-                        time.sleep(1.0 - elapsed)
-                    last_request_time = time.time()
-                    request_count = 0
-                    
-                match_stats = api_client.get_match_stats(tournament_id, player1_id, player2_id)
-                if not match_stats or "data" not in match_stats:
-                    logging.error(f"Failed to fetch statistics for match {match_id}")
-                    continue
-                    
-                api_responses[f"match_{match_id}_stats"] = match_stats
+                # Rate limiting is now handled by the TennisAPIClient
+                match_stats = None    
+                try:
+                    match_stats = api_client.get_match_stats(tournament_id, player1_id, player2_id)
+                    if match_stats and "data" in match_stats:
+                        api_responses[f"match_{match_id}_stats"] = match_stats
+                    else:
+                        logging.warning(f"Failed to fetch statistics for match {match_id}, but will continue processing")
+                except Exception as e:
+                    logging.warning(f"Error fetching match stats for match {match_id}: {str(e)}, but will continue processing")
                 
                 # Determine the winner and loser
                 winner_id = match.get("match_winner")  
@@ -1971,15 +2123,7 @@ def main():
                 
                 # Process winner data
                 if winner_id:
-                    # Apply rate limiting
-                    request_count += 1
-                    if request_count >= rate_limit:
-                        elapsed = time.time() - last_request_time
-                        if elapsed < 1.0:
-                            time.sleep(1.0 - elapsed)
-                        last_request_time = time.time()
-                        request_count = 0
-                        
+                    # Rate limiting is now handled by the TennisAPIClient
                     winner_data = get_or_create_player(api_client, engine, winner_name, winner_id)
                     if winner_data:
                         api_responses[f"player_{winner_id}_profile"] = winner_data
@@ -2022,15 +2166,7 @@ def main():
                 
                 # Process loser data
                 if loser_id:
-                    # Apply rate limiting
-                    request_count += 1
-                    if request_count >= rate_limit:
-                        elapsed = time.time() - last_request_time
-                        if elapsed < 1.0:
-                            time.sleep(1.0 - elapsed)
-                        last_request_time = time.time()
-                        request_count = 0
-                        
+                    # Rate limiting is now handled by the TennisAPIClient
                     loser_data = get_or_create_player(api_client, engine, loser_name, loser_id)
                     if loser_data:
                         api_responses[f"player_{loser_id}_profile"] = loser_data
@@ -2074,6 +2210,7 @@ def main():
                 # Insert match data into the database if not skipping
                 if not args.skip_db_write:
                     if winner_data and loser_data:
+                        # Insert match data regardless of whether we have match stats
                         if insert_match_data_to_db(engine, match, tournament_info, match_stats, winner_data, loser_data):
                             logging.info(f"Match {match_id} inserted into the database")
                     else:
