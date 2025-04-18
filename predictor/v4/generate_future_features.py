@@ -106,26 +106,27 @@ class FutureFeatureGenerator:
     
     def load_scheduled_matches(self) -> pd.DataFrame:
         """
-        Load unprocessed scheduled matches
+        Load unplayed scheduled matches for the next 14 days.
+        We use is_processed=FALSE to identify matches that haven't been played yet.
         
         Returns:
             DataFrame with scheduled match data
         """
-        print("Loading unprocessed scheduled matches...")
+        print("Loading unplayed scheduled matches...")
         query = """
             SELECT *
             FROM scheduled_matches
-            WHERE is_processed = FALSE
-            AND scheduled_date >= CURRENT_DATE
-            AND scheduled_date <= CURRENT_DATE + INTERVAL '7 days'
+            WHERE scheduled_date >= CURRENT_DATE
+            AND scheduled_date <= CURRENT_DATE + INTERVAL '14 days'
+            AND is_processed = FALSE
             ORDER BY scheduled_date ASC
         """
         
         with self.get_db_connection() as conn:
             df = pd.read_sql(query, conn)
         
-        logger.info(f"Loaded {len(df)} unprocessed scheduled matches")
-        print(f"Loaded {len(df)} unprocessed scheduled matches")
+        logger.info(f"Loaded {len(df)} unplayed matches")
+        print(f"Loaded {len(df)} unplayed matches")
         
         # Print sample of scheduled matches
         if not df.empty:
@@ -184,8 +185,8 @@ class FutureFeatureGenerator:
             'player1_id': player1_id,
             'player2_id': player2_id,
             'surface': scheduled_match['surface'].lower() if scheduled_match['surface'] else 'unknown',
+            'tournament_level': scheduled_match['tournament_level'],  # Add tournament_level
             'tournament_date': match_date,
-            'tournament_level': scheduled_match['tournament_level'],
             'is_future': True  # Mark as a future match for identification
         }
         
@@ -222,9 +223,35 @@ class FutureFeatureGenerator:
         print(f"Generated {len(features)} features for match ID: {features['match_id']}")
         return features
     
+    def _convert_numpy_types(self, features_dict):
+        """
+        Convert numpy types to Python native types for database compatibility
+        
+        Args:
+            features_dict: Dictionary containing feature values
+            
+        Returns:
+            Dictionary with numpy types converted to Python native types
+        """
+        converted = {}
+        for key, value in features_dict.items():
+            if value is None:
+                converted[key] = None
+            elif isinstance(value, (np.int64, np.int32, np.int16, np.int8)):
+                converted[key] = int(value)
+            elif isinstance(value, (np.float64, np.float32)):
+                converted[key] = float(value)
+            elif isinstance(value, (pd.Timestamp, np.datetime64)):
+                converted[key] = value.to_pydatetime()
+            else:
+                converted[key] = value
+        return converted
+    
     def store_features(self, features_list: List[Dict[str, Any]]):
         """
-        Store generated features in the match_features table
+        Store generated features in the match_features table.
+        Note: We don't set is_processed here anymore as that's handled by update_completed_matches.py
+        when the match is actually completed.
         
         Args:
             features_list: List of feature dictionaries to store
@@ -234,15 +261,18 @@ class FutureFeatureGenerator:
             print("WARNING: No features to store")
             return
         
-        print(f"Storing features for {len(features_list)} matches...")
+        print(f"Storing/updating features for {len(features_list)} matches...")
+        
+        # Convert numpy types to Python native types
+        converted_features = [self._convert_numpy_types(features) for features in features_list]
         
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
                 # Get column names from first feature dict
-                columns = list(features_list[0].keys())
+                columns = list(converted_features[0].keys())
                 
                 # Prepare values list
-                values = [[feature[col] for col in columns] for feature in features_list]
+                values = [[feature[col] for col in columns] for feature in converted_features]
                 
                 # Create placeholders for SQL query
                 placeholders = ','.join(['%s'] * len(columns))
@@ -250,8 +280,7 @@ class FutureFeatureGenerator:
                 # Construct column string
                 columns_str = ','.join(columns)
                 
-                # Insert features
-                # Note: The match_id here will be the scheduled_matches.match_id for future matches
+                # Insert/update features
                 execute_values(
                     cur,
                     f"""
@@ -264,17 +293,9 @@ class FutureFeatureGenerator:
                     values
                 )
                 
-                # Mark matches as processed
-                match_ids = [f["match_id"] for f in features_list]
-                cur.execute("""
-                    UPDATE scheduled_matches
-                    SET is_processed = TRUE
-                    WHERE match_id = ANY(%s)
-                """, (match_ids,))
-                
                 conn.commit()
-                logger.info(f"Stored features for {len(features_list)} matches")
-                print(f"Successfully stored features for {len(features_list)} matches and marked them as processed")
+                logger.info(f"Stored/updated features for {len(features_list)} matches")
+                print(f"Successfully stored/updated features for {len(features_list)} matches")
     
     def generate_features(self):
         """Main method to generate features for scheduled matches"""
@@ -290,8 +311,8 @@ class FutureFeatureGenerator:
             scheduled_df = self.load_scheduled_matches()
             
             if scheduled_df.empty:
-                logger.info("No unprocessed scheduled matches found")
-                print("No unprocessed scheduled matches found. Exiting.")
+                logger.info("No scheduled matches found")
+                print("No scheduled matches found. Exiting.")
                 return
             
             # Load pre-calculated player features

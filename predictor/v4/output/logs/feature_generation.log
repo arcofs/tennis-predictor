@@ -1,0 +1,31 @@
+2025-04-18 23:22:32,001 - __main__ - INFO - FutureFeatureGenerator initialized
+2025-04-18 23:22:32,945 - __main__ - INFO - Loaded 92 unprocessed scheduled matches
+2025-04-18 23:22:41,519 - __main__ - INFO - Loaded features for 14318 players
+2025-04-18 23:22:42,206 - __main__ - ERROR - Error generating features: can't adapt type 'numpy.int64'
+2025-04-18 23:22:42,206 - __main__ - ERROR - Error in main function: can't adapt type 'numpy.int64'
+2025-04-18 23:23:33,107 - __main__ - INFO - FutureFeatureGenerator initialized
+2025-04-18 23:23:34,143 - __main__ - INFO - Loaded 92 unprocessed scheduled matches
+2025-04-18 23:23:48,766 - __main__ - INFO - Loaded features for 14318 players
+2025-04-18 23:23:50,063 - __main__ - ERROR - Error generating features: column "tournament_level" of relation "match_features" does not exist
+LINE 3: ..._id,player1_id,player2_id,surface,tournament_date,tournament...
+                                                             ^
+
+2025-04-18 23:23:50,063 - __main__ - ERROR - Error in main function: column "tournament_level" of relation "match_features" does not exist
+LINE 3: ..._id,player1_id,player2_id,surface,tournament_date,tournament...
+                                                             ^
+
+2025-04-18 23:26:17,226 - __main__ - INFO - FutureFeatureGenerator initialized
+2025-04-18 23:26:18,134 - __main__ - INFO - Loaded 92 unprocessed scheduled matches
+2025-04-18 23:26:28,819 - __main__ - INFO - Loaded features for 14318 players
+2025-04-18 23:26:30,204 - __main__ - INFO - Stored features for 92 matches
+2025-04-18 23:29:25,326 - __main__ - INFO - FutureFeatureGenerator initialized
+2025-04-18 23:29:26,565 - __main__ - INFO - Loaded 0 unprocessed scheduled matches
+2025-04-18 23:29:26,565 - __main__ - INFO - No unprocessed scheduled matches found
+2025-04-18 23:33:44,230 - __main__ - INFO - FutureFeatureGenerator initialized
+2025-04-18 23:33:45,758 - __main__ - INFO - Loaded 92 scheduled matches
+2025-04-18 23:33:59,383 - __main__ - INFO - Loaded features for 14318 players
+2025-04-18 23:34:00,684 - __main__ - INFO - Stored/updated features for 92 matches
+2025-04-18 23:41:13,320 - __main__ - INFO - FutureFeatureGenerator initialized
+2025-04-18 23:41:14,349 - __main__ - INFO - Loaded 92 unplayed matches
+2025-04-18 23:41:23,674 - __main__ - INFO - Loaded features for 14318 players
+2025-04-18 23:41:24,882 - __main__ - INFO - Stored/updated features for 92 matches
