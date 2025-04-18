@@ -13,8 +13,7 @@ The v4 pipeline consists of several components:
 
 2. **Completed Match Update** (`update_completed_matches.py`)
    - Identifies scheduled matches that have been completed
-   - Fetches match results from the external API
-   - Adds completed matches to the `matches` table
+   - Fetches match results from the matches table
    - Marks matches as processed in `scheduled_matches` table
 
 3. **Historical Feature Generation** (`generate_historical_features.py`)

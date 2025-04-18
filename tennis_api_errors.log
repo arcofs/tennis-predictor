@@ -462,3 +462,520 @@ DETAIL:  Key (id)=(89965) already exists.
 2025-04-18 12:18:54,674 - WARNING - Skipping match 2387247298 insertion - missing player data
 2025-04-18 12:19:48,739 - WARNING - Failed to fetch statistics for match 4023680554, but will continue processing
 2025-04-18 12:19:52,614 - WARNING - Failed to fetch statistics for match 4025076105, but will continue processing
+2025-04-18 18:13:33,172 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:13:33,173 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:13:36,880 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:13:36,881 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:13:40,387 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:13:40,388 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:18:22,299 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:18:22,299 - ERROR - Full traceback:
+Traceback (most recent call last):
+  File "/home/tom/projects/tennis-predictor/predictor/v4/update_completed_matches.py", line 152, in get_match_result
+    logger.debug(f"Checking match: {match.get('id')} (type: {type(match)})")
+AttributeError: 'str' object has no attribute 'get'
+2025-04-18 18:18:22,299 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:18:25,863 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:18:25,864 - ERROR - Full traceback:
+Traceback (most recent call last):
+  File "/home/tom/projects/tennis-predictor/predictor/v4/update_completed_matches.py", line 152, in get_match_result
+    logger.debug(f"Checking match: {match.get('id')} (type: {type(match)})")
+AttributeError: 'str' object has no attribute 'get'
+2025-04-18 18:18:25,864 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:18:29,502 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:18:29,502 - ERROR - Full traceback:
+Traceback (most recent call last):
+  File "/home/tom/projects/tennis-predictor/predictor/v4/update_completed_matches.py", line 152, in get_match_result
+    logger.debug(f"Checking match: {match.get('id')} (type: {type(match)})")
+AttributeError: 'str' object has no attribute 'get'
+2025-04-18 18:18:29,502 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:19:26,958 - ERROR - Match 1550 not found in tournament 20604
+2025-04-18 18:19:26,959 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:19:30,503 - ERROR - Match 1577 not found in tournament 20605
+2025-04-18 18:19:30,504 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:19:34,067 - ERROR - Match 1528 not found in tournament 20604
+2025-04-18 18:19:34,067 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:19:37,671 - ERROR - Match 1599 not found in tournament 20605
+2025-04-18 18:19:37,671 - WARNING - Could not get result for match 1599, skipping
+2025-04-18 18:19:41,158 - ERROR - Match 1571 not found in tournament 20605
+2025-04-18 18:19:41,158 - WARNING - Could not get result for match 1571, skipping
+2025-04-18 18:19:45,194 - ERROR - Match 1427 not found in tournament 20602
+2025-04-18 18:19:45,194 - WARNING - Could not get result for match 1427, skipping
+2025-04-18 18:19:48,703 - ERROR - Match 1662 not found in tournament 20624
+2025-04-18 18:19:48,704 - WARNING - Could not get result for match 1662, skipping
+2025-04-18 18:19:52,333 - ERROR - Match 1414 not found in tournament 20602
+2025-04-18 18:19:52,333 - WARNING - Could not get result for match 1414, skipping
+2025-04-18 18:21:21,073 - ERROR - Match 1550 not found in tournament 20604
+2025-04-18 18:21:21,074 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:21:24,584 - ERROR - Match 1577 not found in tournament 20605
+2025-04-18 18:21:24,585 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:22:09,014 - ERROR - Match 1550 not found in tournament 20604
+2025-04-18 18:22:09,014 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:23:16,671 - ERROR - Error getting match result: unhashable type: 'slice'
+2025-04-18 18:23:16,671 - ERROR - Full traceback:
+Traceback (most recent call last):
+  File "/home/tom/projects/tennis-predictor/predictor/v4/update_completed_matches.py", line 147, in get_match_result
+    for i, match in enumerate(all_matches['data'][:3]):
+TypeError: unhashable type: 'slice'
+2025-04-18 18:23:16,672 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:24:26,328 - ERROR - Match 1550 not found in tournament 20604
+2025-04-18 18:24:26,328 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:29:25,526 - ERROR - Match 1550 not found in tournament 20604
+2025-04-18 18:29:25,526 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:29:29,333 - ERROR - Match 1577 not found in tournament 20605
+2025-04-18 18:29:29,334 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:29:33,139 - ERROR - Match 1528 not found in tournament 20604
+2025-04-18 18:29:33,139 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:31:45,082 - ERROR - Match 1550 not found in tournament 20604
+2025-04-18 18:31:45,082 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:31:48,583 - ERROR - Match 1577 not found in tournament 20605
+2025-04-18 18:31:48,584 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:31:52,218 - ERROR - Match 1528 not found in tournament 20604
+2025-04-18 18:31:52,219 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:31:55,788 - ERROR - Match 1599 not found in tournament 20605
+2025-04-18 18:31:55,788 - WARNING - Could not get result for match 1599, skipping
+2025-04-18 18:31:59,434 - ERROR - Match 1571 not found in tournament 20605
+2025-04-18 18:31:59,434 - WARNING - Could not get result for match 1571, skipping
+2025-04-18 18:32:03,038 - ERROR - Match 1427 not found in tournament 20602
+2025-04-18 18:32:03,039 - WARNING - Could not get result for match 1427, skipping
+2025-04-18 18:32:06,746 - ERROR - Match 1662 not found in tournament 20624
+2025-04-18 18:32:06,746 - WARNING - Could not get result for match 1662, skipping
+2025-04-18 18:32:10,362 - ERROR - Match 1414 not found in tournament 20602
+2025-04-18 18:32:10,362 - WARNING - Could not get result for match 1414, skipping
+2025-04-18 18:32:14,110 - ERROR - Match 1239 not found in tournament 20334
+2025-04-18 18:32:14,110 - WARNING - Could not get result for match 1239, skipping
+2025-04-18 18:32:17,603 - ERROR - Match 1538 not found in tournament 20604
+2025-04-18 18:32:17,603 - WARNING - Could not get result for match 1538, skipping
+2025-04-18 18:44:08,565 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:44:08,565 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:44:12,108 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:44:12,108 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:53:59,196 - ERROR - Match 1550 not found in tournament fixtures for tournament 20604
+2025-04-18 18:53:59,198 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:54:02,875 - ERROR - Match 1577 not found in tournament fixtures for tournament 20605
+2025-04-18 18:54:02,876 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:54:06,341 - ERROR - Match 1528 not found in tournament fixtures for tournament 20604
+2025-04-18 18:54:06,341 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:54:09,965 - ERROR - Match 1599 not found in tournament fixtures for tournament 20605
+2025-04-18 18:54:09,966 - WARNING - Could not get result for match 1599, skipping
+2025-04-18 18:54:13,687 - ERROR - Match 1571 not found in tournament fixtures for tournament 20605
+2025-04-18 18:54:13,687 - WARNING - Could not get result for match 1571, skipping
+2025-04-18 18:54:17,287 - ERROR - Match 1427 not found in tournament fixtures for tournament 20602
+2025-04-18 18:54:17,287 - WARNING - Could not get result for match 1427, skipping
+2025-04-18 18:54:20,931 - ERROR - Match 1662 not found in tournament fixtures for tournament 20624
+2025-04-18 18:54:20,931 - WARNING - Could not get result for match 1662, skipping
+2025-04-18 18:54:24,643 - ERROR - Match 1414 not found in tournament fixtures for tournament 20602
+2025-04-18 18:54:24,644 - WARNING - Could not get result for match 1414, skipping
+2025-04-18 18:54:28,144 - ERROR - Match 1239 not found in tournament fixtures for tournament 20334
+2025-04-18 18:54:28,144 - WARNING - Could not get result for match 1239, skipping
+2025-04-18 18:54:31,837 - ERROR - Match 1538 not found in tournament fixtures for tournament 20604
+2025-04-18 18:54:31,837 - WARNING - Could not get result for match 1538, skipping
+2025-04-18 18:54:35,818 - ERROR - Match 1416 not found in tournament fixtures for tournament 20602
+2025-04-18 18:54:35,818 - WARNING - Could not get result for match 1416, skipping
+2025-04-18 18:54:39,439 - ERROR - Match 1285 not found in tournament fixtures for tournament 20335
+2025-04-18 18:54:39,440 - WARNING - Could not get result for match 1285, skipping
+2025-04-18 18:54:42,964 - ERROR - Match 1395 not found in tournament fixtures for tournament 20602
+2025-04-18 18:54:42,965 - WARNING - Could not get result for match 1395, skipping
+2025-04-18 18:54:46,404 - ERROR - Match 1642 not found in tournament fixtures for tournament 20624
+2025-04-18 18:54:46,404 - WARNING - Could not get result for match 1642, skipping
+2025-04-18 18:54:49,903 - ERROR - Match 1655 not found in tournament fixtures for tournament 20624
+2025-04-18 18:54:49,904 - WARNING - Could not get result for match 1655, skipping
+2025-04-18 18:54:53,413 - ERROR - Match 1650 not found in tournament fixtures for tournament 20624
+2025-04-18 18:54:53,414 - WARNING - Could not get result for match 1650, skipping
+2025-04-18 18:54:57,015 - ERROR - Match 1660 not found in tournament fixtures for tournament 20624
+2025-04-18 18:54:57,015 - WARNING - Could not get result for match 1660, skipping
+2025-04-18 18:55:00,658 - ERROR - Match 1680 not found in tournament fixtures for tournament 20624
+2025-04-18 18:55:00,658 - WARNING - Could not get result for match 1680, skipping
+2025-04-18 18:56:06,531 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:56:06,531 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 18:56:10,758 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:56:10,759 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 18:56:15,085 - ERROR - Error getting match result: 'str' object has no attribute 'get'
+2025-04-18 18:56:15,086 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 18:57:05,481 - ERROR - Error storing match in matches table: column "match_id" of relation "matches" does not exist
+LINE 2:                         INSERT INTO matches (match_id, tourn...
+                                                     ^
+
+2025-04-18 18:57:05,484 - ERROR - Failed to store match 1550
+2025-04-18 18:57:11,633 - ERROR - Error storing match in matches table: column "match_id" of relation "matches" does not exist
+LINE 2:                         INSERT INTO matches (match_id, tourn...
+                                                     ^
+
+2025-04-18 18:57:11,634 - ERROR - Failed to store match 1577
+2025-04-18 18:58:09,266 - ERROR - Error storing match in matches table: null value in column "tournament_id" of relation "matches" violates not-null constraint
+DETAIL:  Failing row contains (829566, null, null, Unknown, null, C, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, , 3, null, null, 7, 2, 82, 53, 35, 14, 8, 25, 8, 3, 4, 71, 37, 22, 18, 8, 31, 9, null, null, null, null, singles, null, null, null, null, null).
+
+2025-04-18 18:58:09,267 - ERROR - Failed to store match 1550
+2025-04-18 18:59:04,058 - ERROR - Error storing match in matches table: null value in column "tournament_id" of relation "matches" violates not-null constraint
+DETAIL:  Failing row contains (829568, null, null, Unknown, null, C, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, , 3, null, null, 7, 2, 82, 53, 35, 14, 8, 25, 8, 3, 4, 71, 37, 22, 18, 8, 31, 9, null, null, null, null, singles, null, null, null, null, null).
+
+2025-04-18 18:59:04,059 - ERROR - Failed to store match 1550
+2025-04-18 19:04:34,712 - ERROR - Error in update_completed_matches: Execution failed on sql '
+            SELECT 
+                match_id,
+                tournament_id,
+                round_id,
+                player1_id,
+                player2_id,
+                scheduled_date,
+                is_processed
+            FROM scheduled_matches
+            WHERE is_processed = FALSE
+            AND scheduled_date < CURRENT_DATE
+            ORDER BY scheduled_date DESC
+            LIMIT 100
+        ': column "round_id" does not exist
+LINE 5:                 round_id,
+                        ^
+HINT:  Perhaps you meant to reference the column "scheduled_matches.round".
+
+2025-04-18 19:05:37,911 - ERROR - Match not found in tournament 20604 results (round: 5, players: 81980 vs 97369)
+2025-04-18 19:05:37,911 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 19:05:41,521 - ERROR - Match not found in tournament 20605 results (round: 5, players: 30626 vs 54208)
+2025-04-18 19:05:41,521 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 19:05:45,007 - ERROR - Match not found in tournament 20604 results (round: 5, players: 39043 vs 50000)
+2025-04-18 19:05:45,008 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 19:05:48,501 - ERROR - Match not found in tournament 20605 results (round: 9, players: 61856 vs 83555)
+2025-04-18 19:05:48,501 - WARNING - Could not get result for match 1599, skipping
+2025-04-18 19:05:52,053 - ERROR - Match not found in tournament 20605 results (round: 9, players: 9833 vs 29462)
+2025-04-18 19:05:52,053 - WARNING - Could not get result for match 1571, skipping
+2025-04-18 19:05:55,757 - ERROR - Match not found in tournament 20602 results (round: 5, players: 84235 vs 84236)
+2025-04-18 19:05:55,757 - WARNING - Could not get result for match 1427, skipping
+2025-04-18 19:05:59,297 - ERROR - Match not found in tournament 20624 results (round: 4, players: 71182 vs 33166)
+2025-04-18 19:05:59,298 - WARNING - Could not get result for match 1662, skipping
+2025-04-18 19:06:02,875 - ERROR - Match not found in tournament 20602 results (round: 5, players: 60625 vs 28900)
+2025-04-18 19:06:02,876 - WARNING - Could not get result for match 1414, skipping
+2025-04-18 19:06:06,440 - ERROR - Match not found in tournament 20334 results (round: 5, players: 68090 vs 39309)
+2025-04-18 19:06:06,441 - WARNING - Could not get result for match 1239, skipping
+2025-04-18 19:06:09,915 - ERROR - Match not found in tournament 20604 results (round: 5, players: 53532 vs 12498)
+2025-04-18 19:06:09,915 - WARNING - Could not get result for match 1538, skipping
+2025-04-18 19:06:13,420 - ERROR - Match not found in tournament 20602 results (round: 5, players: 61857 vs 35296)
+2025-04-18 19:06:13,421 - WARNING - Could not get result for match 1416, skipping
+2025-04-18 19:06:16,964 - ERROR - Match not found in tournament 20335 results (round: 5, players: 38911 vs 52140)
+2025-04-18 19:06:16,964 - WARNING - Could not get result for match 1285, skipping
+2025-04-18 19:06:20,519 - ERROR - Match not found in tournament 20602 results (round: 5, players: 20654 vs 12097)
+2025-04-18 19:06:20,519 - WARNING - Could not get result for match 1395, skipping
+2025-04-18 19:06:24,634 - ERROR - Match not found in tournament 20624 results (round: 4, players: 46167 vs 61691)
+2025-04-18 19:06:24,634 - WARNING - Could not get result for match 1642, skipping
+2025-04-18 19:06:28,095 - ERROR - Match not found in tournament 20624 results (round: 4, players: 56641 vs 21548)
+2025-04-18 19:06:28,095 - WARNING - Could not get result for match 1655, skipping
+2025-04-18 19:06:31,613 - ERROR - Match not found in tournament 20624 results (round: 4, players: 52552 vs 40795)
+2025-04-18 19:06:31,614 - WARNING - Could not get result for match 1650, skipping
+2025-04-18 19:06:35,269 - ERROR - Match not found in tournament 20624 results (round: 4, players: 68702 vs 28992)
+2025-04-18 19:06:35,269 - WARNING - Could not get result for match 1660, skipping
+2025-04-18 19:06:38,867 - ERROR - Match not found in tournament 20624 results (round: 4, players: 94055 vs 33904)
+2025-04-18 19:06:38,867 - WARNING - Could not get result for match 1680, skipping
+2025-04-18 19:11:22,077 - WARNING - Could not get result for match 1550, skipping
+2025-04-18 19:11:25,599 - WARNING - Could not get result for match 1577, skipping
+2025-04-18 19:11:29,100 - WARNING - Could not get result for match 1528, skipping
+2025-04-18 19:11:32,819 - ERROR - Match not found in tournament 20605 results (round: 9, players: 61856 vs 83555)
+2025-04-18 19:11:32,819 - WARNING - Could not get result for match 1599, skipping
+2025-04-18 19:11:36,278 - ERROR - Match not found in tournament 20605 results (round: 9, players: 9833 vs 29462)
+2025-04-18 19:11:36,278 - WARNING - Could not get result for match 1571, skipping
+2025-04-18 19:11:39,737 - WARNING - Could not get result for match 1427, skipping
+2025-04-18 19:11:43,397 - ERROR - Match not found in tournament 20624 results (round: 4, players: 71182 vs 33166)
+2025-04-18 19:11:43,397 - WARNING - Could not get result for match 1662, skipping
+2025-04-18 19:11:46,983 - WARNING - Could not get result for match 1414, skipping
+2025-04-18 19:11:50,500 - WARNING - Could not get result for match 1239, skipping
+2025-04-18 19:11:54,130 - WARNING - Could not get result for match 1538, skipping
+2025-04-18 19:11:57,986 - WARNING - Could not get result for match 1416, skipping
+2025-04-18 19:12:01,559 - WARNING - Could not get result for match 1285, skipping
+2025-04-18 19:12:05,281 - WARNING - Could not get result for match 1395, skipping
+2025-04-18 19:12:08,771 - ERROR - Match not found in tournament 20624 results (round: 4, players: 46167 vs 61691)
+2025-04-18 19:12:08,771 - WARNING - Could not get result for match 1642, skipping
+2025-04-18 19:12:12,317 - ERROR - Match not found in tournament 20624 results (round: 4, players: 56641 vs 21548)
+2025-04-18 19:12:12,318 - WARNING - Could not get result for match 1655, skipping
+2025-04-18 19:12:15,936 - ERROR - Match not found in tournament 20624 results (round: 4, players: 52552 vs 40795)
+2025-04-18 19:12:15,937 - WARNING - Could not get result for match 1650, skipping
+2025-04-18 19:12:19,485 - ERROR - Match not found in tournament 20624 results (round: 4, players: 68702 vs 28992)
+2025-04-18 19:12:19,485 - WARNING - Could not get result for match 1660, skipping
+2025-04-18 19:12:23,024 - ERROR - Match not found in tournament 20624 results (round: 4, players: 94055 vs 33904)
+2025-04-18 19:12:23,024 - WARNING - Could not get result for match 1680, skipping
+2025-04-18 19:15:45,172 - ERROR - Error storing match in matches table: column "match_id" of relation "matches" does not exist
+LINE 2:                         INSERT INTO matches (match_id, tourn...
+                                                     ^
+
+2025-04-18 19:15:45,173 - ERROR - Failed to store match 1550
+2025-04-18 19:15:50,728 - ERROR - Error storing match in matches table: column "match_id" of relation "matches" does not exist
+LINE 2:                         INSERT INTO matches (match_id, tourn...
+                                                     ^
+
+2025-04-18 19:15:50,729 - ERROR - Failed to store match 1577
+2025-04-18 19:17:37,808 - ERROR - Error storing match in matches table: null value in column "tournament_id" of relation "matches" violates not-null constraint
+DETAIL:  Failing row contains (829569, null, null, Unknown, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, , 3, null, null, 7, 2, 82, 53, 35, 14, 8, 25, 8, 3, 4, 71, 37, 22, 18, 8, 31, 9, null, null, null, null, singles, null, null, null, null, null).
+
+2025-04-18 19:17:37,808 - ERROR - Failed to store match 1550
+2025-04-18 19:17:43,736 - ERROR - Error storing match in matches table: null value in column "tournament_id" of relation "matches" violates not-null constraint
+DETAIL:  Failing row contains (829570, null, null, Unknown, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, , 3, null, null, 7, 1, 57, 30, 26, 15, 6, 25, 5, 6, 2, 54, 27, 17, 18, 6, 27, 0, null, null, null, null, singles, null, null, null, null, null).
+
+2025-04-18 19:17:43,736 - ERROR - Failed to store match 1577
+2025-04-18 19:38:43,135 - WARNING - Failed to fetch statistics for match 4116620798, but will continue processing
+2025-04-18 19:39:52,051 - WARNING - Failed to fetch statistics for match 4116620827, but will continue processing
+2025-04-18 19:51:18,035 - WARNING - Failed to fetch statistics for match 4116620798, but will continue processing
+2025-04-18 19:51:56,180 - WARNING - Failed to fetch statistics for match 4116620827, but will continue processing
+2025-04-18 19:56:55,239 - WARNING - Failed to fetch statistics for match 2344673196, but will continue processing
+2025-04-18 19:56:59,900 - WARNING - Failed to fetch statistics for match 2344673197, but will continue processing
+2025-04-18 19:57:06,076 - WARNING - Failed to fetch statistics for match 2344673198, but will continue processing
+2025-04-18 19:57:10,827 - WARNING - Failed to fetch statistics for match 2344673199, but will continue processing
+2025-04-18 19:57:15,509 - WARNING - Failed to fetch statistics for match 2344673200, but will continue processing
+2025-04-18 19:57:20,275 - WARNING - Failed to fetch statistics for match 2347253632, but will continue processing
+2025-04-18 19:57:25,102 - WARNING - Failed to fetch statistics for match 2347253635, but will continue processing
+2025-04-18 19:57:29,950 - WARNING - Failed to fetch statistics for match 2347253637, but will continue processing
+2025-04-18 19:57:34,543 - WARNING - Failed to fetch statistics for match 2347253640, but will continue processing
+2025-04-18 19:57:39,328 - WARNING - Failed to fetch statistics for match 2349834116, but will continue processing
+2025-04-18 19:57:44,209 - WARNING - Failed to fetch statistics for match 2349834117, but will continue processing
+2025-04-18 19:57:48,868 - WARNING - Failed to fetch statistics for match 2349834119, but will continue processing
+2025-04-18 19:57:53,564 - WARNING - Failed to fetch statistics for match 2349834121, but will continue processing
+2025-04-18 19:57:58,288 - WARNING - Failed to fetch statistics for match 2349834122, but will continue processing
+2025-04-18 19:58:03,109 - WARNING - Failed to fetch statistics for match 2349834127, but will continue processing
+2025-04-18 19:58:07,925 - WARNING - Failed to fetch statistics for match 2349834129, but will continue processing
+2025-04-18 19:58:25,671 - ERROR - Error updating player in database: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "players_pkey"
+DETAIL:  Key (id)=(89965) already exists.
+
+[SQL: 
+                    INSERT INTO players (
+                        id, name, hand, height_cm, country_code, birth_date,
+                        turned_pro, weight_kg, birthplace, residence, coach,
+                        player_status, last_updated
+                    ) VALUES (
+                        %(id)s, %(name)s, %(hand)s, %(height_cm)s, %(country_code)s, %(birth_date)s,
+                        %(turned_pro)s, %(weight_kg)s, %(birthplace)s, %(residence)s, %(coach)s,
+                        %(player_status)s, CURRENT_TIMESTAMP
+                    )
+                ]
+[parameters: {'id': 89965, 'name': 'Julian Messina', 'hand': None, 'height_cm': None, 'country_code': 'USA', 'birth_date': None, 'turned_pro': None, 'weight_kg': None, 'birthplace': None, 'residence': None, 'coach': None, 'player_status': 'Active'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-04-18 19:58:25,671 - ERROR - Data that caused error: {'id': 89965, 'name': 'Julian Messina', 'hand': None, 'height_cm': None, 'country_code': 'USA', 'birth_date': None, 'turned_pro': None, 'weight_kg': None, 'birthplace': None, 'residence': None, 'coach': None, 'player_status': 'Active'}
+2025-04-18 19:58:25,671 - ERROR - Failed to update player Julian Messina in database
+2025-04-18 19:58:25,672 - WARNING - Creating minimal player record for Julian Messina
+2025-04-18 19:58:25,915 - ERROR - Error updating player in database: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'birth_date'
+[SQL: 
+                    INSERT INTO players (
+                        id, name, hand, height_cm, country_code, birth_date,
+                        turned_pro, weight_kg, birthplace, residence, coach,
+                        player_status, last_updated
+                    ) VALUES (
+                        %(id)s, %(name)s, %(hand)s, %(height_cm)s, %(country_code)s, %(birth_date)s,
+                        %(turned_pro)s, %(weight_kg)s, %(birthplace)s, %(residence)s, %(coach)s,
+                        %(player_status)s, CURRENT_TIMESTAMP
+                    )
+                ]
+[parameters: [{'id': 89965, 'name': 'Julian Messina', 'hand': None, 'country_code': None, 'height_cm': None, 'weight_kg': None}]]
+(Background on this error at: https://sqlalche.me/e/20/cd3x)
+2025-04-18 19:58:25,916 - ERROR - Data that caused error: {'id': 89965, 'name': 'Julian Messina', 'hand': None, 'country_code': None, 'height_cm': None, 'weight_kg': None}
+2025-04-18 19:58:25,916 - WARNING - Skipping match 2387247298 insertion - missing loser data for player Julian Messina (ID: 89965)
+2025-04-18 19:58:25,916 - WARNING - Skipping match 2387247298 insertion - missing player data
+2025-04-18 19:58:31,573 - WARNING - Failed to fetch statistics for match 4116637318, but will continue processing
+2025-04-18 19:58:35,967 - WARNING - Failed to fetch statistics for match 4116637314, but will continue processing
+2025-04-18 19:58:40,418 - WARNING - Failed to fetch statistics for match 4116637319, but will continue processing
+2025-04-18 19:58:44,814 - WARNING - Failed to fetch statistics for match 4116637308, but will continue processing
+2025-04-18 19:58:51,886 - WARNING - Failed to fetch statistics for match 2352414636, but will continue processing
+2025-04-18 19:58:56,628 - WARNING - Failed to fetch statistics for match 2352414637, but will continue processing
+2025-04-18 19:59:01,357 - WARNING - Failed to fetch statistics for match 2352414638, but will continue processing
+2025-04-18 19:59:06,263 - WARNING - Failed to fetch statistics for match 2352414639, but will continue processing
+2025-04-18 19:59:11,006 - WARNING - Failed to fetch statistics for match 2352414640, but will continue processing
+2025-04-18 19:59:15,847 - WARNING - Failed to fetch statistics for match 2352414642, but will continue processing
+2025-04-18 19:59:20,447 - WARNING - Failed to fetch statistics for match 2352414643, but will continue processing
+2025-04-18 19:59:25,172 - WARNING - Failed to fetch statistics for match 2352414644, but will continue processing
+2025-04-18 19:59:30,014 - WARNING - Failed to fetch statistics for match 2352414645, but will continue processing
+2025-04-18 19:59:35,370 - WARNING - Failed to fetch statistics for match 2352414646, but will continue processing
+2025-04-18 19:59:40,043 - WARNING - Failed to fetch statistics for match 2352414647, but will continue processing
+2025-04-18 19:59:44,682 - WARNING - Failed to fetch statistics for match 2352414648, but will continue processing
+2025-04-18 19:59:49,548 - WARNING - Failed to fetch statistics for match 2352414649, but will continue processing
+2025-04-18 19:59:54,410 - WARNING - Failed to fetch statistics for match 2352414650, but will continue processing
+2025-04-18 19:59:59,290 - WARNING - Failed to fetch statistics for match 2352414651, but will continue processing
+2025-04-18 20:00:04,242 - WARNING - Failed to fetch statistics for match 2352414653, but will continue processing
+2025-04-18 20:00:09,128 - WARNING - Failed to fetch statistics for match 2352414654, but will continue processing
+2025-04-18 20:00:13,866 - WARNING - Failed to fetch statistics for match 2352414656, but will continue processing
+2025-04-18 20:00:18,703 - WARNING - Failed to fetch statistics for match 2352414657, but will continue processing
+2025-04-18 20:00:23,545 - WARNING - Failed to fetch statistics for match 2352414658, but will continue processing
+2025-04-18 20:00:28,428 - WARNING - Failed to fetch statistics for match 2356285257, but will continue processing
+2025-04-18 20:00:33,186 - WARNING - Failed to fetch statistics for match 2356285267, but will continue processing
+2025-04-18 20:00:38,026 - WARNING - Failed to fetch statistics for match 2356285272, but will continue processing
+2025-04-18 20:00:42,801 - WARNING - Failed to fetch statistics for match 2356285273, but will continue processing
+2025-04-18 20:00:47,574 - WARNING - Failed to fetch statistics for match 2356285278, but will continue processing
+2025-04-18 20:00:52,274 - WARNING - Failed to fetch statistics for match 2356285279, but will continue processing
+2025-04-18 20:00:57,002 - WARNING - Failed to fetch statistics for match 2356285280, but will continue processing
+2025-04-18 20:01:01,625 - WARNING - Failed to fetch statistics for match 2356285284, but will continue processing
+2025-04-18 20:01:06,689 - WARNING - Failed to fetch statistics for match 2357575447, but will continue processing
+2025-04-18 20:03:36,284 - WARNING - Failed to fetch statistics for match 4116637370, but will continue processing
+2025-04-18 20:03:41,306 - WARNING - Failed to fetch statistics for match 4116637343, but will continue processing
+2025-04-18 20:03:48,288 - WARNING - Failed to fetch statistics for match 2375636661, but will continue processing
+2025-04-18 20:03:53,119 - WARNING - Failed to fetch statistics for match 2375636662, but will continue processing
+2025-04-18 20:03:58,120 - WARNING - Failed to fetch statistics for match 2375636663, but will continue processing
+2025-04-18 20:04:03,019 - WARNING - Failed to fetch statistics for match 2375636664, but will continue processing
+2025-04-18 20:04:11,822 - WARNING - Failed to fetch statistics for match 2375636665, but will continue processing
+2025-04-18 20:04:16,616 - WARNING - Failed to fetch statistics for match 2375636666, but will continue processing
+2025-04-18 20:04:21,582 - WARNING - Failed to fetch statistics for match 2375636667, but will continue processing
+2025-04-18 20:04:26,525 - WARNING - Failed to fetch statistics for match 2375636668, but will continue processing
+2025-04-18 20:04:31,498 - WARNING - Failed to fetch statistics for match 2375636669, but will continue processing
+2025-04-18 20:04:36,416 - WARNING - Failed to fetch statistics for match 2375636670, but will continue processing
+2025-04-18 20:04:41,282 - WARNING - Failed to fetch statistics for match 2375636671, but will continue processing
+2025-04-18 20:04:46,507 - WARNING - Failed to fetch statistics for match 2375636672, but will continue processing
+2025-04-18 20:04:51,369 - WARNING - Failed to fetch statistics for match 2375636673, but will continue processing
+2025-04-18 20:04:56,026 - WARNING - Failed to fetch statistics for match 2375636674, but will continue processing
+2025-04-18 20:05:00,655 - WARNING - Failed to fetch statistics for match 2375636675, but will continue processing
+2025-04-18 20:05:05,492 - WARNING - Failed to fetch statistics for match 2375636676, but will continue processing
+2025-04-18 20:07:34,853 - WARNING - Failed to fetch statistics for match 2344673202, but will continue processing
+2025-04-18 20:07:39,764 - WARNING - Failed to fetch statistics for match 2345963407, but will continue processing
+2025-04-18 20:07:44,599 - WARNING - Failed to fetch statistics for match 2345963409, but will continue processing
+2025-04-18 20:07:49,318 - WARNING - Failed to fetch statistics for match 2345963410, but will continue processing
+2025-04-18 20:07:54,075 - WARNING - Failed to fetch statistics for match 2345963411, but will continue processing
+2025-04-18 20:07:58,849 - WARNING - Failed to fetch statistics for match 2345963412, but will continue processing
+2025-04-18 20:08:03,572 - WARNING - Failed to fetch statistics for match 2347253642, but will continue processing
+2025-04-18 20:08:08,730 - WARNING - Failed to fetch statistics for match 2347253645, but will continue processing
+2025-04-18 20:08:13,730 - WARNING - Failed to fetch statistics for match 2347253647, but will continue processing
+2025-04-18 20:08:18,664 - WARNING - Failed to fetch statistics for match 2348543912, but will continue processing
+2025-04-18 20:08:23,465 - WARNING - Failed to fetch statistics for match 2348543916, but will continue processing
+2025-04-18 20:08:28,153 - WARNING - Failed to fetch statistics for match 2351124385, but will continue processing
+2025-04-18 20:08:32,942 - WARNING - Failed to fetch statistics for match 2351124387, but will continue processing
+2025-04-18 20:08:37,876 - WARNING - Failed to fetch statistics for match 2352414670, but will continue processing
+2025-04-18 20:08:42,678 - WARNING - Failed to fetch statistics for match 2352414672, but will continue processing
+2025-04-18 20:08:47,540 - WARNING - Failed to fetch statistics for match 2352414674, but will continue processing
+2025-04-18 20:10:10,971 - WARNING - Failed to fetch statistics for match 4116637524, but will continue processing
+2025-04-18 20:10:18,048 - WARNING - Failed to fetch statistics for match 2347253651, but will continue processing
+2025-04-18 20:10:22,753 - WARNING - Failed to fetch statistics for match 2347253652, but will continue processing
+2025-04-18 20:10:27,585 - WARNING - Failed to fetch statistics for match 2347253653, but will continue processing
+2025-04-18 20:10:32,320 - WARNING - Failed to fetch statistics for match 2347253654, but will continue processing
+2025-04-18 20:10:36,975 - WARNING - Failed to fetch statistics for match 2347253655, but will continue processing
+2025-04-18 20:10:41,696 - WARNING - Failed to fetch statistics for match 2347253657, but will continue processing
+2025-04-18 20:10:46,596 - WARNING - Failed to fetch statistics for match 2347253658, but will continue processing
+2025-04-18 20:10:51,386 - WARNING - Failed to fetch statistics for match 2347253659, but will continue processing
+2025-04-18 20:10:54,364 - ERROR - Error updating player in database: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "players_pkey"
+DETAIL:  Key (id)=(118736) already exists.
+
+[SQL: 
+                    INSERT INTO players (
+                        id, name, hand, height_cm, country_code, birth_date,
+                        turned_pro, weight_kg, birthplace, residence, coach,
+                        player_status, last_updated
+                    ) VALUES (
+                        %(id)s, %(name)s, %(hand)s, %(height_cm)s, %(country_code)s, %(birth_date)s,
+                        %(turned_pro)s, %(weight_kg)s, %(birthplace)s, %(residence)s, %(coach)s,
+                        %(player_status)s, CURRENT_TIMESTAMP
+                    )
+                ]
+[parameters: {'id': 118736, 'name': 'Luca Ramini', 'hand': None, 'height_cm': None, 'country_code': 'ITA', 'birth_date': None, 'turned_pro': None, 'weight_kg': None, 'birthplace': None, 'residence': None, 'coach': None, 'player_status': 'Active'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-04-18 20:10:54,365 - ERROR - Data that caused error: {'id': 118736, 'name': 'Luca Ramini', 'hand': None, 'height_cm': None, 'country_code': 'ITA', 'birth_date': None, 'turned_pro': None, 'weight_kg': None, 'birthplace': None, 'residence': None, 'coach': None, 'player_status': 'Active'}
+2025-04-18 20:10:54,365 - ERROR - Failed to update player Luca Ramini in database
+2025-04-18 20:10:54,365 - WARNING - Creating minimal player record for Luca Ramini
+2025-04-18 20:10:54,606 - ERROR - Error updating player in database: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'birth_date'
+[SQL: 
+                    INSERT INTO players (
+                        id, name, hand, height_cm, country_code, birth_date,
+                        turned_pro, weight_kg, birthplace, residence, coach,
+                        player_status, last_updated
+                    ) VALUES (
+                        %(id)s, %(name)s, %(hand)s, %(height_cm)s, %(country_code)s, %(birth_date)s,
+                        %(turned_pro)s, %(weight_kg)s, %(birthplace)s, %(residence)s, %(coach)s,
+                        %(player_status)s, CURRENT_TIMESTAMP
+                    )
+                ]
+[parameters: [{'id': 118736, 'name': 'Luca Ramini', 'hand': None, 'country_code': None, 'height_cm': None, 'weight_kg': None}]]
+(Background on this error at: https://sqlalche.me/e/20/cd3x)
+2025-04-18 20:10:54,606 - ERROR - Data that caused error: {'id': 118736, 'name': 'Luca Ramini', 'hand': None, 'country_code': None, 'height_cm': None, 'weight_kg': None}
+2025-04-18 20:10:54,606 - WARNING - Skipping match 2347253659 insertion - missing loser data for player Luca Ramini (ID: 118736)
+2025-04-18 20:10:54,606 - WARNING - Skipping match 2347253659 insertion - missing player data
+2025-04-18 20:10:56,867 - WARNING - Failed to fetch statistics for match 2349834145, but will continue processing
+2025-04-18 20:11:01,592 - WARNING - Failed to fetch statistics for match 2349834146, but will continue processing
+2025-04-18 20:11:06,509 - WARNING - Failed to fetch statistics for match 2349834147, but will continue processing
+2025-04-18 20:11:11,413 - WARNING - Failed to fetch statistics for match 2349834148, but will continue processing
+2025-04-18 20:11:16,342 - WARNING - Failed to fetch statistics for match 2349834149, but will continue processing
+2025-04-18 20:11:21,017 - WARNING - Failed to fetch statistics for match 2349834150, but will continue processing
+2025-04-18 20:11:25,792 - WARNING - Failed to fetch statistics for match 2349834151, but will continue processing
+2025-04-18 20:11:31,042 - WARNING - Failed to fetch statistics for match 2349834152, but will continue processing
+2025-04-18 20:11:35,915 - WARNING - Failed to fetch statistics for match 2349834153, but will continue processing
+2025-04-18 20:11:40,785 - WARNING - Failed to fetch statistics for match 2349834156, but will continue processing
+2025-04-18 20:11:45,640 - WARNING - Failed to fetch statistics for match 2349834158, but will continue processing
+2025-04-18 20:11:50,434 - WARNING - Failed to fetch statistics for match 2349834161, but will continue processing
+2025-04-18 20:11:55,336 - WARNING - Failed to fetch statistics for match 2352414676, but will continue processing
+2025-04-18 20:12:00,294 - WARNING - Failed to fetch statistics for match 2352414678, but will continue processing
+2025-04-18 20:12:05,105 - WARNING - Failed to fetch statistics for match 2352414679, but will continue processing
+2025-04-18 20:12:09,926 - WARNING - Failed to fetch statistics for match 2352414681, but will continue processing
+2025-04-18 20:12:14,706 - WARNING - Failed to fetch statistics for match 2352414684, but will continue processing
+2025-04-18 20:12:19,538 - WARNING - Failed to fetch statistics for match 2352414687, but will continue processing
+2025-04-18 20:12:24,386 - WARNING - Failed to fetch statistics for match 2352414700, but will continue processing
+2025-04-18 20:12:29,300 - WARNING - Failed to fetch statistics for match 2352414702, but will continue processing
+2025-04-18 20:12:34,272 - WARNING - Failed to fetch statistics for match 2354995140, but will continue processing
+2025-04-18 20:12:39,079 - WARNING - Failed to fetch statistics for match 2354995149, but will continue processing
+2025-04-18 20:12:43,892 - WARNING - Failed to fetch statistics for match 2378216853, but will continue processing
+2025-04-18 20:12:48,856 - WARNING - Failed to fetch statistics for match 2378216858, but will continue processing
+2025-04-18 20:12:53,734 - WARNING - Failed to fetch statistics for match 2380797010, but will continue processing
+2025-04-18 20:12:58,498 - WARNING - Failed to fetch statistics for match 2380797013, but will continue processing
+2025-04-18 20:13:03,348 - WARNING - Failed to fetch statistics for match 2380797017, but will continue processing
+2025-04-18 20:13:08,290 - WARNING - Failed to fetch statistics for match 2380797024, but will continue processing
+2025-04-18 20:13:17,857 - WARNING - Failed to fetch statistics for match 2380797028, but will continue processing
+2025-04-18 20:13:23,309 - WARNING - Failed to fetch statistics for match 2380797038, but will continue processing
+2025-04-18 20:13:27,989 - WARNING - Failed to fetch statistics for match 2380797041, but will continue processing
+2025-04-18 20:13:32,651 - WARNING - Failed to fetch statistics for match 2380797042, but will continue processing
+2025-04-18 20:13:37,410 - WARNING - Failed to fetch statistics for match 2380797048, but will continue processing
+2025-04-18 20:13:42,405 - WARNING - Failed to fetch statistics for match 2380797050, but will continue processing
+2025-04-18 20:13:47,135 - WARNING - Failed to fetch statistics for match 2383377149, but will continue processing
+2025-04-18 20:13:51,849 - WARNING - Failed to fetch statistics for match 2383377153, but will continue processing
+2025-04-18 20:13:56,735 - WARNING - Failed to fetch statistics for match 2383377154, but will continue processing
+2025-04-18 20:14:01,492 - WARNING - Failed to fetch statistics for match 2383377162, but will continue processing
+2025-04-18 20:14:06,252 - WARNING - Failed to fetch statistics for match 2392407948, but will continue processing
+2025-04-18 20:14:11,224 - WARNING - Failed to fetch statistics for match 2392407974, but will continue processing
+2025-04-18 20:14:16,085 - WARNING - Failed to fetch statistics for match 2389827645, but will continue processing
+2025-04-18 20:14:20,944 - WARNING - Failed to fetch statistics for match 2389827646, but will continue processing
+2025-04-18 20:14:25,813 - WARNING - Failed to fetch statistics for match 2389827681, but will continue processing
+2025-04-18 20:14:30,740 - WARNING - Failed to fetch statistics for match 2389827685, but will continue processing
+2025-04-18 20:14:35,407 - WARNING - Failed to fetch statistics for match 2392407954, but will continue processing
+2025-04-18 20:14:40,301 - WARNING - Failed to fetch statistics for match 2389827664, but will continue processing
+2025-04-18 20:14:45,019 - WARNING - Failed to fetch statistics for match 2794949318, but will continue processing
+2025-04-18 20:14:49,741 - WARNING - Failed to fetch statistics for match 2810432918, but will continue processing
+2025-04-18 20:14:54,408 - WARNING - Failed to fetch statistics for match 2810432919, but will continue processing
+2025-04-18 20:14:59,204 - WARNING - Failed to fetch statistics for match 2828497580, but will continue processing
+2025-04-18 20:15:04,012 - WARNING - Failed to fetch statistics for match 3388569776, but will continue processing
+2025-04-18 20:15:08,733 - WARNING - Failed to fetch statistics for match 3285318470, but will continue processing
+2025-04-18 20:15:13,376 - WARNING - Failed to fetch statistics for match 3285318476, but will continue processing
+2025-04-18 20:15:18,182 - WARNING - Failed to fetch statistics for match 3285318499, but will continue processing
+2025-04-18 20:15:23,026 - WARNING - Failed to fetch statistics for match 3285318513, but will continue processing
+2025-04-18 20:15:27,837 - WARNING - Failed to fetch statistics for match 3327908155, but will continue processing
+2025-04-18 20:15:32,761 - WARNING - Failed to fetch statistics for match 3327908162, but will continue processing
+2025-04-18 20:15:37,498 - WARNING - Failed to fetch statistics for match 3364046549, but will continue processing
+2025-04-18 20:15:42,348 - WARNING - Failed to fetch statistics for match 3327908151, but will continue processing
+2025-04-18 20:15:47,139 - WARNING - Failed to fetch statistics for match 3364046576, but will continue processing
+2025-04-18 20:15:51,933 - WARNING - Failed to fetch statistics for match 3373081372, but will continue processing
+2025-04-18 20:15:56,714 - WARNING - Failed to fetch statistics for match 3388569829, but will continue processing
+2025-04-18 20:16:01,630 - WARNING - Failed to fetch statistics for match 3726754174, but will continue processing
+2025-04-18 20:16:06,512 - WARNING - Failed to fetch statistics for match 3746117209, but will continue processing
+2025-04-18 20:16:11,296 - WARNING - Failed to fetch statistics for match 3746117257, but will continue processing
+2025-04-18 20:16:16,014 - WARNING - Failed to fetch statistics for match 3761607875, but will continue processing
+2025-04-18 20:16:20,810 - WARNING - Failed to fetch statistics for match 3782262488, but will continue processing
+2025-04-18 20:16:25,526 - WARNING - Failed to fetch statistics for match 3782262499, but will continue processing
+2025-04-18 20:16:30,182 - WARNING - Failed to fetch statistics for match 3806790121, but will continue processing
+2025-04-18 20:16:34,915 - WARNING - Failed to fetch statistics for match 3806790164, but will continue processing
+2025-04-18 20:16:39,670 - WARNING - Failed to fetch statistics for match 4116637571, but will continue processing
+2025-04-18 20:16:44,028 - WARNING - Failed to fetch statistics for match 4116637575, but will continue processing
+2025-04-18 20:16:48,399 - WARNING - Failed to fetch statistics for match 4116637623, but will continue processing
+2025-04-18 20:16:55,530 - WARNING - Failed to fetch statistics for match 2339512560, but will continue processing
+2025-04-18 20:17:00,330 - WARNING - Failed to fetch statistics for match 2339512561, but will continue processing
+2025-04-18 20:17:05,195 - WARNING - Failed to fetch statistics for match 2339512562, but will continue processing
+2025-04-18 20:17:10,095 - WARNING - Failed to fetch statistics for match 2339512563, but will continue processing
+2025-04-18 20:17:14,933 - WARNING - Failed to fetch statistics for match 2339512564, but will continue processing
+2025-04-18 20:17:20,141 - WARNING - Failed to fetch statistics for match 2339512565, but will continue processing
+2025-04-18 20:17:24,838 - WARNING - Failed to fetch statistics for match 2339512566, but will continue processing
+2025-04-18 20:17:29,619 - WARNING - Failed to fetch statistics for match 2339512567, but will continue processing
+2025-04-18 20:17:34,302 - WARNING - Failed to fetch statistics for match 2339512568, but will continue processing
+2025-04-18 20:17:39,158 - WARNING - Failed to fetch statistics for match 2342092864, but will continue processing
+2025-04-18 20:17:44,037 - WARNING - Failed to fetch statistics for match 2342092867, but will continue processing
+2025-04-18 20:17:48,622 - WARNING - Failed to fetch statistics for match 2342092868, but will continue processing
+2025-04-18 20:17:53,516 - WARNING - Failed to fetch statistics for match 2342092872, but will continue processing
+2025-04-18 20:17:58,390 - WARNING - Failed to fetch statistics for match 2342092874, but will continue processing
+2025-04-18 20:18:03,169 - WARNING - Failed to fetch statistics for match 2342092875, but will continue processing
+2025-04-18 20:18:08,063 - WARNING - Failed to fetch statistics for match 2342092877, but will continue processing
+2025-04-18 20:18:13,652 - WARNING - Failed to fetch statistics for match 2342092878, but will continue processing
+2025-04-18 20:18:18,289 - WARNING - Failed to fetch statistics for match 2342092880, but will continue processing
+2025-04-18 20:18:22,981 - WARNING - Failed to fetch statistics for match 2342092881, but will continue processing
+2025-04-18 20:18:27,559 - WARNING - Failed to fetch statistics for match 2344673211, but will continue processing
+2025-04-18 20:18:32,505 - WARNING - Failed to fetch statistics for match 2344673214, but will continue processing
+2025-04-18 20:18:37,306 - WARNING - Failed to fetch statistics for match 2344673216, but will continue processing
+2025-04-18 20:18:42,049 - WARNING - Failed to fetch statistics for match 2344673217, but will continue processing
+2025-04-18 20:18:46,984 - WARNING - Failed to fetch statistics for match 2344673219, but will continue processing
+2025-04-18 20:18:51,785 - WARNING - Failed to fetch statistics for match 2344673220, but will continue processing
+2025-04-18 20:18:56,610 - WARNING - Failed to fetch statistics for match 2344673221, but will continue processing
+2025-04-18 20:19:01,254 - WARNING - Failed to fetch statistics for match 2344673226, but will continue processing
+2025-04-18 20:19:06,210 - WARNING - Failed to fetch statistics for match 2344673229, but will continue processing
+2025-04-18 20:19:10,938 - WARNING - Failed to fetch statistics for match 2344673230, but will continue processing

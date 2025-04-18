@@ -46,7 +46,7 @@ from tqdm import tqdm
 
 # Date range for filtering tournaments (format: 'YYYY-MM-DD')
 START_DATE = '2025-04-8'
-END_DATE = '2025-04-19'
+END_DATE = '2025-04-20'
 
 # Maximum allowed API requests per second across all API endpoints combined
 API_REQUESTS_PER_SECOND = 7
@@ -863,14 +863,14 @@ def get_calculated_serve_return_stats_for_db(player1_stats: Dict[str, Any], play
     """
     Calculate serve and return statistics derived from the match stats API data
     and return them in a format that can be used for database storage.
-    This function aligns with the database schema and feature generation requirements.
+    Returns None/NULL for missing or empty statistics instead of zeros.
     
     Args:
         player1_stats: Dictionary of player 1 statistics (winner)
         player2_stats: Dictionary of player 2 statistics (loser)
         
     Returns:
-        Dictionary with calculated stats for database storage
+        Dictionary with calculated stats for database storage, using None for missing values
     """
     # Ensure stats dictionaries are never None
     player1_stats = player1_stats or {}
@@ -878,51 +878,83 @@ def get_calculated_serve_return_stats_for_db(player1_stats: Dict[str, Any], play
     
     result = {}
     
+    # Helper function to safely get numeric value or None
+    def safe_get_number(stats: dict, key: str) -> Optional[float]:
+        value = stats.get(key)
+        # Return None for any falsy value (None, 0, empty string, etc)
+        # except actual zero from API
+        if value is None or value == '' or (isinstance(value, str) and value.strip() == ''):
+            return None
+        try:
+            num_value = float(value)
+            # If the value is explicitly 0 in the API response, keep it
+            # Otherwise, treat 0 as None (missing data)
+            if num_value == 0 and key not in stats:
+                return None
+            return num_value
+        except (ValueError, TypeError):
+            return None
+    
     # Calculate basic stats for player 1 (winner)
-    p1_serve_points = player1_stats.get('firstServeOf', 0) or 0
-    p1_first_serve_points_won = player1_stats.get('winningOnFirstServe', 0) or 0
-    p1_second_serve_points_won = player1_stats.get('winningOnSecondServe', 0) or 0
-    p1_serve_points_won = p1_first_serve_points_won + p1_second_serve_points_won
-    p1_bp_faced = player1_stats.get('breakPointFacedGm', 0) or 0
-    p1_bp_saved = player1_stats.get('breakPointSavedGm', 0) or 0
+    p1_serve_points = safe_get_number(player1_stats, 'firstServeOf')
+    p1_first_serve_points_won = safe_get_number(player1_stats, 'winningOnFirstServe')
+    p1_second_serve_points_won = safe_get_number(player1_stats, 'winningOnSecondServe')
+    p1_bp_faced = safe_get_number(player1_stats, 'breakPointFacedGm')
+    p1_bp_saved = safe_get_number(player1_stats, 'breakPointSavedGm')
     
     # Calculate basic stats for player 2 (loser)
-    p2_serve_points = player2_stats.get('firstServeOf', 0) or 0
-    p2_first_serve_points_won = player2_stats.get('winningOnFirstServe', 0) or 0
-    p2_second_serve_points_won = player2_stats.get('winningOnSecondServe', 0) or 0
-    p2_serve_points_won = p2_first_serve_points_won + p2_second_serve_points_won
-    p2_bp_faced = player2_stats.get('breakPointFacedGm', 0) or 0
-    p2_bp_saved = player2_stats.get('breakPointSavedGm', 0) or 0
+    p2_serve_points = safe_get_number(player2_stats, 'firstServeOf')
+    p2_first_serve_points_won = safe_get_number(player2_stats, 'winningOnFirstServe')
+    p2_second_serve_points_won = safe_get_number(player2_stats, 'winningOnSecondServe')
+    p2_bp_faced = safe_get_number(player2_stats, 'breakPointFacedGm')
+    p2_bp_saved = safe_get_number(player2_stats, 'breakPointSavedGm')
     
-    # Estimate service games if not available
-    estimated_games = (p1_serve_points + p2_serve_points) / 10  # Rough estimate: ~10 points per game on average
-    p1_service_games = round(estimated_games / 2)  # Approximate half the games as service games
-    p2_service_games = round(estimated_games / 2)
+    # Calculate serve points won only if both components are available
+    p1_serve_points_won = None
+    if p1_first_serve_points_won is not None and p1_second_serve_points_won is not None:
+        p1_serve_points_won = p1_first_serve_points_won + p1_second_serve_points_won
     
-    # Map to database column names (based on schema.py)
+    p2_serve_points_won = None
+    if p2_first_serve_points_won is not None and p2_second_serve_points_won is not None:
+        p2_serve_points_won = p2_first_serve_points_won + p2_second_serve_points_won
+    
+    # Estimate service games if we have serve points
+    p1_service_games = None
+    p2_service_games = None
+    if p1_serve_points is not None and p2_serve_points is not None:
+        estimated_games = (p1_serve_points + p2_serve_points) / 10  # Rough estimate: ~10 points per game on average
+        if estimated_games > 0:
+            p1_service_games = round(estimated_games / 2)  # Approximate half the games as service games
+            p2_service_games = round(estimated_games / 2)
+    
+    # Map to database column names
     # Winner stats
-    result['winner_aces'] = int(player1_stats.get('aces', 0) or 0)
-    result['winner_double_faults'] = int(player1_stats.get('doubleFaults', 0) or 0)
-    result['winner_serve_points'] = int(p1_serve_points)
-    result['winner_first_serves_in'] = int(player1_stats.get('firstServe', 0) or 0)
-    result['winner_first_serve_points_won'] = int(p1_first_serve_points_won)
-    result['winner_second_serve_points_won'] = int(p1_second_serve_points_won)
-    result['winner_service_games'] = int(p1_service_games)
-    result['winner_break_points_saved'] = int(p1_bp_saved)
-    result['winner_break_points_faced'] = int(p1_bp_faced)
+    result['winner_aces'] = safe_get_number(player1_stats, 'aces')
+    result['winner_double_faults'] = safe_get_number(player1_stats, 'doubleFaults')
+    result['winner_serve_points'] = p1_serve_points
+    result['winner_first_serves_in'] = safe_get_number(player1_stats, 'firstServe')
+    result['winner_first_serve_points_won'] = p1_first_serve_points_won
+    result['winner_second_serve_points_won'] = p1_second_serve_points_won
+    result['winner_service_games'] = p1_service_games
+    result['winner_break_points_saved'] = p1_bp_saved
+    result['winner_break_points_faced'] = p1_bp_faced
     
     # Loser stats
-    result['loser_aces'] = int(player2_stats.get('aces', 0) or 0)
-    result['loser_double_faults'] = int(player2_stats.get('doubleFaults', 0) or 0)
-    result['loser_serve_points'] = int(p2_serve_points)
-    result['loser_first_serves_in'] = int(player2_stats.get('firstServe', 0) or 0)
-    result['loser_first_serve_points_won'] = int(p2_first_serve_points_won)
-    result['loser_second_serve_points_won'] = int(p2_second_serve_points_won)
-    result['loser_service_games'] = int(p2_service_games)
-    result['loser_break_points_saved'] = int(p2_bp_saved)
-    result['loser_break_points_faced'] = int(p2_bp_faced)
+    result['loser_aces'] = safe_get_number(player2_stats, 'aces')
+    result['loser_double_faults'] = safe_get_number(player2_stats, 'doubleFaults')
+    result['loser_serve_points'] = p2_serve_points
+    result['loser_first_serves_in'] = safe_get_number(player2_stats, 'firstServe')
+    result['loser_first_serve_points_won'] = p2_first_serve_points_won
+    result['loser_second_serve_points_won'] = p2_second_serve_points_won
+    result['loser_service_games'] = p2_service_games
+    result['loser_break_points_saved'] = p2_bp_saved
+    result['loser_break_points_faced'] = p2_bp_faced
     
-    return result
+    # Check if we have any valid statistics
+    has_valid_stats = any(v is not None for v in result.values())
+    
+    # If no valid statistics found, return empty dict so no stats will be inserted
+    return result if has_valid_stats else {}
 
 def print_player_profile(data: Dict[str, Any]) -> None:
     """Print the player profile information in a formatted way"""
