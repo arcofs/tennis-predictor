@@ -45,8 +45,8 @@ import re
 from tqdm import tqdm
 
 # Date range for filtering tournaments (format: 'YYYY-MM-DD')
-START_DATE = '2025-02-28'
-END_DATE = '2025-04-03'
+START_DATE = '2025-04-14'
+END_DATE = '2025-04-17'
 
 # Maximum allowed API requests per second across all API endpoints combined
 API_REQUESTS_PER_SECOND = 7
@@ -1333,7 +1333,7 @@ def create_matches_table(engine: create_engine) -> None:
                     draw_size FLOAT,
                     tournament_level VARCHAR(50),
                     tournament_date DATE,
-                    match_num INTEGER,
+                    match_num BIGINT,
                     winner_id INTEGER,
                     winner_seed FLOAT,
                     winner_entry VARCHAR(50),

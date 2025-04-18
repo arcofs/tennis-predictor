@@ -318,3 +318,163 @@ curl --request GET \
   }
 }
 
+getTournamentFixtures:
+
+curl --request GET \
+	--url 'https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/atp/fixtures/tournament/20334?pageSize=100&pageNo=1&filter=PlayerGroup%3Aboth%3B' \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+  "data": [
+    {
+      "id": 1,
+      "date": null,
+      "roundId": 1,
+      "player1Id": 101,
+      "player2Id": 102,
+      "tournamentId": 1,
+      "player1": {
+        "id": 101,
+        "name": "Player A",
+        "countryAcr": "USA"
+      },
+      "player2": {
+        "id": 102,
+        "name": "Player B",
+        "countryAcr": "CAN"
+      }
+    },
+    {
+      "id": 2,
+      "date": "2025-01-01T10:00:00.000Z",
+      "roundId": 1,
+      "player1Id": 103,
+      "player2Id": 104,
+      "tournamentId": 1,
+      "player1": {
+        "id": 103,
+        "name": "Player C",
+        "countryAcr": "GBR"
+      },
+      "player2": {
+        "id": 104,
+        "name": "Player D",
+        "countryAcr": "FRA"
+      }
+    }
+  ],
+  "hasNextPage": false
+}
+
+roundList:
+
+curl --request GET \
+	--url https://tennis-api-atp-wta-itf.p.rapidapi.com/tennis/v2/round \
+	--header 'x-rapidapi-host: tennis-api-atp-wta-itf.p.rapidapi.com' \
+	--header 'x-rapidapi-key: 3d76672992msha995d7c3e1002b8p15659fjsn74f449524272'
+
+{
+  "data": [
+    {
+      "round_id": 6,
+      "round_name": "Third"
+    },
+    {
+      "round_id": 9,
+      "round_name": "1/4"
+    },
+    {
+      "round_id": 7,
+      "round_name": "Fourth"
+    },
+    {
+      "round_id": 14,
+      "round_name": "Rubber 2"
+    },
+    {
+      "round_id": 13,
+      "round_name": "Rubber 1"
+    },
+    {
+      "round_id": 11,
+      "round_name": "Bronze"
+    },
+    {
+      "round_id": 0,
+      "round_name": "Pre-q"
+    },
+    {
+      "round_id": 16,
+      "round_name": "Rubber 4"
+    },
+    {
+      "round_id": 10,
+      "round_name": "1/2"
+    },
+    {
+      "round_id": 15,
+      "round_name": "Rubber 3"
+    },
+    {
+      "round_id": 3,
+      "round_name": "Q3"
+    },
+    {
+      "round_id": 20,
+      "round_name": "N/A"
+    },
+    {
+      "round_id": 12,
+      "round_name": "Final"
+    },
+    {
+      "round_id": 2,
+      "round_name": "Q2"
+    },
+    {
+      "round_id": 5,
+      "round_name": "Second"
+    },
+    {
+      "round_id": 1,
+      "round_name": "Q1"
+    },
+    {
+      "round_id": 8,
+      "round_name": "Robin"
+    },
+    {
+      "round_id": 4,
+      "round_name": "First"
+    },
+    {
+      "round_id": 17,
+      "round_name": "Rubber 5"
+    },
+    {
+      "round_id": 21,
+      "round_name": "ER"
+    },
+    {
+      "round_id": 22,
+      "round_name": "Q4"
+    },
+    {
+      "round_id": 23,
+      "round_name": "CR"
+    },
+    {
+      "round_id": 24,
+      "round_name": "QF"
+    },
+    {
+      "round_id": 25,
+      "round_name": "Q5"
+    },
+    {
+      "round_id": -1,
+      "round_name": "N/A"
+    }
+  ]
+}

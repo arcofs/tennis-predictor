@@ -19,7 +19,7 @@ MATCHES_TABLE = {
         {"name": "draw_size", "type": "FLOAT", "description": "Tournament draw size"},
         {"name": "tournament_level", "type": "VARCHAR(50)", "description": "Tournament level code (G: Grand Slam, M: Masters, etc.)"},
         {"name": "tournament_date", "type": "TIMESTAMP", "description": "Date of the tournament"},
-        {"name": "match_num", "type": "INTEGER", "description": "Match number within tournament"},
+        {"name": "match_num", "type": "BIGINT", "description": "Match number within tournament"},
         {"name": "winner_id", "type": "INTEGER", "description": "ID of match winner"},
         {"name": "winner_seed", "type": "FLOAT", "description": "Seed of match winner"},
         {"name": "winner_entry", "type": "VARCHAR(50)", "description": "Entry status of winner (e.g., Q: Qualifier, WC: Wild Card)"},
@@ -169,80 +169,16 @@ PLAYERS_TABLE = {
     ]
 }
 
-# Define upcoming_matches table schema
-UPCOMING_MATCHES_TABLE = {
-    "name": "upcoming_matches",
-    "description": "Upcoming tennis matches for prediction",
-    "columns": [
-        {"name": "id", "type": "SERIAL", "description": "Primary key, auto-incremented"},
-        {"name": "match_id", "type": "VARCHAR(50)", "description": "Unique match identifier"},
-        {"name": "tournament_id", "type": "VARCHAR(50)", "description": "Tournament identifier"},
-        {"name": "tournament_name", "type": "VARCHAR(255)", "description": "Name of the tournament"},
-        {"name": "surface", "type": "VARCHAR(50)", "description": "Playing surface (e.g., 'hard', 'clay', 'grass')"},
-        {"name": "tournament_level", "type": "VARCHAR(50)", "description": "Tournament level code"},
-        {"name": "tournament_date", "type": "DATE", "description": "Date of the tournament"},
-        {"name": "match_date", "type": "TIMESTAMP", "description": "Scheduled date and time of the match"},
-        {"name": "round", "type": "VARCHAR(50)", "description": "Tournament round"},
-        {"name": "player1_id", "type": "INTEGER", "description": "ID of first player"},
-        {"name": "player1_name", "type": "VARCHAR(255)", "description": "Name of first player"},
-        {"name": "player1_seed", "type": "FLOAT", "description": "Seed of first player"},
-        {"name": "player1_entry", "type": "VARCHAR(50)", "description": "Entry status of first player"},
-        {"name": "player1_hand", "type": "VARCHAR(1)", "description": "First player's playing hand"},
-        {"name": "player1_height_cm", "type": "FLOAT", "description": "First player's height in cm"},
-        {"name": "player1_country_code", "type": "VARCHAR(3)", "description": "First player's country code"},
-        {"name": "player1_age", "type": "FLOAT", "description": "First player's age"},
-        {"name": "player1_rank", "type": "FLOAT", "description": "First player's rank"},
-        {"name": "player1_rank_points", "type": "FLOAT", "description": "First player's ranking points"},
-        {"name": "player2_id", "type": "INTEGER", "description": "ID of second player"},
-        {"name": "player2_name", "type": "VARCHAR(255)", "description": "Name of second player"},
-        {"name": "player2_seed", "type": "FLOAT", "description": "Seed of second player"},
-        {"name": "player2_entry", "type": "VARCHAR(50)", "description": "Entry status of second player"},
-        {"name": "player2_hand", "type": "VARCHAR(1)", "description": "Second player's playing hand"},
-        {"name": "player2_height_cm", "type": "FLOAT", "description": "Second player's height in cm"},
-        {"name": "player2_country_code", "type": "VARCHAR(3)", "description": "Second player's country code"},
-        {"name": "player2_age", "type": "FLOAT", "description": "Second player's age"},
-        {"name": "player2_rank", "type": "FLOAT", "description": "Second player's rank"},
-        {"name": "player2_rank_points", "type": "FLOAT", "description": "Second player's ranking points"},
-        {"name": "status", "type": "VARCHAR(20)", "description": "Match status (scheduled, completed, cancelled)"},
-        {"name": "actual_winner_id", "type": "INTEGER", "description": "Actual winner ID after match completion"},
-        {"name": "score", "type": "VARCHAR(50)", "description": "Match score (after completion)"},
-        {"name": "match_type", "type": "VARCHAR(50)", "description": "Type of match (e.g., 'atp', 'wta')"},
-        {"name": "created_at", "type": "TIMESTAMP WITH TIME ZONE", "description": "Record creation timestamp"},
-        {"name": "updated_at", "type": "TIMESTAMP WITH TIME ZONE", "description": "Record last update timestamp"}
-    ]
-}
-
-# Define match_predictions table schema
-MATCH_PREDICTIONS_TABLE = {
-    "name": "match_predictions",
-    "description": "Predictions for upcoming tennis matches",
-    "columns": [
-        {"name": "id", "type": "SERIAL", "description": "Primary key, auto-incremented"},
-        {"name": "match_id", "type": "VARCHAR(50)", "description": "Reference to upcoming_matches.match_id"},
-        {"name": "player1_win_probability", "type": "FLOAT", "description": "Probability of player1 winning"},
-        {"name": "player2_win_probability", "type": "FLOAT", "description": "Probability of player2 winning"},
-        {"name": "predicted_winner_id", "type": "INTEGER", "description": "ID of predicted winner"},
-        {"name": "prediction_confidence", "type": "FLOAT", "description": "Confidence in prediction (0-1)"},
-        {"name": "prediction_correct", "type": "BOOLEAN", "description": "Whether prediction was correct (after match)"},
-        {"name": "model_version", "type": "VARCHAR(20)", "description": "Version of model used for prediction"},
-        {"name": "created_at", "type": "TIMESTAMP WITH TIME ZONE", "description": "Prediction timestamp"},
-        {"name": "features_used", "type": "TEXT[]", "description": "List of features used in prediction"}
-    ]
-}
-
 # Define relationships
 RELATIONSHIPS = [
     {"from_table": "match_features", "from_column": "match_id", "to_table": "matches", "to_column": "id", "type": "Foreign Key"},
     {"from_table": "matches", "from_column": "winner_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"},
-    {"from_table": "matches", "from_column": "loser_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"},
-    {"from_table": "match_predictions", "from_column": "match_id", "to_table": "upcoming_matches", "to_column": "match_id", "type": "Foreign Key"},
-    {"from_table": "upcoming_matches", "from_column": "player1_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"},
-    {"from_table": "upcoming_matches", "from_column": "player2_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"}
+    {"from_table": "matches", "from_column": "loser_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"}
 ]
 
 # Combine all schema information
 SCHEMA = {
-    "tables": [MATCHES_TABLE, MATCH_FEATURES_TABLE, PLAYERS_TABLE, UPCOMING_MATCHES_TABLE, MATCH_PREDICTIONS_TABLE],
+    "tables": [MATCHES_TABLE, MATCH_FEATURES_TABLE, PLAYERS_TABLE],
     "relationships": RELATIONSHIPS
 }
 

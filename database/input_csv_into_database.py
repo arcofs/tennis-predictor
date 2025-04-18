@@ -143,7 +143,7 @@ def create_matches_table(engine: create_engine) -> None:
                     draw_size FLOAT,
                     tournament_level VARCHAR(50) NOT NULL,
                     tournament_date TIMESTAMP NOT NULL,
-                    match_num INTEGER,
+                    match_num BIGINT,
                     winner_id INTEGER,
                     winner_seed FLOAT,
                     winner_entry VARCHAR(50),

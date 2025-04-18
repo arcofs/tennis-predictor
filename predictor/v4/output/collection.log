@@ -1,0 +1,347 @@
+2025-04-18 00:24:02,933 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:24:04,629 - __main__ - INFO - Found 0 tournaments in next 7 days
+2025-04-18 00:24:05,351 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:24:05,351 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:26:02,618 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:26:03,934 - __main__ - INFO - Found 0 tournaments in next 7 days
+2025-04-18 00:26:04,660 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:26:04,660 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:27:26,770 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:27:27,433 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:27:28,244 - __main__ - INFO - Found 0 tournaments in next 7 days
+2025-04-18 00:27:28,728 - __main__ - INFO - Found 0 tournaments in next 7 days
+2025-04-18 00:27:28,965 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:27:28,966 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:27:29,451 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:27:29,451 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:28:30,400 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:28:30,402 - __main__ - INFO - Searching for tournaments between 2025-04-18 and 2025-04-25
+2025-04-18 00:28:30,402 - __main__ - INFO - Fetching tournaments for year 2025
+2025-04-18 00:28:31,776 - __main__ - INFO - Retrieved 101 tournaments for year 2025
+2025-04-18 00:28:31,781 - __main__ - INFO - No tournaments found. Trying fallback year 2023
+2025-04-18 00:28:33,175 - __main__ - INFO - Retrieved 101 tournaments from fallback year 2023
+2025-04-18 00:28:33,176 - __main__ - INFO - Found 101 tournaments in total
+2025-04-18 00:28:33,895 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:28:33,896 - __main__ - INFO - Processing tournament: M15 Yanagawa
+2025-04-18 00:28:35,161 - __main__ - INFO - Found 0 singles matches for tournament 19327
+2025-04-18 00:28:35,162 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:28:36,447 - __main__ - INFO - Found 0 singles matches for tournament 19328
+2025-04-18 00:28:36,448 - __main__ - INFO - Processing tournament: M15 Yanagawa
+2025-04-18 00:28:37,714 - __main__ - INFO - Found 0 singles matches for tournament 19323
+2025-04-18 00:28:37,715 - __main__ - INFO - Processing tournament: M15 Papamoa
+2025-04-18 00:28:38,980 - __main__ - INFO - Found 0 singles matches for tournament 19324
+2025-04-18 00:28:38,981 - __main__ - INFO - Processing tournament: M15 Antalya
+2025-04-18 00:28:40,247 - __main__ - INFO - Found 0 singles matches for tournament 19325
+2025-04-18 00:28:40,248 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:28:41,533 - __main__ - INFO - Found 0 singles matches for tournament 19326
+2025-04-18 00:28:41,534 - __main__ - INFO - Processing tournament: M15 Sharm ElSheikh
+2025-04-18 00:28:42,798 - __main__ - INFO - Found 0 singles matches for tournament 19316
+2025-04-18 00:28:42,799 - __main__ - INFO - Processing tournament: M15 Wellington
+2025-04-18 00:28:44,145 - __main__ - INFO - Found 0 singles matches for tournament 19317
+2025-04-18 00:28:44,145 - __main__ - INFO - Processing tournament: M15 Antalya
+2025-04-18 00:28:45,433 - __main__ - INFO - Found 0 singles matches for tournament 19318
+2025-04-18 00:28:45,433 - __main__ - INFO - Processing tournament: M15 Zahra
+2025-04-18 00:28:46,727 - __main__ - INFO - Found 0 singles matches for tournament 19319
+2025-04-18 00:28:46,727 - __main__ - INFO - Processing tournament: M15 Concepcion
+2025-04-18 00:28:48,056 - __main__ - INFO - Found 0 singles matches for tournament 19320
+2025-04-18 00:28:48,057 - __main__ - INFO - Processing tournament: M15 Ceuta
+2025-04-18 00:28:49,327 - __main__ - INFO - Found 0 singles matches for tournament 19321
+2025-04-18 00:28:49,328 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:28:50,613 - __main__ - INFO - Found 0 singles matches for tournament 19322
+2025-04-18 00:28:50,614 - __main__ - INFO - Processing tournament: M15 Sharm ElSheikh
+2025-04-18 00:28:51,905 - __main__ - INFO - Found 0 singles matches for tournament 19310
+2025-04-18 00:28:51,906 - __main__ - INFO - Processing tournament: M15 Madrid
+2025-04-18 00:28:53,164 - __main__ - INFO - Found 0 singles matches for tournament 19311
+2025-04-18 00:28:53,165 - __main__ - INFO - Processing tournament: M15 Antalya
+2025-04-18 00:28:54,437 - __main__ - INFO - Found 0 singles matches for tournament 19312
+2025-04-18 00:28:54,438 - __main__ - INFO - Processing tournament: M15 Zahra
+2025-04-18 00:28:55,704 - __main__ - INFO - Found 0 singles matches for tournament 19313
+2025-04-18 00:28:55,704 - __main__ - INFO - Processing tournament: M15 Concepcion
+2025-04-18 00:28:56,971 - __main__ - INFO - Found 0 singles matches for tournament 19314
+2025-04-18 00:28:56,971 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:28:58,235 - __main__ - INFO - Found 0 singles matches for tournament 19315
+2025-04-18 00:28:58,236 - __main__ - INFO - Processing tournament: Next Gen ATP Finals - Jeddah
+2025-04-18 00:28:59,617 - __main__ - INFO - Found 0 singles matches for tournament 18522
+2025-04-18 00:28:59,617 - __main__ - INFO - Processing tournament: Maia Challenger
+2025-04-18 00:29:00,894 - __main__ - INFO - Found 0 singles matches for tournament 19252
+2025-04-18 00:29:00,894 - __main__ - INFO - Processing tournament: Yokkaichi Challenger
+2025-04-18 00:29:02,157 - __main__ - INFO - Found 0 singles matches for tournament 19253
+2025-04-18 00:29:02,158 - __main__ - INFO - Processing tournament: Maspalomas Challenger
+2025-04-18 00:29:03,444 - __main__ - INFO - Found 0 singles matches for tournament 19254
+2025-04-18 00:29:03,444 - __main__ - INFO - Processing tournament: Temuco Challenger
+2025-04-18 00:29:04,715 - __main__ - INFO - Found 0 singles matches for tournament 19255
+2025-04-18 00:29:04,716 - __main__ - INFO - Processing tournament: M25 Heraklion
+2025-04-18 00:29:06,093 - __main__ - INFO - Found 0 singles matches for tournament 19295
+2025-04-18 00:29:06,093 - __main__ - INFO - Processing tournament: M25 Gold Coast
+2025-04-18 00:29:07,372 - __main__ - INFO - Found 0 singles matches for tournament 19296
+2025-04-18 00:29:07,372 - __main__ - INFO - Processing tournament: M25 Kalaburagi
+2025-04-18 00:29:08,665 - __main__ - INFO - Found 0 singles matches for tournament 19297
+2025-04-18 00:29:08,666 - __main__ - INFO - Processing tournament: M25 Ramat Gan
+2025-04-18 00:29:09,942 - __main__ - INFO - Found 0 singles matches for tournament 19298
+2025-04-18 00:29:09,943 - __main__ - INFO - Processing tournament: M25 Monastir
+2025-04-18 00:29:11,209 - __main__ - INFO - Found 0 singles matches for tournament 19299
+2025-04-18 00:29:11,210 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:29:12,473 - __main__ - INFO - Found 0 singles matches for tournament 19300
+2025-04-18 00:29:12,474 - __main__ - INFO - Processing tournament: M15 San Gregorio di Catania
+2025-04-18 00:30:57,601 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:30:58,973 - __main__ - INFO - Found 0 tournaments in next 7 days
+2025-04-18 00:30:59,698 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:30:59,698 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:31:44,041 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:31:44,041 - __main__ - INFO - Current date: 2025-04-18 00:31:44.041906
+2025-04-18 00:31:44,042 - __main__ - INFO - End date: 2025-04-25 00:31:44.041906
+2025-04-18 00:31:44,042 - __main__ - INFO - Fetching tournaments for current year: 2025
+2025-04-18 00:31:45,316 - __main__ - INFO - Fetched 101 tournaments for year 2025
+2025-04-18 00:31:45,316 - __main__ - INFO - Total tournaments fetched: 101
+2025-04-18 00:31:45,319 - __main__ - INFO - Found 0 tournaments in or near the specified date range
+2025-04-18 00:31:46,042 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:31:46,042 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:32:03,534 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:32:03,534 - __main__ - INFO - Current date: 2025-04-18 00:32:03.534700
+2025-04-18 00:32:03,535 - __main__ - INFO - End date: 2025-04-25 00:32:03.534700
+2025-04-18 00:32:03,535 - __main__ - INFO - Fetching tournaments for current year: 2025
+2025-04-18 00:32:05,215 - __main__ - INFO - Fetched 101 tournaments for year 2025
+2025-04-18 00:32:05,216 - __main__ - INFO - Total tournaments fetched: 101
+2025-04-18 00:32:05,220 - __main__ - INFO - Found 0 tournaments in or near the specified date range
+2025-04-18 00:32:05,942 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:32:05,943 - __main__ - INFO - Match collection completed successfully
+2025-04-18 00:33:03,323 - __main__ - INFO - Database tables created successfully
+2025-04-18 00:33:03,324 - __main__ - INFO - Current date: 2025-04-18 00:33:03.324348
+2025-04-18 00:33:03,324 - __main__ - INFO - End date: 2025-04-25 00:33:03.324348
+2025-04-18 00:33:03,324 - __main__ - INFO - Fetching tournaments for current year: 2025
+2025-04-18 00:33:04,797 - __main__ - INFO - Fetched 411 tournaments for year 2025
+2025-04-18 00:33:04,798 - __main__ - INFO - Total tournaments fetched: 411
+2025-04-18 00:33:04,802 - __main__ - INFO - Including tournament: Mutua Madrid Open - Madrid (2025-04-21)
+2025-04-18 00:33:04,802 - __main__ - INFO - Including tournament: Gwangju Challenger (2025-04-21)
+2025-04-18 00:33:04,802 - __main__ - INFO - Including tournament: Savannah Challenger (2025-04-21)
+2025-04-18 00:33:04,802 - __main__ - INFO - Including tournament: Abidjan 2 Challenger (2025-04-21)
+2025-04-18 00:33:04,803 - __main__ - INFO - Including tournament: Rome Challenger (2025-04-21)
+2025-04-18 00:33:04,803 - __main__ - INFO - Including tournament: San Miguel de Tucuman Challenger (2025-04-21)
+2025-04-18 00:33:04,803 - __main__ - INFO - Including tournament: M25 Angers (2025-04-21)
+2025-04-18 00:33:04,803 - __main__ - INFO - Including tournament: M25 Santa margherita di Pula (2025-04-21)
+2025-04-18 00:33:04,804 - __main__ - INFO - Including tournament: M25 Sharm ElSheikh (2025-04-21)
+2025-04-18 00:33:04,804 - __main__ - INFO - Including tournament: M15 Sanxenxo (2025-04-21)
+2025-04-18 00:33:04,804 - __main__ - INFO - Including tournament: M15 Kursumlijska Banja (2025-04-21)
+2025-04-18 00:33:04,804 - __main__ - INFO - Including tournament: M15 Osaka (2025-04-21)
+2025-04-18 00:33:04,805 - __main__ - INFO - Including tournament: M15 Shymkent (2025-04-21)
+2025-04-18 00:33:04,805 - __main__ - INFO - Including tournament: M15 Monastir (2025-04-21)
+2025-04-18 00:33:04,805 - __main__ - INFO - Including tournament: M15 Luan (2025-04-21)
+2025-04-18 00:33:04,806 - __main__ - INFO - Including tournament: M15 Vero Beach (2025-04-21)
+2025-04-18 00:33:04,806 - __main__ - INFO - Including tournament: M15 Antalya (2025-04-21)
+2025-04-18 00:33:04,806 - __main__ - INFO - Including tournament: Barcelona Open Banc Sabadell - Barcelona (2025-04-14)
+2025-04-18 00:33:04,806 - __main__ - INFO - Including tournament: BMW Open - Munich (2025-04-14)
+2025-04-18 00:33:04,807 - __main__ - INFO - Including tournament: Busan Challenger (2025-04-14)
+2025-04-18 00:33:04,807 - __main__ - INFO - Including tournament: Oeiras 4 Challenger (2025-04-14)
+2025-04-18 00:33:04,807 - __main__ - INFO - Including tournament: San Luis Potosi Challenger (2025-04-14)
+2025-04-18 00:33:04,808 - __main__ - INFO - Including tournament: Tallahassee Challenger (2025-04-14)
+2025-04-18 00:33:04,808 - __main__ - INFO - Including tournament: Abidjan 1 Challenger (2025-04-14)
+2025-04-18 00:33:04,808 - __main__ - INFO - Including tournament: M25 Santa Margherita di Pula (2025-04-14)
+2025-04-18 00:33:04,808 - __main__ - INFO - Including tournament: M25 Sharm ElSheikh (2025-04-14)
+2025-04-18 00:33:04,809 - __main__ - INFO - Including tournament: M15 Osaka (2025-04-14)
+2025-04-18 00:33:04,809 - __main__ - INFO - Including tournament: M15 Dubrovnik (2025-04-14)
+2025-04-18 00:33:04,809 - __main__ - INFO - Including tournament: M15 Monastir (2025-04-14)
+2025-04-18 00:33:04,810 - __main__ - INFO - Including tournament: M15 Luan (2025-04-14)
+2025-04-18 00:33:04,810 - __main__ - INFO - Including tournament: M15 Antalya (2025-04-14)
+2025-04-18 00:33:04,810 - __main__ - INFO - Including tournament: Monte-Carlo Rolex Masters - Monte-Carlo (2025-04-07)
+2025-04-18 00:33:04,811 - __main__ - INFO - Including tournament: Mexico City Challenger (2025-04-07)
+2025-04-18 00:33:04,811 - __main__ - INFO - Including tournament: Madrid Challenger (2025-04-07)
+2025-04-18 00:33:04,811 - __main__ - INFO - Including tournament: Monza Challenger (2025-04-07)
+2025-04-18 00:33:04,812 - __main__ - INFO - Including tournament: Sarasota Challenger (2025-04-07)
+2025-04-18 00:33:04,812 - __main__ - INFO - Including tournament: M25 Antalya (2025-04-07)
+2025-04-18 00:33:04,812 - __main__ - INFO - Including tournament: M25 Santa Margherita di Pula (2025-04-07)
+2025-04-18 00:33:04,812 - __main__ - INFO - Including tournament: M15 Monastir (2025-04-07)
+2025-04-18 00:33:04,813 - __main__ - INFO - Including tournament: M15 Luan (2025-04-07)
+2025-04-18 00:33:04,813 - __main__ - INFO - Including tournament: M15 Sharm ElSheikh (2025-04-07)
+2025-04-18 00:33:04,813 - __main__ - INFO - Including tournament: Tiriac Open - Bucharest (2025-03-31)
+2025-04-18 00:33:04,813 - __main__ - INFO - Including tournament: US Men's Clay Court Championship - Houston (2025-03-31)
+2025-04-18 00:33:04,814 - __main__ - INFO - Including tournament: Grand Prix Hassan II - Marrakech (2025-03-31)
+2025-04-18 00:33:04,814 - __main__ - INFO - Including tournament: Menorca Challenger (2025-03-31)
+2025-04-18 00:33:04,814 - __main__ - INFO - Including tournament: Barletta Challenger (2025-03-31)
+2025-04-18 00:33:04,814 - __main__ - INFO - Including tournament: Campinas Challenger (2025-03-31)
+2025-04-18 00:33:04,815 - __main__ - INFO - Including tournament: Cuernavaca Challenger (2025-03-31)
+2025-04-18 00:33:04,815 - __main__ - INFO - Including tournament: M25 Santa Margherita di Pula (2025-03-31)
+2025-04-18 00:33:04,815 - __main__ - INFO - Including tournament: M25 Chacabuco (2025-03-31)
+2025-04-18 00:33:04,816 - __main__ - INFO - Including tournament: M25 Antalya (2025-03-31)
+2025-04-18 00:33:04,816 - __main__ - INFO - Including tournament: M25 Reus (2025-03-31)
+2025-04-18 00:33:04,816 - __main__ - INFO - Including tournament: M15 Sharm ElSheikh (2025-03-31)
+2025-04-18 00:33:04,816 - __main__ - INFO - Including tournament: M15 Kashiwa (2025-03-31)
+2025-04-18 00:33:04,817 - __main__ - INFO - Including tournament: M15 Heraklion (2025-03-31)
+2025-04-18 00:33:04,817 - __main__ - INFO - Including tournament: M15 Lons-le-Saunier (2025-03-31)
+2025-04-18 00:33:04,817 - __main__ - INFO - Including tournament: M25 Bengaluru (2025-03-31)
+2025-04-18 00:33:04,817 - __main__ - INFO - Including tournament: M15 Monastir (2025-03-31)
+2025-04-18 00:33:04,818 - __main__ - INFO - Including tournament: Morelia Challenger (2025-03-24)
+2025-04-18 00:33:04,818 - __main__ - INFO - Including tournament: Naples Challenger (2025-03-24)
+2025-04-18 00:33:04,818 - __main__ - INFO - Including tournament: Girona Challenger (2025-03-24)
+2025-04-18 00:33:04,818 - __main__ - INFO - Including tournament: Concepcion Challenger (2025-03-24)
+2025-04-18 00:33:04,819 - __main__ - INFO - Including tournament: M25 Santo Domingo (2025-03-24)
+2025-04-18 00:33:04,819 - __main__ - INFO - Including tournament: M25 Tarragona (2025-03-24)
+2025-04-18 00:33:04,819 - __main__ - INFO - Including tournament: M25 Ahmedabad (2025-03-24)
+2025-04-18 00:33:04,819 - __main__ - INFO - Including tournament: M25 Lujan (2025-03-24)
+2025-04-18 00:33:04,820 - __main__ - INFO - Including tournament: M25 Calabasas (2025-03-24)
+2025-04-18 00:33:04,820 - __main__ - INFO - Including tournament: M25 Saint-Dizier (2025-03-24)
+2025-04-18 00:33:04,820 - __main__ - INFO - Including tournament: M15 Nonthaburi (2025-03-24)
+2025-04-18 00:33:04,820 - __main__ - INFO - Including tournament: M15 Sharm ElSheikh (2025-03-24)
+2025-04-18 00:33:04,821 - __main__ - INFO - Including tournament: M15 Opatija (2025-03-24)
+2025-04-18 00:33:04,821 - __main__ - INFO - Including tournament: M15 Alaminos (2025-03-24)
+2025-04-18 00:33:04,821 - __main__ - INFO - Including tournament: M15 Tsukuba (2025-03-24)
+2025-04-18 00:33:04,821 - __main__ - INFO - Including tournament: M15 Heraklion (2025-03-24)
+2025-04-18 00:33:04,821 - __main__ - INFO - Including tournament: M15 Monastir (2025-03-24)
+2025-04-18 00:33:04,822 - __main__ - INFO - Including tournament: M15 Foggia (2025-03-24)
+2025-04-18 00:33:04,822 - __main__ - INFO - Including tournament: M15 Antalya (2025-03-24)
+2025-04-18 00:33:04,826 - __main__ - INFO - Found 77 tournaments in or near the specified date range
+2025-04-18 00:33:05,549 - __main__ - INFO - Removed 0 old matches from scheduled_matches
+2025-04-18 00:33:05,550 - __main__ - INFO - Processing tournament: Mutua Madrid Open - Madrid
+2025-04-18 00:33:06,833 - __main__ - INFO - Found 0 singles matches for tournament 20336
+2025-04-18 00:33:06,834 - __main__ - INFO - Processing tournament: Gwangju Challenger
+2025-04-18 00:33:08,092 - __main__ - INFO - Found 0 singles matches for tournament 20606
+2025-04-18 00:33:08,092 - __main__ - INFO - Processing tournament: Savannah Challenger
+2025-04-18 00:33:09,375 - __main__ - INFO - Found 0 singles matches for tournament 20607
+2025-04-18 00:33:09,376 - __main__ - INFO - Processing tournament: Abidjan 2 Challenger
+2025-04-18 00:33:10,667 - __main__ - INFO - Found 0 singles matches for tournament 20608
+2025-04-18 00:33:10,668 - __main__ - INFO - Processing tournament: Rome Challenger
+2025-04-18 00:33:11,937 - __main__ - INFO - Found 0 singles matches for tournament 20609
+2025-04-18 00:33:11,937 - __main__ - INFO - Processing tournament: San Miguel de Tucuman Challenger
+2025-04-18 00:33:13,240 - __main__ - INFO - Found 0 singles matches for tournament 20610
+2025-04-18 00:33:13,240 - __main__ - INFO - Processing tournament: M25 Angers
+2025-04-18 00:33:14,501 - __main__ - INFO - Found 0 singles matches for tournament 20631
+2025-04-18 00:33:14,501 - __main__ - INFO - Processing tournament: M25 Santa margherita di Pula
+2025-04-18 00:33:15,769 - __main__ - INFO - Found 0 singles matches for tournament 20632
+2025-04-18 00:33:15,769 - __main__ - INFO - Processing tournament: M25 Sharm ElSheikh
+2025-04-18 00:33:17,061 - __main__ - INFO - Found 0 singles matches for tournament 20633
+2025-04-18 00:33:17,062 - __main__ - INFO - Processing tournament: M15 Sanxenxo
+2025-04-18 00:33:18,322 - __main__ - INFO - Found 0 singles matches for tournament 20634
+2025-04-18 00:33:18,323 - __main__ - INFO - Processing tournament: M15 Kursumlijska Banja
+2025-04-18 00:33:19,586 - __main__ - INFO - Found 0 singles matches for tournament 20635
+2025-04-18 00:33:19,587 - __main__ - INFO - Processing tournament: M15 Osaka
+2025-04-18 00:33:20,859 - __main__ - INFO - Found 0 singles matches for tournament 20636
+2025-04-18 00:33:20,859 - __main__ - INFO - Processing tournament: M15 Shymkent
+2025-04-18 00:33:22,121 - __main__ - INFO - Found 0 singles matches for tournament 20637
+2025-04-18 00:33:22,122 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:33:23,383 - __main__ - INFO - Found 0 singles matches for tournament 20638
+2025-04-18 00:33:23,384 - __main__ - INFO - Processing tournament: M15 Luan
+2025-04-18 00:33:24,658 - __main__ - INFO - Found 0 singles matches for tournament 20639
+2025-04-18 00:33:24,658 - __main__ - INFO - Processing tournament: M15 Vero Beach
+2025-04-18 00:33:25,917 - __main__ - INFO - Found 0 singles matches for tournament 20640
+2025-04-18 00:33:25,918 - __main__ - INFO - Processing tournament: M15 Antalya
+2025-04-18 00:33:27,181 - __main__ - INFO - Found 0 singles matches for tournament 20641
+2025-04-18 00:33:27,181 - __main__ - INFO - Processing tournament: Barcelona Open Banc Sabadell - Barcelona
+2025-04-18 00:33:28,458 - __main__ - INFO - Found 4 singles matches for tournament 20334
+2025-04-18 00:33:29,536 - __main__ - INFO - Processing tournament: BMW Open - Munich
+2025-04-18 00:33:30,798 - __main__ - INFO - Found 4 singles matches for tournament 20335
+2025-04-18 00:33:31,851 - __main__ - INFO - Processing tournament: Busan Challenger
+2025-04-18 00:33:33,224 - __main__ - INFO - Found 4 singles matches for tournament 20601
+2025-04-18 00:33:34,288 - __main__ - INFO - Processing tournament: Oeiras 4 Challenger
+2025-04-18 00:33:35,559 - __main__ - INFO - Found 4 singles matches for tournament 20602
+2025-04-18 00:33:36,621 - __main__ - INFO - Processing tournament: San Luis Potosi Challenger
+2025-04-18 00:33:37,899 - __main__ - INFO - Found 6 singles matches for tournament 20603
+2025-04-18 00:33:39,496 - __main__ - INFO - Processing tournament: Tallahassee Challenger
+2025-04-18 00:33:40,759 - __main__ - INFO - Found 6 singles matches for tournament 20604
+2025-04-18 00:33:42,352 - __main__ - INFO - Processing tournament: Abidjan 1 Challenger
+2025-04-18 00:33:43,638 - __main__ - INFO - Found 4 singles matches for tournament 20605
+2025-04-18 00:33:44,708 - __main__ - INFO - Processing tournament: M25 Santa Margherita di Pula
+2025-04-18 00:33:45,989 - __main__ - INFO - Found 9 singles matches for tournament 20624
+2025-04-18 00:33:48,386 - __main__ - INFO - Processing tournament: M25 Sharm ElSheikh
+2025-04-18 00:33:49,670 - __main__ - INFO - Found 4 singles matches for tournament 20625
+2025-04-18 00:33:50,742 - __main__ - INFO - Processing tournament: M15 Osaka
+2025-04-18 00:33:52,003 - __main__ - INFO - Found 4 singles matches for tournament 20626
+2025-04-18 00:33:53,071 - __main__ - INFO - Processing tournament: M15 Dubrovnik
+2025-04-18 00:33:54,340 - __main__ - INFO - Found 2 singles matches for tournament 20627
+2025-04-18 00:33:54,926 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:33:56,196 - __main__ - INFO - Found 4 singles matches for tournament 20628
+2025-04-18 00:33:57,251 - __main__ - INFO - Processing tournament: M15 Luan
+2025-04-18 00:33:58,516 - __main__ - INFO - Found 3 singles matches for tournament 20629
+2025-04-18 00:33:59,314 - __main__ - INFO - Processing tournament: M15 Antalya
+2025-04-18 00:34:00,580 - __main__ - INFO - Found 4 singles matches for tournament 20630
+2025-04-18 00:34:01,654 - __main__ - INFO - Processing tournament: Monte-Carlo Rolex Masters - Monte-Carlo
+2025-04-18 00:34:02,930 - __main__ - INFO - Found 0 singles matches for tournament 20333
+2025-04-18 00:34:02,931 - __main__ - INFO - Processing tournament: Mexico City Challenger
+2025-04-18 00:34:04,187 - __main__ - INFO - Found 0 singles matches for tournament 20597
+2025-04-18 00:34:04,187 - __main__ - INFO - Processing tournament: Madrid Challenger
+2025-04-18 00:34:05,522 - __main__ - INFO - Found 0 singles matches for tournament 20598
+2025-04-18 00:34:05,523 - __main__ - INFO - Processing tournament: Monza Challenger
+2025-04-18 00:34:07,036 - __main__ - INFO - Found 0 singles matches for tournament 20599
+2025-04-18 00:34:07,036 - __main__ - INFO - Processing tournament: Sarasota Challenger
+2025-04-18 00:34:08,372 - __main__ - INFO - Found 0 singles matches for tournament 20600
+2025-04-18 00:34:08,373 - __main__ - INFO - Processing tournament: M25 Antalya
+2025-04-18 00:34:09,639 - __main__ - INFO - Found 0 singles matches for tournament 20619
+2025-04-18 00:34:09,640 - __main__ - INFO - Processing tournament: M25 Santa Margherita di Pula
+2025-04-18 00:34:10,893 - __main__ - INFO - Found 0 singles matches for tournament 20620
+2025-04-18 00:34:10,894 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:34:12,157 - __main__ - INFO - Found 0 singles matches for tournament 20621
+2025-04-18 00:34:12,157 - __main__ - INFO - Processing tournament: M15 Luan
+2025-04-18 00:34:13,485 - __main__ - INFO - Found 0 singles matches for tournament 20622
+2025-04-18 00:34:13,486 - __main__ - INFO - Processing tournament: M15 Sharm ElSheikh
+2025-04-18 00:34:14,753 - __main__ - INFO - Found 0 singles matches for tournament 20623
+2025-04-18 00:34:14,754 - __main__ - INFO - Processing tournament: Tiriac Open - Bucharest
+2025-04-18 00:34:16,076 - __main__ - INFO - Found 0 singles matches for tournament 20330
+2025-04-18 00:34:16,077 - __main__ - INFO - Processing tournament: US Men's Clay Court Championship - Houston
+2025-04-18 00:34:17,331 - __main__ - INFO - Found 0 singles matches for tournament 20331
+2025-04-18 00:34:17,332 - __main__ - INFO - Processing tournament: Grand Prix Hassan II - Marrakech
+2025-04-18 00:34:18,609 - __main__ - INFO - Found 0 singles matches for tournament 20332
+2025-04-18 00:34:18,610 - __main__ - INFO - Processing tournament: Menorca Challenger
+2025-04-18 00:34:19,883 - __main__ - INFO - Found 0 singles matches for tournament 20525
+2025-04-18 00:34:19,884 - __main__ - INFO - Processing tournament: Barletta Challenger
+2025-04-18 00:34:21,157 - __main__ - INFO - Found 0 singles matches for tournament 20526
+2025-04-18 00:34:21,158 - __main__ - INFO - Processing tournament: Campinas Challenger
+2025-04-18 00:34:22,425 - __main__ - INFO - Found 0 singles matches for tournament 20527
+2025-04-18 00:34:22,425 - __main__ - INFO - Processing tournament: Cuernavaca Challenger
+2025-04-18 00:34:23,718 - __main__ - INFO - Found 0 singles matches for tournament 20528
+2025-04-18 00:34:23,719 - __main__ - INFO - Processing tournament: M25 Santa Margherita di Pula
+2025-04-18 00:34:25,025 - __main__ - INFO - Found 0 singles matches for tournament 20588
+2025-04-18 00:34:25,026 - __main__ - INFO - Processing tournament: M25 Chacabuco
+2025-04-18 00:34:26,300 - __main__ - INFO - Found 0 singles matches for tournament 20589
+2025-04-18 00:34:26,301 - __main__ - INFO - Processing tournament: M25 Antalya
+2025-04-18 00:34:27,571 - __main__ - INFO - Found 0 singles matches for tournament 20590
+2025-04-18 00:34:27,571 - __main__ - INFO - Processing tournament: M25 Reus
+2025-04-18 00:34:28,845 - __main__ - INFO - Found 0 singles matches for tournament 20591
+2025-04-18 00:34:28,846 - __main__ - INFO - Processing tournament: M15 Sharm ElSheikh
+2025-04-18 00:34:30,110 - __main__ - INFO - Found 0 singles matches for tournament 20592
+2025-04-18 00:34:30,111 - __main__ - INFO - Processing tournament: M15 Kashiwa
+2025-04-18 00:34:31,378 - __main__ - INFO - Found 0 singles matches for tournament 20593
+2025-04-18 00:34:31,378 - __main__ - INFO - Processing tournament: M15 Heraklion
+2025-04-18 00:34:32,641 - __main__ - INFO - Found 0 singles matches for tournament 20594
+2025-04-18 00:34:32,641 - __main__ - INFO - Processing tournament: M15 Lons-le-Saunier
+2025-04-18 00:34:33,912 - __main__ - INFO - Found 0 singles matches for tournament 20595
+2025-04-18 00:34:33,913 - __main__ - INFO - Processing tournament: M25 Bengaluru
+2025-04-18 00:34:35,173 - __main__ - INFO - Found 0 singles matches for tournament 20617
+2025-04-18 00:34:35,173 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:34:36,451 - __main__ - INFO - Found 0 singles matches for tournament 20618
+2025-04-18 00:34:36,451 - __main__ - INFO - Processing tournament: Morelia Challenger
+2025-04-18 00:34:37,717 - __main__ - INFO - Found 0 singles matches for tournament 20521
+2025-04-18 00:34:37,717 - __main__ - INFO - Processing tournament: Naples Challenger
+2025-04-18 00:34:38,991 - __main__ - INFO - Found 0 singles matches for tournament 20522
+2025-04-18 00:34:38,992 - __main__ - INFO - Processing tournament: Girona Challenger
+2025-04-18 00:34:40,255 - __main__ - INFO - Found 0 singles matches for tournament 20523
+2025-04-18 00:34:40,255 - __main__ - INFO - Processing tournament: Concepcion Challenger
+2025-04-18 00:34:41,514 - __main__ - INFO - Found 0 singles matches for tournament 20524
+2025-04-18 00:34:41,515 - __main__ - INFO - Processing tournament: M25 Santo Domingo
+2025-04-18 00:34:42,782 - __main__ - INFO - Found 0 singles matches for tournament 20573
+2025-04-18 00:34:42,783 - __main__ - INFO - Processing tournament: M25 Tarragona
+2025-04-18 00:34:44,045 - __main__ - INFO - Found 0 singles matches for tournament 20574
+2025-04-18 00:34:44,046 - __main__ - INFO - Processing tournament: M25 Ahmedabad
+2025-04-18 00:34:45,363 - __main__ - INFO - Found 0 singles matches for tournament 20575
+2025-04-18 00:34:45,364 - __main__ - INFO - Processing tournament: M25 Lujan
+2025-04-18 00:34:46,638 - __main__ - INFO - Found 0 singles matches for tournament 20576
+2025-04-18 00:34:46,638 - __main__ - INFO - Processing tournament: M25 Calabasas
+2025-04-18 00:34:47,891 - __main__ - INFO - Found 0 singles matches for tournament 20577
+2025-04-18 00:34:47,892 - __main__ - INFO - Processing tournament: M25 Saint-Dizier
+2025-04-18 00:34:49,175 - __main__ - INFO - Found 0 singles matches for tournament 20578
+2025-04-18 00:34:49,175 - __main__ - INFO - Processing tournament: M15 Nonthaburi
+2025-04-18 00:34:50,448 - __main__ - INFO - Found 0 singles matches for tournament 20579
+2025-04-18 00:34:50,449 - __main__ - INFO - Processing tournament: M15 Sharm ElSheikh
+2025-04-18 00:34:51,713 - __main__ - INFO - Found 0 singles matches for tournament 20580
+2025-04-18 00:34:51,714 - __main__ - INFO - Processing tournament: M15 Opatija
+2025-04-18 00:34:52,967 - __main__ - INFO - Found 0 singles matches for tournament 20581
+2025-04-18 00:34:52,968 - __main__ - INFO - Processing tournament: M15 Alaminos
+2025-04-18 00:34:54,227 - __main__ - INFO - Found 0 singles matches for tournament 20582
+2025-04-18 00:34:54,227 - __main__ - INFO - Processing tournament: M15 Tsukuba
+2025-04-18 00:34:55,519 - __main__ - INFO - Found 0 singles matches for tournament 20583
+2025-04-18 00:34:55,520 - __main__ - INFO - Processing tournament: M15 Heraklion
+2025-04-18 00:34:56,867 - __main__ - INFO - Found 0 singles matches for tournament 20584
+2025-04-18 00:34:56,868 - __main__ - INFO - Processing tournament: M15 Monastir
+2025-04-18 00:34:58,135 - __main__ - INFO - Found 0 singles matches for tournament 20585
+2025-04-18 00:34:58,135 - __main__ - INFO - Processing tournament: M15 Foggia
+2025-04-18 00:34:59,399 - __main__ - INFO - Found 0 singles matches for tournament 20586
+2025-04-18 00:34:59,400 - __main__ - INFO - Processing tournament: M15 Antalya
+2025-04-18 00:35:00,663 - __main__ - INFO - Found 0 singles matches for tournament 20587
+2025-04-18 00:35:00,663 - __main__ - INFO - Match collection completed successfully
