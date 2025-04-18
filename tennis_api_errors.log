@@ -404,3 +404,61 @@ DETAIL:  Key (id)=(89965) already exists.
 2025-04-17 23:25:51,758 - WARNING - Failed to fetch statistics for match 3746117403, but will continue processing
 2025-04-17 23:25:55,610 - WARNING - Failed to fetch statistics for match 3761608033, but will continue processing
 2025-04-17 23:25:59,518 - WARNING - Failed to fetch statistics for match 3782262635, but will continue processing
+2025-04-18 12:15:37,587 - WARNING - Failed to fetch statistics for match 3835295102, but will continue processing
+2025-04-18 12:15:41,440 - WARNING - Failed to fetch statistics for match 3854540442, but will continue processing
+2025-04-18 12:16:00,313 - WARNING - Failed to fetch statistics for match 3817101016, but will continue processing
+2025-04-18 12:16:04,143 - WARNING - Failed to fetch statistics for match 3854540482, but will continue processing
+2025-04-18 12:16:40,945 - WARNING - Failed to fetch statistics for match 3817116625, but will continue processing
+2025-04-18 12:16:44,815 - WARNING - Failed to fetch statistics for match 3835295222, but will continue processing
+2025-04-18 12:16:48,680 - WARNING - Failed to fetch statistics for match 3854556084, but will continue processing
+2025-04-18 12:16:52,504 - WARNING - Failed to fetch statistics for match 3854556106, but will continue processing
+2025-04-18 12:16:56,405 - WARNING - Failed to fetch statistics for match 3912652238, but will continue processing
+2025-04-18 12:17:00,238 - WARNING - Failed to fetch statistics for match 3876608141, but will continue processing
+2025-04-18 12:17:20,674 - WARNING - Failed to fetch statistics for match 3968165690, but will continue processing
+2025-04-18 12:17:24,452 - WARNING - Failed to fetch statistics for match 3968165683, but will continue processing
+2025-04-18 12:17:28,254 - WARNING - Failed to fetch statistics for match 3988822021, but will continue processing
+2025-04-18 12:17:32,080 - WARNING - Failed to fetch statistics for match 4025075911, but will continue processing
+2025-04-18 12:17:52,225 - WARNING - Failed to fetch statistics for match 3854556194, but will continue processing
+2025-04-18 12:17:56,137 - WARNING - Failed to fetch statistics for match 3912652328, but will continue processing
+2025-04-18 12:18:05,171 - WARNING - Failed to fetch statistics for match 3960419691, but will continue processing
+2025-04-18 12:18:09,686 - WARNING - Failed to fetch statistics for match 4012060461, but will continue processing
+2025-04-18 12:18:30,641 - WARNING - Failed to fetch statistics for match 3817116748, but will continue processing
+2025-04-18 12:18:34,669 - WARNING - Failed to fetch statistics for match 3912652366, but will continue processing
+2025-04-18 12:18:54,411 - ERROR - Error updating player in database: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "players_pkey"
+DETAIL:  Key (id)=(89965) already exists.
+
+[SQL: 
+                    INSERT INTO players (
+                        id, name, hand, height_cm, country_code, birth_date,
+                        turned_pro, weight_kg, birthplace, residence, coach,
+                        player_status, last_updated
+                    ) VALUES (
+                        %(id)s, %(name)s, %(hand)s, %(height_cm)s, %(country_code)s, %(birth_date)s,
+                        %(turned_pro)s, %(weight_kg)s, %(birthplace)s, %(residence)s, %(coach)s,
+                        %(player_status)s, CURRENT_TIMESTAMP
+                    )
+                ]
+[parameters: {'id': 89965, 'name': 'Julian Messina', 'hand': None, 'height_cm': None, 'country_code': 'USA', 'birth_date': None, 'turned_pro': None, 'weight_kg': None, 'birthplace': None, 'residence': None, 'coach': None, 'player_status': 'Active'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-04-18 12:18:54,411 - ERROR - Data that caused error: {'id': 89965, 'name': 'Julian Messina', 'hand': None, 'height_cm': None, 'country_code': 'USA', 'birth_date': None, 'turned_pro': None, 'weight_kg': None, 'birthplace': None, 'residence': None, 'coach': None, 'player_status': 'Active'}
+2025-04-18 12:18:54,411 - ERROR - Failed to update player Julian Messina in database
+2025-04-18 12:18:54,411 - WARNING - Creating minimal player record for Julian Messina
+2025-04-18 12:18:54,673 - ERROR - Error updating player in database: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'birth_date'
+[SQL: 
+                    INSERT INTO players (
+                        id, name, hand, height_cm, country_code, birth_date,
+                        turned_pro, weight_kg, birthplace, residence, coach,
+                        player_status, last_updated
+                    ) VALUES (
+                        %(id)s, %(name)s, %(hand)s, %(height_cm)s, %(country_code)s, %(birth_date)s,
+                        %(turned_pro)s, %(weight_kg)s, %(birthplace)s, %(residence)s, %(coach)s,
+                        %(player_status)s, CURRENT_TIMESTAMP
+                    )
+                ]
+[parameters: [{'id': 89965, 'name': 'Julian Messina', 'hand': None, 'country_code': None, 'height_cm': None, 'weight_kg': None}]]
+(Background on this error at: https://sqlalche.me/e/20/cd3x)
+2025-04-18 12:18:54,674 - ERROR - Data that caused error: {'id': 89965, 'name': 'Julian Messina', 'hand': None, 'country_code': None, 'height_cm': None, 'weight_kg': None}
+2025-04-18 12:18:54,674 - WARNING - Skipping match 2387247298 insertion - missing loser data for player Julian Messina (ID: 89965)
+2025-04-18 12:18:54,674 - WARNING - Skipping match 2387247298 insertion - missing player data
+2025-04-18 12:19:48,739 - WARNING - Failed to fetch statistics for match 4023680554, but will continue processing
+2025-04-18 12:19:52,614 - WARNING - Failed to fetch statistics for match 4025076105, but will continue processing

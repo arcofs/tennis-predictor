@@ -45,8 +45,8 @@ import re
 from tqdm import tqdm
 
 # Date range for filtering tournaments (format: 'YYYY-MM-DD')
-START_DATE = '2025-04-14'
-END_DATE = '2025-04-17'
+START_DATE = '2025-04-8'
+END_DATE = '2025-04-19'
 
 # Maximum allowed API requests per second across all API endpoints combined
 API_REQUESTS_PER_SECOND = 7
@@ -1577,6 +1577,65 @@ def get_or_create_player(api_client: TennisAPIClient, engine: create_engine, pla
     
     return None
 
+def check_match_stats_exist(engine: create_engine, match_id: str) -> bool:
+    """
+    Check if match statistics exist in the database for a given match ID.
+    
+    Args:
+        engine: SQLAlchemy engine
+        match_id: Match ID to check
+        
+    Returns:
+        bool: True if match statistics exist in database, False otherwise
+    """
+    try:
+        # Convert match_id to string as a precaution
+        match_id_str = str(match_id)
+        
+        with engine.connect() as conn:
+            # Check if any of the match statistics columns have non-null values
+            result = conn.execute(text("""
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_num = :match_id
+                AND (
+                    winner_aces IS NOT NULL OR
+                    winner_double_faults IS NOT NULL OR
+                    winner_serve_points IS NOT NULL OR
+                    winner_first_serves_in IS NOT NULL OR
+                    winner_first_serve_points_won IS NOT NULL OR
+                    winner_second_serve_points_won IS NOT NULL OR
+                    winner_service_games IS NOT NULL OR
+                    winner_break_points_saved IS NOT NULL OR
+                    winner_break_points_faced IS NOT NULL OR
+                    loser_aces IS NOT NULL OR
+                    loser_double_faults IS NOT NULL OR
+                    loser_serve_points IS NOT NULL OR
+                    loser_first_serves_in IS NOT NULL OR
+                    loser_first_serve_points_won IS NOT NULL OR
+                    loser_second_serve_points_won IS NOT NULL OR
+                    loser_service_games IS NOT NULL OR
+                    loser_break_points_saved IS NOT NULL OR
+                    loser_break_points_faced IS NOT NULL
+                )
+                LIMIT 1
+            """), {"match_id": match_id_str})
+            
+            row = result.fetchone()
+            count = row.count if row else 0
+            
+            exists = count > 0
+            if exists:
+                logging.info(f"Match ID {match_id} has statistics in database")
+            else:
+                logging.info(f"Match ID {match_id} has no statistics in database")
+                
+            return exists
+            
+    except SQLAlchemyError as e:
+        logging.error(f"Error checking match statistics in database: {str(e)}")
+        return False
+
 def check_match_exists(engine: create_engine, match_id: str) -> bool:
     """
     Check if a match ID already exists in the database.
@@ -1605,7 +1664,7 @@ def check_match_exists(engine: create_engine, match_id: str) -> bool:
             
             exists = count > 0
             if exists:
-                logging.info(f"Match ID {match_id} already exists in database")
+                logging.info(f"Match ID {match_id} exists in database")
             else:
                 logging.info(f"Match ID {match_id} not found in database")
                 
@@ -2061,23 +2120,29 @@ def main():
                     continue
                 
                 # Check if match already exists in the database
-                if not args.skip_db_write and check_match_exists(engine, match_id):
-                    logging.info(f"Match {match_id} already exists in database, skipping")
+                match_exists = not args.skip_db_write and check_match_exists(engine, match_id)
+                match_stats_exist = not args.skip_db_write and check_match_stats_exist(engine, match_id)
+                
+                if match_exists and match_stats_exist:
+                    logging.info(f"Match {match_id} and its statistics already exist in database, skipping")
                     continue
-                    
+                
                 logging.info(f"Processing match {m_idx+1}/{num_matches}: {player1_name} vs {player2_name}")
                 
-                # 4. Get match statistics
-                # Rate limiting is now handled by the TennisAPIClient
+                # 4. Get match statistics if they don't exist in the database
                 match_stats = None    
-                try:
-                    match_stats = api_client.get_match_stats(tournament_id, player1_id, player2_id)
-                    if match_stats and "data" in match_stats:
-                        api_responses[f"match_{match_id}_stats"] = match_stats
-                    else:
-                        logging.warning(f"Failed to fetch statistics for match {match_id}, but will continue processing")
-                except Exception as e:
-                    logging.warning(f"Error fetching match stats for match {match_id}: {str(e)}, but will continue processing")
+                if not match_stats_exist:
+                    try:
+                        match_stats = api_client.get_match_stats(tournament_id, player1_id, player2_id)
+                        if match_stats and "data" in match_stats:
+                            api_responses[f"match_{match_id}_stats"] = match_stats
+                            logging.info(f"Successfully fetched statistics for match {match_id}")
+                        else:
+                            logging.warning(f"Failed to fetch statistics for match {match_id}, but will continue processing")
+                    except Exception as e:
+                        logging.warning(f"Error fetching match stats for match {match_id}: {str(e)}, but will continue processing")
+                else:
+                    logging.info(f"Match {match_id} statistics already exist in database, skipping API call")
                 
                 # Determine the winner and loser
                 winner_id = match.get("match_winner")  

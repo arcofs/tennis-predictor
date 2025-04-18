@@ -184,6 +184,23 @@ def add_elo_columns(engine: create_engine) -> None:
         logger.error(f"Error adding Elo columns: {str(e)}")
         raise
 
+def reset_elo_columns(engine: create_engine) -> None:
+    """Reset all Elo columns to NULL to ensure complete recalculation"""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                UPDATE matches
+                SET winner_elo = NULL,
+                    loser_elo = NULL,
+                    winner_matches = NULL,
+                    loser_matches = NULL;
+            """))
+            conn.commit()
+        logger.info("Reset all Elo columns to NULL successfully")
+    except Exception as e:
+        logger.error(f"Error resetting Elo columns: {str(e)}")
+        raise
+
 def process_match_batch(batch_data: List[dict], calculator: EloCalculator) -> List[dict]:
     """Process a batch of matches for parallel processing"""
     updates = []
@@ -311,6 +328,9 @@ def calculate_and_update_elo_ratings() -> None:
         # Add Elo columns
         add_elo_columns(engine)
 
+        # Reset Elo columns to ensure complete recalculation
+        reset_elo_columns(engine)
+
         # Load matches in chunks to handle large datasets
         chunk_size = PROCESSING_BATCH_SIZE * N_CORES
         chunks = pd.read_sql(
@@ -324,7 +344,6 @@ def calculate_and_update_elo_ratings() -> None:
             FROM matches 
             WHERE winner_id IS NOT NULL 
             AND loser_id IS NOT NULL
-            AND winner_elo IS NULL
             ORDER BY tournament_date ASC
             """,
             engine,
