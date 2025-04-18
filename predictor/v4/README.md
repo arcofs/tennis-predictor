@@ -22,6 +22,8 @@ The v4 pipeline consists of several components:
    - Updates features for matches affected by rolling window calculations
    - Maintains `match_features` table for completed matches with `is_future=false`
    - Uses batch processing to handle large volumes efficiently
+   - Supports time-based filtering to process only matches from a specified time period (e.g., last year, last 2 years)
+   - Configurable via the `YEARS_TO_PROCESS` variable at the top of the file
 
 4. **Future Feature Generation** (`generate_future_features.py`)
    - Generates features for upcoming matches
@@ -140,6 +142,10 @@ pip install -r requirements.txt
    - Automatically included in the daily pipeline
    - Processes matches in batches to handle large volumes
    - Updates rolling window statistics for affected players
+   - Supports time-based filtering via the `YEARS_TO_PROCESS` variable:
+     - Set to `None` to process all matches (default)
+     - Set to a number (e.g., `1`, `2`) to process only matches from the last X years
+     - Useful for incremental updates or focusing on recent data
 
 4. **Future Match Collection and Update**
    - Automatically handled by the pipeline
