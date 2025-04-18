@@ -3,8 +3,9 @@ Tennis Match Prediction - Future Match Feature Generation (v4)
 
 This script generates features for upcoming tennis matches by:
 1. Loading unprocessed matches from scheduled_matches table
-2. Calculating features using historical data from matches table
-3. Storing features in match_features table with is_future flag
+2. Using pre-calculated historical features from match_features table
+3. Generating features for upcoming matches
+4. Storing features in match_features table with is_future flag
 
 Important note about match IDs:
 - matches table: 'id' is auto-incremented PK, 'match_num' is the external API match ID
@@ -31,18 +32,12 @@ import json
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
 
-from predictor.v3.generate_features_v3 import (
-    calculate_win_rates,
-    calculate_serve_return_stats,
-    calculate_serve_return_rolling_stats
-)
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(f"{project_root}/predictor/v4/output/feature_generation.log"),
+        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/feature_generation.log"),
         logging.StreamHandler()
     ]
 )
@@ -66,69 +61,47 @@ class FutureFeatureGenerator:
         print("Connecting to database...")
         return psycopg2.connect(self.db_url)
     
-    def load_historical_matches(self) -> pd.DataFrame:
+    def load_player_features(self, cutoff_date: datetime) -> pd.DataFrame:
         """
-        Load historical matches from the database
+        Load pre-calculated player features from match_features table
         
+        Args:
+            cutoff_date: Only load features from matches before this date
+            
         Returns:
-            DataFrame with historical match data
+            DataFrame with player features
         """
-        print("Loading historical matches from database...")
+        print("Loading pre-calculated player features...")
         query = """
-            SELECT 
-                id as match_id,  -- Note that for historical matches, match_id is the auto-increment PK from matches table
-                tournament_date,
-                tournament_id,
-                tournament_name,
-                surface,
-                tournament_level,
-                winner_id,
-                winner_name,
-                winner_hand,
-                winner_height_cm,
-                winner_country_code,
-                winner_age,
-                loser_id,
-                loser_name,
-                loser_hand,
-                loser_height_cm,
-                loser_country_code,
-                loser_age,
-                winner_aces,
-                winner_double_faults,
-                winner_serve_points,
-                winner_first_serves_in,
-                winner_first_serve_points_won,
-                winner_second_serve_points_won,
-                winner_service_games,
-                winner_break_points_saved,
-                winner_break_points_faced,
-                loser_aces,
-                loser_double_faults,
-                loser_serve_points,
-                loser_first_serves_in,
-                loser_first_serve_points_won,
-                loser_second_serve_points_won,
-                loser_service_games,
-                loser_break_points_saved,
-                loser_break_points_faced,
-                winner_elo,
-                loser_elo
-            FROM matches
-            WHERE winner_id IS NOT NULL 
-            AND loser_id IS NOT NULL
-            ORDER BY tournament_date ASC
+            WITH RankedFeatures AS (
+                SELECT 
+                    *,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY 
+                            CASE 
+                                WHEN result = 1 THEN player1_id 
+                                ELSE player2_id 
+                            END 
+                        ORDER BY tournament_date DESC
+                    ) as rank
+                FROM match_features
+                WHERE tournament_date < %s
+                AND is_future IS NOT TRUE
+            )
+            SELECT * FROM RankedFeatures
+            WHERE rank = 1
         """
         
         with self.get_db_connection() as conn:
-            df = pd.read_sql(query, conn)
+            df = pd.read_sql(query, conn, params=(cutoff_date,))
         
-        logger.info(f"Loaded {len(df)} historical matches")
-        print(f"Loaded {len(df)} historical matches")
+        logger.info(f"Loaded features for {len(df)} players")
+        print(f"Loaded features for {len(df)} players")
         
-        # Print first few rows for debugging
-        print("\nSample of historical data:")
-        print(df.head(3).to_string())
+        # Print sample of loaded features
+        if not df.empty:
+            print("\nSample of loaded player features:")
+            print(df.head(2).to_string())
         return df
     
     def load_scheduled_matches(self) -> pd.DataFrame:
@@ -160,50 +133,18 @@ class FutureFeatureGenerator:
             print(df.head(3).to_string())
         return df
     
-    def prepare_player_features(self, historical_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """
-        Calculate player-specific features from historical data
-        
-        Args:
-            historical_df: DataFrame with historical matches
-            
-        Returns:
-            Tuple of (player win rates DataFrame, player serve/return stats DataFrame)
-        """
-        print("Calculating player win rates and streaks...")
-        # Calculate win rates and streaks
-        player_stats_df = calculate_win_rates(historical_df)
-        print(f"Generated win rate stats for {len(player_stats_df['player_id'].unique())} players")
-        
-        print("Calculating serve and return statistics...")
-        # Calculate serve and return stats
-        serve_return_df = calculate_serve_return_stats(historical_df)
-        serve_return_df = calculate_serve_return_rolling_stats(serve_return_df)
-        print(f"Generated serve/return stats for {len(serve_return_df['player_id'].unique())} players")
-        
-        # Print sample of player stats
-        print("\nSample of player win rate stats:")
-        print(player_stats_df.head(2).to_string())
-        
-        print("\nSample of serve/return stats:")
-        print(serve_return_df.head(2).to_string())
-        
-        return player_stats_df, serve_return_df
-    
     def generate_match_features(
         self,
         scheduled_match: pd.Series,
-        player_stats_df: pd.DataFrame,
-        serve_return_df: pd.DataFrame,
+        player_features_df: pd.DataFrame,
         match_date: datetime
     ) -> Dict[str, Any]:
         """
-        Generate features for a scheduled match
+        Generate features for a scheduled match using pre-calculated player features
         
         Args:
             scheduled_match: Series containing scheduled match data
-            player_stats_df: DataFrame with player statistics
-            serve_return_df: DataFrame with serve/return statistics
+            player_features_df: DataFrame with pre-calculated player features
             match_date: Date of the scheduled match
             
         Returns:
@@ -215,37 +156,27 @@ class FutureFeatureGenerator:
         
         print(f"\nGenerating features for match: {player1_id} vs {player2_id}")
         
-        # Get player stats just before match date
-        player1_stats = player_stats_df[
-            (player_stats_df['player_id'] == player1_id) &
-            (player_stats_df['tournament_date'] < match_date)
-        ].iloc[-1] if len(player_stats_df[player_stats_df['player_id'] == player1_id]) > 0 else None
+        # Get most recent features for each player
+        player1_features = player_features_df[
+            ((player_features_df['player1_id'] == player1_id) & (player_features_df['result'] == 1)) |
+            ((player_features_df['player2_id'] == player1_id) & (player_features_df['result'] == 0))
+        ].iloc[0] if len(player_features_df[
+            ((player_features_df['player1_id'] == player1_id) & (player_features_df['result'] == 1)) |
+            ((player_features_df['player2_id'] == player1_id) & (player_features_df['result'] == 0))
+        ]) > 0 else None
         
-        player2_stats = player_stats_df[
-            (player_stats_df['player_id'] == player2_id) &
-            (player_stats_df['tournament_date'] < match_date)
-        ].iloc[-1] if len(player_stats_df[player_stats_df['player_id'] == player2_id]) > 0 else None
+        player2_features = player_features_df[
+            ((player_features_df['player1_id'] == player2_id) & (player_features_df['result'] == 1)) |
+            ((player_features_df['player2_id'] == player2_id) & (player_features_df['result'] == 0))
+        ].iloc[0] if len(player_features_df[
+            ((player_features_df['player1_id'] == player2_id) & (player_features_df['result'] == 1)) |
+            ((player_features_df['player2_id'] == player2_id) & (player_features_df['result'] == 0))
+        ]) > 0 else None
         
-        if player1_stats is None:
-            print(f"WARNING: No historical stats found for player1 (ID: {player1_id})")
-        if player2_stats is None:
-            print(f"WARNING: No historical stats found for player2 (ID: {player2_id})")
-        
-        # Get serve/return stats
-        player1_sr = serve_return_df[
-            (serve_return_df['player_id'] == player1_id) &
-            (serve_return_df['tournament_date'] < match_date)
-        ].iloc[-1] if len(serve_return_df[serve_return_df['player_id'] == player1_id]) > 0 else None
-        
-        player2_sr = serve_return_df[
-            (serve_return_df['player_id'] == player2_id) &
-            (serve_return_df['tournament_date'] < match_date)
-        ].iloc[-1] if len(serve_return_df[serve_return_df['player_id'] == player2_id]) > 0 else None
-        
-        if player1_sr is None:
-            print(f"WARNING: No serve/return stats found for player1 (ID: {player1_id})")
-        if player2_sr is None:
-            print(f"WARNING: No serve/return stats found for player2 (ID: {player2_id})")
+        if player1_features is None:
+            print(f"WARNING: No historical features found for player1 (ID: {player1_id})")
+        if player2_features is None:
+            print(f"WARNING: No historical features found for player2 (ID: {player2_id})")
         
         # Initialize features dictionary
         features = {
@@ -258,57 +189,35 @@ class FutureFeatureGenerator:
             'is_future': True  # Mark as a future match for identification
         }
         
-        # Add win rate features
-        if player1_stats is not None and player2_stats is not None:
-            features.update({
-                'win_rate_5_diff': player1_stats.get('win_rate_5', 0) - player2_stats.get('win_rate_5', 0),
-                'win_streak_diff': player1_stats.get('win_streak', 0) - player2_stats.get('win_streak', 0),
-                'loss_streak_diff': player1_stats.get('loss_streak', 0) - player2_stats.get('loss_streak', 0),
-                'player1_win_rate_5': player1_stats.get('win_rate_5', 0),
-                'player2_win_rate_5': player2_stats.get('win_rate_5', 0),
-                'player1_win_streak': player1_stats.get('win_streak', 0),
-                'player2_win_streak': player2_stats.get('win_streak', 0),
-                'player1_loss_streak': player1_stats.get('loss_streak', 0),
-                'player2_loss_streak': player2_stats.get('loss_streak', 0)
-            })
+        # If we have features for both players, calculate differences and copy individual stats
+        if player1_features is not None and player2_features is not None:
+            # Get the feature columns that represent differences
+            diff_columns = [col for col in player1_features.index if col.endswith('_diff')]
             
-            # Add surface-specific win rates
-            surface = features['surface']
-            if surface in ['hard', 'clay', 'grass', 'carpet']:
-                features.update({
-                    f'win_rate_{surface}_5_diff': (
-                        player1_stats.get(f'win_rate_{surface}_5', 0) -
-                        player2_stats.get(f'win_rate_{surface}_5', 0)
-                    ),
-                    f'win_rate_{surface}_overall_diff': (
-                        player1_stats.get(f'win_rate_{surface}_overall', 0) -
-                        player2_stats.get(f'win_rate_{surface}_overall', 0)
-                    ),
-                    f'player1_win_rate_{surface}_5': player1_stats.get(f'win_rate_{surface}_5', 0),
-                    f'player2_win_rate_{surface}_5': player2_stats.get(f'win_rate_{surface}_5', 0),
-                    f'player1_win_rate_{surface}_overall': player1_stats.get(f'win_rate_{surface}_overall', 0),
-                    f'player2_win_rate_{surface}_overall': player2_stats.get(f'win_rate_{surface}_overall', 0)
-                })
-        
-        # Add serve/return features
-        if player1_sr is not None and player2_sr is not None:
-            serve_return_metrics = [
-                'serve_efficiency_5',
-                'first_serve_pct_5',
-                'first_serve_win_pct_5',
-                'second_serve_win_pct_5',
-                'ace_pct_5',
-                'bp_saved_pct_5',
-                'return_efficiency_5',
-                'bp_conversion_pct_5'
-            ]
+            # Add difference features
+            for col in diff_columns:
+                p1_val = player1_features[col] if player1_features['result'] == 1 else -player1_features[col]
+                p2_val = player2_features[col] if player2_features['result'] == 1 else -player2_features[col]
+                features[col] = p1_val - p2_val
             
-            for metric in serve_return_metrics:
-                features[f'{metric}_diff'] = (
-                    player1_sr.get(metric, 0) - player2_sr.get(metric, 0)
-                )
-                features[f'player1_{metric}'] = player1_sr.get(metric, 0)
-                features[f'player2_{metric}'] = player2_sr.get(metric, 0)
+            # Get individual player stat columns (those starting with 'player1_' or 'player2_')
+            player_stat_columns = [col for col in player1_features.index 
+                                 if col.startswith(('player1_', 'player2_'))]
+            
+            # Add individual player stats
+            for col in player_stat_columns:
+                if col.startswith('player1_'):
+                    # For player1 stats
+                    if player1_features['result'] == 1:
+                        features[col] = player1_features[col]
+                    else:
+                        features[col] = player1_features[col.replace('player1_', 'player2_')]
+                elif col.startswith('player2_'):
+                    # For player2 stats
+                    if player2_features['result'] == 1:
+                        features[col] = player2_features[col.replace('player2_', 'player1_')]
+                    else:
+                        features[col] = player2_features[col]
         
         print(f"Generated {len(features)} features for match ID: {features['match_id']}")
         return features
@@ -374,15 +283,6 @@ class FutureFeatureGenerator:
             print("STARTING FEATURE GENERATION FOR FUTURE MATCHES")
             print("="*50 + "\n")
             
-            # Load historical data
-            historical_df = self.load_historical_matches()
-            
-            # Calculate player features from historical data
-            print("\n" + "-"*50)
-            print("PREPARING PLAYER FEATURES FROM HISTORICAL DATA")
-            print("-"*50)
-            player_stats_df, serve_return_df = self.prepare_player_features(historical_df)
-            
             # Load scheduled matches
             print("\n" + "-"*50)
             print("LOADING SCHEDULED MATCHES")
@@ -394,6 +294,13 @@ class FutureFeatureGenerator:
                 print("No unprocessed scheduled matches found. Exiting.")
                 return
             
+            # Load pre-calculated player features
+            print("\n" + "-"*50)
+            print("LOADING PRE-CALCULATED PLAYER FEATURES")
+            print("-"*50)
+            earliest_match_date = pd.to_datetime(scheduled_df['scheduled_date']).min()
+            player_features_df = self.load_player_features(earliest_match_date)
+            
             # Generate features for each scheduled match
             print("\n" + "-"*50)
             print("GENERATING FEATURES FOR SCHEDULED MATCHES")
@@ -403,8 +310,7 @@ class FutureFeatureGenerator:
                 match_date = pd.to_datetime(match['scheduled_date'])
                 features = self.generate_match_features(
                     match,
-                    player_stats_df,
-                    serve_return_df,
+                    player_features_df,
                     match_date
                 )
                 features_list.append(features)

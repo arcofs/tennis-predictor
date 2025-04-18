@@ -4,6 +4,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Dict, Tuple, List
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 import logging
 from datetime import datetime
@@ -13,6 +15,10 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import psycopg2
 import psycopg2.extras
+
+# Add project root to path to allow imports
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(project_root))
 
 # Configure number of CPU cores to use (set to -1 to use all cores)
 N_CORES = 7  # Change this value to limit the number of cores used
@@ -28,7 +34,11 @@ N_CORES = mp.cpu_count() if N_CORES == -1 else min(N_CORES, mp.cpu_count())
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/elo.log"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 

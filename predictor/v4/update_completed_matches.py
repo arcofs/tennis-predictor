@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(f"{project_root}/predictor/v4/output/update_completed.log"),
+        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/update_completed.log"),
         logging.StreamHandler()
     ]
 )
@@ -82,7 +82,10 @@ class CompletedMatchUpdater:
     
     def get_completed_unprocessed_matches(self) -> pd.DataFrame:
         """
-        Get scheduled matches that should be completed but aren't processed
+        Get scheduled matches that should be completed but aren't processed.
+        This includes:
+        1. Matches with dates in the past
+        2. Matches with NULL dates that need to be checked
         
         Returns:
             DataFrame with match data including round and player IDs
@@ -98,15 +101,21 @@ class CompletedMatchUpdater:
                 is_processed
             FROM scheduled_matches
             WHERE is_processed = FALSE
-            AND scheduled_date < CURRENT_DATE
-            ORDER BY scheduled_date DESC
+            AND (scheduled_date < CURRENT_DATE OR scheduled_date IS NULL)
+            ORDER BY COALESCE(scheduled_date, '2099-12-31') DESC
             LIMIT 100
         """
         
         with self.get_db_connection() as conn:
             df = pd.read_sql(query, conn)
         
-        logger.info(f"Found {len(df)} completed but unprocessed matches")
+        null_date_count = df['scheduled_date'].isnull().sum()
+        past_date_count = len(df) - null_date_count
+        
+        logger.info(f"Found {len(df)} unprocessed matches total:")
+        logger.info(f"- {past_date_count} matches with past dates")
+        logger.info(f"- {null_date_count} matches with NULL dates")
+        
         return df
     
     def check_match_stats_exist(self, conn, match_id: str) -> bool:
@@ -171,7 +180,7 @@ class CompletedMatchUpdater:
     
     def mark_match_as_processed(self, match_id: str, processed: bool = True) -> bool:
         """
-        Mark a scheduled match as processed
+        Mark a scheduled match as processed and update match_features
         
         Args:
             match_id: Match ID
@@ -182,18 +191,40 @@ class CompletedMatchUpdater:
         """
         try:
             with self.get_db_connection() as conn:
+                # Start transaction
+                conn.autocommit = False
+                
                 with conn.cursor() as cur:
-                    cur.execute(
-                        "UPDATE scheduled_matches SET is_processed = %s WHERE match_id = %s",
-                        (processed, match_id)
-                    )
-                    conn.commit()
-                    
-                    logger.info(f"Marked match {match_id} as processed={processed}")
-                    return True
-                    
+                    try:
+                        # Update scheduled_matches table
+                        cur.execute(
+                            "UPDATE scheduled_matches SET is_processed = %s WHERE match_id = %s",
+                            (processed, match_id)
+                        )
+                        
+                        # Update match_features table to mark match as no longer future
+                        if processed:
+                            cur.execute("""
+                                UPDATE match_features 
+                                SET is_future = FALSE,
+                                    updated_at = CURRENT_TIMESTAMP
+                                WHERE match_id = %s
+                                AND is_future = TRUE
+                            """, (match_id,))
+                        
+                        # If we get here, both updates succeeded
+                        conn.commit()
+                        logger.info(f"Successfully marked match {match_id} as processed={processed}")
+                        return True
+                        
+                    except Exception as e:
+                        # If any update fails, roll back both
+                        conn.rollback()
+                        logger.error(f"Error marking match as processed, rolling back: {str(e)}")
+                        return False
+                        
         except Exception as e:
-            logger.error(f"Error marking match as processed: {str(e)}")
+            logger.error(f"Database connection error: {str(e)}")
             return False
     
     def update_completed_matches(self) -> tuple[int, int]:

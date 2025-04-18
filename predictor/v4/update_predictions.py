@@ -2,11 +2,13 @@
 Tennis Match Prediction - Pipeline Orchestration (v4)
 
 This script orchestrates the entire prediction pipeline:
-1. Collect upcoming matches
-2. Update completed matches (NEW)
-3. Generate features
-4. Make predictions
-5. Update accuracy for past predictions
+1. Collect historical matches (last 14 days)
+2. Calculate Elo ratings
+3. Collect upcoming matches
+4. Update completed matches
+5. Generate features
+6. Make predictions
+7. Update accuracy for past predictions
 
 This script can be run daily via cron to maintain up-to-date predictions.
 """
@@ -28,7 +30,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(f"{project_root}/predictor/v4/output/pipeline.log"),
+        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/pipeline.log"),
         logging.StreamHandler()
     ]
 )
@@ -39,9 +41,11 @@ class PipelineOrchestrator:
         """Initialize the orchestrator"""
         self.v4_dir = project_root / "predictor/v4"
         self.scripts = {
+            "historical": self.v4_dir / "collect_historical_matches.py",
+            "elo": self.v4_dir / "calculate_elo.py",
             "collect": self.v4_dir / "collect_future_matches.py",
             "update_completed": self.v4_dir / "update_completed_matches.py",
-            "historical": self.v4_dir / "generate_historical_features.py",
+            "historical_features": self.v4_dir / "generate_historical_features.py",
             "features": self.v4_dir / "generate_future_features.py",
             "predict": self.v4_dir / "predict_matches.py"
         }
@@ -105,29 +109,39 @@ class PipelineOrchestrator:
         logger.info("Starting prediction pipeline")
         
         try:
-            # Step 1: Collect upcoming matches
+            # Step 1: Collect historical matches (last 14 days)
+            if not self.run_script("historical"):
+                logger.error("Historical match collection failed")
+                return False
+
+            # Step 2: Calculate Elo ratings
+            if not self.run_script("elo"):
+                logger.error("Elo rating calculation failed")
+                return False
+                
+            # Step 3: Collect upcoming matches
             if not self.run_script("collect"):
                 logger.error("Match collection failed")
                 return False
                 
-            # Step 2: Update completed matches (NEW)
+            # Step 4: Update completed matches
             if not self.run_script("update_completed"):
                 logger.error("Completed match update failed")
                 logger.warning("Continuing pipeline despite completed match update failure")
                 # Continue pipeline even if completed match update fails
             
-            # Step 3: Update historical features
-            if not self.run_script("historical"):
+            # Step 5: Update historical features
+            if not self.run_script("historical_features"):
                 logger.error("Historical feature generation failed")
                 logger.warning("Continuing pipeline despite historical feature failure")
                 # Continue pipeline even if historical features fail
             
-            # Step 4: Generate future features
+            # Step 6: Generate future features
             if not self.run_script("features"):
                 logger.error("Future feature generation failed")
                 return False
             
-            # Step 5: Make predictions
+            # Step 7: Make predictions
             if not self.run_script("predict"):
                 logger.error("Prediction generation failed")
                 return False

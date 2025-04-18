@@ -6,43 +6,61 @@ This directory contains the v4 version of the tennis match prediction pipeline, 
 
 The v4 pipeline consists of several components:
 
-1. **Data Collection** (`collect_future_matches.py`)
+1. **Historical Data Collection** (`collect_historical_matches.py`)
+   - Fetches historical matches from the last 14 days
+   - Updates the matches table with recent match data
+   - Ensures continuous data flow for feature generation
+
+2. **Elo Rating Calculation** (`calculate_elo.py`)
+   - Calculates Elo ratings for all players based on match history
+   - Updates Elo-related columns in the matches table
+   - Considers tournament levels and time decay
+   - Essential for feature generation
+
+3. **Future Match Collection** (`collect_future_matches.py`)
    - Fetches upcoming matches for the next 7 days
    - Creates/updates necessary database tables
    - Stores match information in `scheduled_matches` table
 
-2. **Completed Match Update** (`update_completed_matches.py`)
+4. **Completed Match Update** (`update_completed_matches.py`)
    - Identifies scheduled matches that have been completed
    - Fetches match results from the matches table
    - Marks matches as processed in `scheduled_matches` table
 
-3. **Historical Feature Generation** (`generate_historical_features.py`)
+5. **Historical Feature Generation** (`generate_historical_features.py`)
    - Processes new historical match data incrementally
-   - Updates features for matches affected by rolling window calculations
-   - Maintains `match_features` table for completed matches with `is_future=false`
+   - Updates features for matches defined in the YEARS_TO_PROCESS variable
    - Uses batch processing to handle large volumes efficiently
-   - Supports time-based filtering to process only matches from a specified time period (e.g., last year, last 2 years)
-   - Configurable via the `YEARS_TO_PROCESS` variable at the top of the file
+   - Supports time-based filtering to process only matches from a specified time period
+   - Generates and stores features for all historical matches in the match_features table
 
-4. **Future Feature Generation** (`generate_future_features.py`)
+6. **Future Feature Generation** (`generate_future_features.py`)
    - Generates features for upcoming matches
-   - Uses historical data to calculate player statistics
+   - Uses pre-calculated features from match_features table
+   - Efficiently reuses existing features without recalculation
    - Stores features in `match_features` table with `is_future=true`
 
-5. **Model Training** (`train_model_v4.py`)
+7. **Model Training** (`train_model_v4.py`)
    - Trains XGBoost model on historical match data
    - Performs hyperparameter optimization
    - Generates performance metrics and visualizations
    - Saves model and metadata in `models/` directory
 
-6. **Match Prediction** (`predict_matches.py`)
+8. **Match Prediction** (`predict_matches.py`)
    - Loads latest trained model
    - Makes predictions for upcoming matches
    - Stores predictions in `match_predictions` table
    - Updates prediction accuracy as results come in
 
-7. **Pipeline Orchestration** (`update_predictions.py`)
-   - Coordinates the entire prediction pipeline
+9. **Pipeline Orchestration** (`update_predictions.py`)
+   - Coordinates the entire prediction pipeline in the following order:
+     1. Historical matches are collected (last 14 days)
+     2. Elo ratings are calculated
+     3. Future matches are collected
+     4. Completed matches are updated
+     5. Historical features are generated
+     6. Future features are generated
+     7. Predictions are made
    - Can be run via cron job for automated updates
    - Handles logging and error reporting
 
@@ -77,7 +95,9 @@ When joining tables, be careful to use the appropriate ID fields:
 ```
 predictor/v4/
 ├── README.md                      # This file
-├── collect_future_matches.py      # Data collection script
+├── collect_historical_matches.py  # Historical match collection script
+├── calculate_elo.py              # Elo rating calculation script
+├── collect_future_matches.py      # Future match collection script
 ├── update_completed_matches.py    # Completed match update script
 ├── generate_historical_features.py # Historical feature generation
 ├── generate_future_features.py    # Future feature generation script
@@ -150,6 +170,7 @@ pip install -r requirements.txt
    - Automatically handled by the pipeline
    - Updates daily when running `update_predictions.py`
    - Seamlessly transfers completed matches from scheduled to historical tables
+   - Uses pre-calculated historical features for efficiency
 
 ### Model Training
 
@@ -184,6 +205,8 @@ pip install -r requirements.txt
 
 1. **Daily Operations** (via cron)
    - Run `update_predictions.py`
+     - Collects historical matches (last 14 days)
+     - Calculates Elo ratings
      - Collects upcoming matches
      - Updates completed matches
      - Updates historical match features
@@ -191,20 +214,12 @@ pip install -r requirements.txt
      - Makes predictions
      - Updates accuracy
 
-2. **Weekly Operations** (manual/scheduled)
-   - Run `get_data_from_external_api.py`
-     - Updates historical match data
-     - Captures match results
-     - Updates player statistics
-   - Run `calculate_elo.py` 
-     - Updates Elo ratings for new historical matches
-
-3. **Monthly Operations** (manual)
+2. **Monthly Operations** (manual)
    - Train new model
    - Review performance metrics
    - Adjust features if needed
 
-4. **Quarterly Operations** (manual)
+3. **Quarterly Operations** (manual)
    - Full pipeline review
    - Feature engineering assessment
    - Historical performance analysis

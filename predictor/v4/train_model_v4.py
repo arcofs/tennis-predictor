@@ -40,7 +40,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(f"{project_root}/predictor/v4/output/training.log"),
+        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/training.log"),
         logging.StreamHandler()
     ]
 )

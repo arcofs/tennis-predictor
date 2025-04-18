@@ -1,0 +1,44 @@
+2025-04-18 23:06:43,027 - __main__ - INFO - CompletedMatchUpdater initialized
+2025-04-18 23:06:43,722 - __main__ - INFO - Found 38 unprocessed matches total:
+2025-04-18 23:06:43,723 - __main__ - INFO - - 4 matches with past dates
+2025-04-18 23:06:43,723 - __main__ - INFO - - 34 matches with NULL dates
+2025-04-18 23:06:44,710 - __main__ - INFO - Match ID 2181 not found in matches table
+2025-04-18 23:06:45,070 - __main__ - INFO - Match ID 1469 not found in matches table
+2025-04-18 23:06:45,382 - __main__ - INFO - Match ID 1607 not found in matches table
+2025-04-18 23:06:45,700 - __main__ - INFO - Match ID 2052 not found in matches table
+2025-04-18 23:06:46,009 - __main__ - INFO - Match ID 2089 not found in matches table
+2025-04-18 23:06:46,373 - __main__ - INFO - Match ID 2159 not found in matches table
+2025-04-18 23:06:46,691 - __main__ - INFO - Match ID 1290 not found in matches table
+2025-04-18 23:06:47,022 - __main__ - INFO - Match ID 1698 not found in matches table
+2025-04-18 23:06:47,407 - __main__ - INFO - Match ID 1705 not found in matches table
+2025-04-18 23:06:47,763 - __main__ - INFO - Match ID 1714 not found in matches table
+2025-04-18 23:06:48,124 - __main__ - INFO - Match ID 1732 not found in matches table
+2025-04-18 23:06:48,465 - __main__ - INFO - Match ID 1870 not found in matches table
+2025-04-18 23:06:48,794 - __main__ - INFO - Match ID 1903 not found in matches table
+2025-04-18 23:06:49,142 - __main__ - INFO - Match ID 1940 not found in matches table
+2025-04-18 23:06:49,478 - __main__ - INFO - Match ID 1956 not found in matches table
+2025-04-18 23:06:49,806 - __main__ - INFO - Match ID 1964 not found in matches table
+2025-04-18 23:06:50,176 - __main__ - INFO - Match ID 1995 not found in matches table
+2025-04-18 23:06:50,629 - __main__ - INFO - Match ID 2045 not found in matches table
+2025-04-18 23:06:50,974 - __main__ - INFO - Match ID 2145 not found in matches table
+2025-04-18 23:06:51,385 - __main__ - INFO - Match ID 2148 not found in matches table
+2025-04-18 23:06:51,771 - __main__ - INFO - Match ID 2152 not found in matches table
+2025-04-18 23:06:52,139 - __main__ - INFO - Match ID 2194 not found in matches table
+2025-04-18 23:06:52,454 - __main__ - INFO - Match ID 1817 found in matches table
+2025-04-18 23:06:53,257 - __main__ - INFO - Successfully marked match 1817 as processed=True
+2025-04-18 23:06:53,620 - __main__ - INFO - Match ID 1815 not found in matches table
+2025-04-18 23:06:54,113 - __main__ - INFO - Match ID 1840 not found in matches table
+2025-04-18 23:06:54,447 - __main__ - INFO - Match ID 2048 not found in matches table
+2025-04-18 23:06:54,779 - __main__ - INFO - Match ID 2085 not found in matches table
+2025-04-18 23:06:55,114 - __main__ - INFO - Match ID 1646 not found in matches table
+2025-04-18 23:06:55,452 - __main__ - INFO - Match ID 1678 not found in matches table
+2025-04-18 23:06:55,772 - __main__ - INFO - Match ID 1683 not found in matches table
+2025-04-18 23:06:56,188 - __main__ - INFO - Match ID 1710 not found in matches table
+2025-04-18 23:06:56,525 - __main__ - INFO - Match ID 1723 not found in matches table
+2025-04-18 23:06:56,865 - __main__ - INFO - Match ID 1842 not found in matches table
+2025-04-18 23:06:57,403 - __main__ - INFO - Match ID 1978 not found in matches table
+2025-04-18 23:06:57,739 - __main__ - INFO - Match ID 1571 not found in matches table
+2025-04-18 23:06:58,052 - __main__ - INFO - Match ID 1599 not found in matches table
+2025-04-18 23:06:58,415 - __main__ - INFO - Match ID 1655 not found in matches table
+2025-04-18 23:06:58,754 - __main__ - INFO - Match ID 1650 not found in matches table
+2025-04-18 23:06:58,835 - __main__ - INFO - Updated 1 matches, skipped 37 matches

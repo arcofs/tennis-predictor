@@ -84,6 +84,7 @@ MATCH_FEATURES_TABLE = {
         {"name": "tournament_date", "type": "DATE", "description": "Tournament date"},
         {"name": "tournament_level", "type": "VARCHAR(50)", "description": "Tournament level code (G: Grand Slam, M: Masters, etc.)"},
         {"name": "result", "type": "INTEGER", "description": "Match result (1 if player1 won, 0 if player2 won)"},
+        {"name": "is_future", "type": "BOOLEAN", "description": "Flag indicating if this is a future match prediction (TRUE) or historical match (FALSE)"},
         {"name": "player_elo_diff", "type": "DOUBLE PRECISION", "description": "Difference in Elo ratings between players"},
         {"name": "win_rate_5_diff", "type": "DOUBLE PRECISION", "description": "Difference in 5-match win rates"},
         {"name": "win_streak_diff", "type": "BIGINT", "description": "Difference in win streaks"},
@@ -147,6 +148,28 @@ MATCH_FEATURES_TABLE = {
     ]
 }
 
+# Define scheduled_matches table schema
+SCHEDULED_MATCHES_TABLE = {
+    "name": "scheduled_matches",
+    "description": "Upcoming tennis matches to predict",
+    "columns": [
+        {"name": "match_id", "type": "VARCHAR(50)", "description": "External API match ID (primary key)"},
+        {"name": "tournament_id", "type": "VARCHAR(50)", "description": "Tournament identifier"},
+        {"name": "tournament_name", "type": "VARCHAR(255)", "description": "Name of the tournament"},
+        {"name": "surface", "type": "VARCHAR(50)", "description": "Playing surface"},
+        {"name": "tournament_level", "type": "VARCHAR(50)", "description": "Tournament level code"},
+        {"name": "round", "type": "VARCHAR(50)", "description": "Tournament round"},
+        {"name": "scheduled_date", "type": "TIMESTAMP", "description": "Scheduled match date and time"},
+        {"name": "player1_id", "type": "BIGINT", "description": "ID of first player"},
+        {"name": "player1_name", "type": "VARCHAR(255)", "description": "Name of first player"},
+        {"name": "player2_id", "type": "BIGINT", "description": "ID of second player"},
+        {"name": "player2_name", "type": "VARCHAR(255)", "description": "Name of second player"},
+        {"name": "is_processed", "type": "BOOLEAN", "description": "Flag indicating if match has been completed and processed (TRUE) or is still pending (FALSE)"},
+        {"name": "created_at", "type": "TIMESTAMP WITH TIME ZONE", "description": "Record creation timestamp"},
+        {"name": "updated_at", "type": "TIMESTAMP WITH TIME ZONE", "description": "Record last update timestamp"}
+    ]
+}
+
 # Define players table schema
 PLAYERS_TABLE = {
     "name": "players",
@@ -173,12 +196,14 @@ PLAYERS_TABLE = {
 RELATIONSHIPS = [
     {"from_table": "match_features", "from_column": "match_id", "to_table": "matches", "to_column": "id", "type": "Foreign Key"},
     {"from_table": "matches", "from_column": "winner_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"},
-    {"from_table": "matches", "from_column": "loser_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"}
+    {"from_table": "matches", "from_column": "loser_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"},
+    {"from_table": "scheduled_matches", "from_column": "player1_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"},
+    {"from_table": "scheduled_matches", "from_column": "player2_id", "to_table": "players", "to_column": "id", "type": "Foreign Key"}
 ]
 
 # Combine all schema information
 SCHEMA = {
-    "tables": [MATCHES_TABLE, MATCH_FEATURES_TABLE, PLAYERS_TABLE],
+    "tables": [MATCHES_TABLE, MATCH_FEATURES_TABLE, SCHEDULED_MATCHES_TABLE, PLAYERS_TABLE],
     "relationships": RELATIONSHIPS
 }
 

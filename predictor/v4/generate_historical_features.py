@@ -1,8 +1,9 @@
 import os
+import sys
+from pathlib import Path
 import pandas as pd
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Set
 from datetime import datetime, timedelta
 import logging
 from tqdm import tqdm
@@ -13,6 +14,10 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
+
+# Add project root to path to allow imports
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(project_root))
 
 # Time-based filtering settings
 # Set to None to process all matches, or specify a number of years to look back
@@ -36,22 +41,29 @@ NUM_CORES = min(NUM_CORES, multiprocessing.cpu_count())
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/historical_features.log"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
 # Add a process-safe logger for multiprocessing
 mp_logger = multiprocessing.get_logger()
 mp_logger.setLevel(logging.INFO)
+mp_handler = logging.FileHandler(f"{project_root}/predictor/v4/output/logs/historical_features_mp.log")
+mp_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+mp_logger.addHandler(mp_handler)
 
 # Project directories
-PROJECT_ROOT = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+PROJECT_ROOT = project_root
 DATA_DIR = PROJECT_ROOT / "data"
 CLEANED_DATA_DIR = DATA_DIR / "cleaned"
 OUTPUT_DIR = PROJECT_ROOT / "predictor" / "v4" / "output"
 
 # Create output directories if they don't exist
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR / "logs", exist_ok=True)
 
 # File paths
 INPUT_FILE = CLEANED_DATA_DIR / "cleaned_dataset_with_elo.csv"
@@ -360,10 +372,13 @@ def create_features_table(conn):
                         logger.warning(f"Could not add index {idx_name}: {str(e)}")
                         conn.rollback()
 
-def load_data() -> pd.DataFrame:
+def load_data(match_ids: Optional[Set[int]] = None) -> pd.DataFrame:
     """
     Load the tennis match dataset from the database.
     
+    Args:
+        match_ids: Optional set of match IDs to load. If None, loads all matches within time window.
+        
     Returns:
         DataFrame with tennis match data
     """
@@ -420,6 +435,11 @@ def load_data() -> pd.DataFrame:
         WHERE winner_id IS NOT NULL 
         AND loser_id IS NOT NULL
     """
+    
+    # Add match ID filtering if specified
+    if match_ids is not None:
+        match_ids_str = ','.join(str(id) for id in match_ids)
+        query += f" AND id IN ({match_ids_str})"
     
     # Add time-based filtering if specified
     if YEARS_TO_PROCESS is not None:
@@ -1408,13 +1428,13 @@ def generate_player_symmetric_features(features_df: pd.DataFrame) -> pd.DataFram
 
 def save_features_to_db(symmetric_df: pd.DataFrame):
     """
-    Save the generated features to the database in batches.
-    Only saves features for matches that don't already exist in the database.
+    Save the generated features to the database using UPSERT functionality.
+    This will update existing features and insert new ones.
     
     Args:
         symmetric_df: DataFrame with player-symmetric features
     """
-    logger.info("Saving features to database...")
+    logger.info("Saving/updating features in database...")
     
     # Get database connection
     conn = get_psycopg2_connection()
@@ -1422,20 +1442,6 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
     try:
         # Create the features table if it doesn't exist
         create_features_table(conn)
-        
-        # Get existing match_ids from the database
-        with conn.cursor() as cur:
-            cur.execute("SELECT match_id FROM match_features")
-            existing_match_ids = set(row[0] for row in cur.fetchall())
-        
-        # Filter out matches that already exist in the database
-        new_df = symmetric_df[~symmetric_df['match_id'].isin(existing_match_ids)].copy()
-        
-        if len(new_df) == 0:
-            logger.info("No new matches to process. All matches already exist in the database.")
-            return
-        
-        logger.info(f"Found {len(new_df)} new matches to process out of {len(symmetric_df)} total matches")
         
         # Define all possible columns we expect to have (using lowercase for surface names)
         all_possible_columns = [
@@ -1466,7 +1472,7 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
         ]
         
         # Convert any surface-related column names to lowercase
-        for col in list(new_df.columns):
+        for col in list(symmetric_df.columns):
             if any(surface.capitalize() in col for surface in STANDARD_SURFACES):
                 # Create lowercase version
                 lowercase_col = col
@@ -1476,10 +1482,10 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
                 
                 # If the column name changed, rename it
                 if lowercase_col != col:
-                    new_df.rename(columns={col: lowercase_col}, inplace=True)
+                    symmetric_df.rename(columns={col: lowercase_col}, inplace=True)
         
         # Check which columns actually exist in the dataframe
-        available_columns = [col for col in all_possible_columns if col in new_df.columns]
+        available_columns = [col for col in all_possible_columns if col in symmetric_df.columns]
         
         # Log columns that are missing
         missing_columns = set(all_possible_columns) - set(available_columns)
@@ -1487,7 +1493,7 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
             logger.warning(f"The following columns are missing from the dataframe: {sorted(missing_columns)}")
         
         # Convert tournament_date to datetime if it's not already
-        new_df['tournament_date'] = pd.to_datetime(new_df['tournament_date'])
+        symmetric_df['tournament_date'] = pd.to_datetime(symmetric_df['tournament_date'])
         
         # Define required columns and check if they're available
         required_columns = ['match_id', 'player1_id', 'player2_id', 'surface', 'tournament_date', 'result']
@@ -1516,40 +1522,47 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
         # Handle integer columns - fill NaN with defaults and convert
         for col, default_value in integer_columns.items():
             if col in available_columns:
-                new_df[col] = new_df[col].fillna(default_value).astype('int64')
+                symmetric_df[col] = symmetric_df[col].fillna(default_value).astype('int64')
         
-        # Handle float columns - fill NaN with 0 and convert to float64
+        # Handle float columns - keep NaN values for proper XGBoost handling
         for col in float_columns:
             if col in available_columns:
-                new_df[col] = new_df[col].fillna(0.0).astype('float64')
+                symmetric_df[col] = symmetric_df[col].astype('float64')
         
         # Ensure surface is a string
         if 'surface' in available_columns:
-            new_df['surface'] = new_df['surface'].fillna('Unknown')
+            symmetric_df['surface'] = symmetric_df['surface'].fillna('Unknown')
         
         # Process in batches
-        total_rows = len(new_df)
+        total_rows = len(symmetric_df)
+        logger.info(f"Processing {total_rows} total rows (including both original and symmetric features)")
+        
         with conn.cursor() as cur:
-            for start_idx in tqdm(range(0, total_rows, DB_BATCH_SIZE), desc="Saving features to database"):
+            for start_idx in tqdm(range(0, total_rows, DB_BATCH_SIZE), desc="Saving/updating features"):
                 end_idx = min(start_idx + DB_BATCH_SIZE, total_rows)
-                batch_df = new_df.iloc[start_idx:end_idx]
+                batch_df = symmetric_df.iloc[start_idx:end_idx]
                 
                 try:
                     # Create SQL query dynamically based on available columns
                     columns_str = ", ".join(available_columns)
-                    placeholders = "%s"  # for execute_values
+                    update_str = ", ".join(f"{col} = EXCLUDED.{col}" 
+                                         for col in available_columns 
+                                         if col != 'match_id')
                     
                     # Convert DataFrame to list of tuples
                     values = [tuple(x) for x in batch_df[available_columns].values]
                     
-                    # Insert batch using execute_values
+                    # Insert/update batch using execute_values with ON CONFLICT DO UPDATE
                     execute_values(
                         cur,
                         f"""
                         INSERT INTO match_features (
                             {columns_str}
                         ) VALUES %s
-                        ON CONFLICT (match_id) DO NOTHING
+                        ON CONFLICT (match_id) 
+                        DO UPDATE SET
+                            {update_str},
+                            updated_at = CURRENT_TIMESTAMP
                         """,
                         values,
                         page_size=DB_PAGE_SIZE
@@ -1558,15 +1571,13 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
                     # Commit after each batch
                     conn.commit()
                     
-                    logger.info(f"Processed {end_idx}/{total_rows} rows")
-                    
                 except Exception as e:
                     logger.error(f"Error in batch {start_idx}-{end_idx}: {str(e)}")
                     logger.error(f"First row of problematic batch: {batch_df.iloc[0].to_dict()}")
                     conn.rollback()
                     raise
         
-        logger.info(f"Successfully saved {total_rows} new matches to database")
+        logger.info(f"Successfully processed {total_rows} matches")
         
     except Exception as e:
         logger.error(f"Error saving features to database: {str(e)}")
@@ -1579,10 +1590,18 @@ def save_features_to_db(symmetric_df: pd.DataFrame):
 def main():
     """Generate features for tennis match prediction."""
     start_time = time.time()
+    
+    # Initialize progress tracker
     progress_tracker = ProgressTracker(total_steps=5)
     
-    # Step 1: Load data
+    # Step 1: Load data for specified time period
     logger.info("Step 1/5 (0%): Loading data...")
+    if YEARS_TO_PROCESS is not None:
+        cutoff_date = datetime.now() - timedelta(days=YEARS_TO_PROCESS*365)
+        logger.info(f"Processing matches from the last {YEARS_TO_PROCESS} years (since {cutoff_date.strftime('%Y-%m-%d')})")
+    else:
+        logger.info("Processing all historical matches")
+    
     df = load_data()
     logger.info(f"Loaded {len(df)} matches")
     progress_tracker.update()
@@ -1611,13 +1630,13 @@ def main():
     symmetric_df = generate_player_symmetric_features(features_df)
     logger.info(f"Generated {len(symmetric_df)} symmetric match features")
     
-    # Save features to database
+    # Save/update features in database
     save_features_to_db(symmetric_df)
     progress_tracker.update()
     
     # Print feature statistics
-    logger.info(f"Total matches: {len(df)}")
-    logger.info(f"Total features: {len(symmetric_df.columns) - 6}")  # Exclude match_id, tournament_date, player1_id, player2_id, surface, result
+    logger.info(f"Total matches processed: {len(df)}")
+    logger.info(f"Total features per match: {len(symmetric_df.columns) - 6}")  # Exclude match_id, tournament_date, player1_id, player2_id, surface, result
     
     # Print example features for a match
     if not symmetric_df.empty:
