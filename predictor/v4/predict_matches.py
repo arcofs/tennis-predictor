@@ -27,6 +27,21 @@ from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
 import json
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from functools import partial
+
+# Configure number of cores to use
+# Set to 0 or negative to auto-configure (num_cores - 4)
+NUM_CORES = 0
+
+# Calculate actual number of cores to use
+def get_num_cores():
+    available_cores = multiprocessing.cpu_count()
+    if NUM_CORES <= 0:
+        # Leave 4 cores for system
+        return max(1, available_cores - 4)
+    return min(NUM_CORES, available_cores)
 
 # Add project root to path to allow imports
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -130,21 +145,26 @@ class MatchPredictor:
         """
         query = """
             WITH latest_player_features AS (
-                SELECT 
-                    player1_id as player_id,
-                    player_elo_diff + 1500 as elo,  -- Convert diff back to absolute ELO
-                    tournament_date,
-                    ROW_NUMBER() OVER (PARTITION BY player1_id ORDER BY tournament_date DESC) as rn1
-                FROM match_features
-                UNION ALL
-                SELECT 
-                    player2_id as player_id,
-                    1500 - player_elo_diff as elo,  -- Convert diff back to absolute ELO
-                    tournament_date,
-                    ROW_NUMBER() OVER (PARTITION BY player2_id ORDER BY tournament_date DESC) as rn1
-                FROM match_features
+                SELECT DISTINCT ON (player_id)
+                    player_id,
+                    elo,
+                    tournament_date
+                FROM (
+                    SELECT 
+                        player1_id as player_id,
+                        player_elo_diff + 1500 as elo,
+                        tournament_date
+                    FROM match_features
+                    UNION ALL
+                    SELECT 
+                        player2_id as player_id,
+                        1500 - player_elo_diff as elo,
+                        tournament_date
+                    FROM match_features
+                ) all_features
+                ORDER BY player_id, tournament_date DESC
             )
-            SELECT 
+            SELECT DISTINCT
                 s.match_id,
                 s.tournament_id,
                 s.round,
@@ -155,16 +175,8 @@ class MatchPredictor:
                 COALESCE(p1.elo, 1500) as player1_elo,
                 COALESCE(p2.elo, 1500) as player2_elo
             FROM scheduled_matches s
-            LEFT JOIN (
-                SELECT player_id, elo
-                FROM latest_player_features
-                WHERE rn1 = 1
-            ) p1 ON s.player1_id = p1.player_id
-            LEFT JOIN (
-                SELECT player_id, elo
-                FROM latest_player_features
-                WHERE rn1 = 1
-            ) p2 ON s.player2_id = p2.player_id
+            LEFT JOIN latest_player_features p1 ON s.player1_id = p1.player_id
+            LEFT JOIN latest_player_features p2 ON s.player2_id = p2.player_id
             WHERE NOT EXISTS (
                 SELECT 1 FROM match_predictions p
                 WHERE p.match_id = s.match_id
@@ -309,9 +321,21 @@ class MatchPredictor:
             logger.error(f"Error calculating features for match {match['match_id']}: {str(e)}")
             raise
     
+    def generate_match_features_parallel(self, match_chunk: List[pd.Series]) -> List[Dict[str, float]]:
+        """
+        Generate features for a chunk of matches in parallel
+        
+        Args:
+            match_chunk: List of Series with match data
+            
+        Returns:
+            List of feature dictionaries
+        """
+        return [self.generate_match_features(match) for match in match_chunk]
+
     def prepare_features(self, matches_df: pd.DataFrame) -> np.ndarray:
         """
-        Prepare feature matrix for prediction
+        Prepare feature matrix for prediction using parallel processing
         
         Args:
             matches_df: DataFrame with match data
@@ -319,11 +343,26 @@ class MatchPredictor:
         Returns:
             numpy array of features in correct order
         """
-        # Generate features for each match
+        num_cores = get_num_cores()
+        logger.info(f"Using {num_cores} cores for parallel processing")
+        
+        # Split matches into chunks for parallel processing
+        chunk_size = max(1, len(matches_df) // num_cores)
+        match_chunks = [matches_df.iloc[i:i + chunk_size] for i in range(0, len(matches_df), chunk_size)]
+        
         features_list = []
-        for _, match in tqdm(matches_df.iterrows(), total=len(matches_df), desc="Generating match features"):
-            features = self.generate_match_features(match)
-            features_list.append(features)
+        with ProcessPoolExecutor(max_workers=num_cores) as executor:
+            futures = []
+            for chunk in match_chunks:
+                future = executor.submit(self.generate_match_features_parallel, chunk.to_dict('records'))
+                futures.append(future)
+            
+            # Process results as they complete with progress bar
+            with tqdm(total=len(matches_df), desc="Generating match features") as pbar:
+                for future in as_completed(futures):
+                    chunk_features = future.result()
+                    features_list.extend(chunk_features)
+                    pbar.update(len(chunk_features))
         
         # Convert to DataFrame
         features_df = pd.DataFrame(features_list)
