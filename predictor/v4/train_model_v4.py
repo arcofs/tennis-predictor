@@ -254,6 +254,29 @@ class ModelTrainer:
         Returns:
             Tuple of ((X_train, X_val, X_test), (y_train, y_val, y_test))
         """
+        # Ensure categorical columns are properly handled
+        categorical_cols = []
+        for col in feature_cols:
+            if (train_df[col].dtype.name == 'category' or 
+                train_df[col].dtype == 'object'):
+                categorical_cols.append(col)
+                # Convert to categorical in all dataframes
+                train_df[col] = train_df[col].astype('category')
+                val_df[col] = val_df[col].astype('category')
+                test_df[col] = test_df[col].astype('category')
+        
+        if categorical_cols:
+            logger.info(f"Handling {len(categorical_cols)} categorical features: {categorical_cols}")
+            
+            # Ensure categories in validation and test sets match those in training
+            for col in categorical_cols:
+                # Get categories from training set
+                categories = train_df[col].cat.categories
+                
+                # Update categories in validation and test sets
+                val_df[col] = pd.Categorical(val_df[col], categories=categories)
+                test_df[col] = pd.Categorical(test_df[col], categories=categories)
+        
         # Create feature matrices
         X_train = train_df[feature_cols].values
         X_val = val_df[feature_cols].values
@@ -304,9 +327,9 @@ class ModelTrainer:
                 'reg_lambda': trial.suggest_float('reg_lambda', 0, 1),
             }
             
-            # Create validation set
-            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names)
-            dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
+            # Create validation set - enable categorical features
+            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names, enable_categorical=True)
+            dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names, enable_categorical=True)
             
             # Train model
             model = xgb.train(
@@ -356,9 +379,9 @@ class ModelTrainer:
         Returns:
             Trained XGBoost model
         """
-        # Create datasets
-        dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names)
-        dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
+        # Create datasets - enable categorical features
+        dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names, enable_categorical=True)
+        dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names, enable_categorical=True)
         
         # Train model
         model = xgb.train(
@@ -395,7 +418,7 @@ class ModelTrainer:
             Dictionary of evaluation metrics
         """
         # Get predictions
-        dmatrix = xgb.DMatrix(X, feature_names=feature_names)
+        dmatrix = xgb.DMatrix(X, feature_names=feature_names, enable_categorical=True)
         y_pred_proba = model.predict(dmatrix)
         y_pred = (y_pred_proba >= 0.5).astype(int)
         
