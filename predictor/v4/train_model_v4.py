@@ -30,6 +30,7 @@ import seaborn as sns
 from dotenv import load_dotenv
 import psycopg2
 import json
+import multiprocessing
 
 # Add project root to path to allow imports
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -56,6 +57,38 @@ PLOTS_DIR = OUTPUT_DIR / "output/plots"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Check GPU availability
+def check_gpu_availability():
+    """Check if CUDA GPU is available for XGBoost"""
+    try:
+        # Check if CUDA is available - this will work with newer XGBoost versions
+        gpu_available = xgb.config.get_config().get('use_cuda', False)
+        
+        if not gpu_available:
+            # Alternative method for older XGBoost versions
+            # Try to create a simple DMatrix with tree_method='gpu_hist'
+            test_data = np.random.rand(10, 10)
+            test_labels = np.random.randint(0, 2, 10)
+            test_dmatrix = xgb.DMatrix(test_data, label=test_labels)
+            
+            # Try to train a small model with GPU
+            test_params = {'tree_method': 'gpu_hist'}
+            xgb.train(test_params, test_dmatrix, num_boost_round=1)
+            gpu_available = True
+        
+        return gpu_available
+    
+    except Exception as e:
+        logger.info(f"GPU detection failed with error: {e}")
+        return False
+
+# Get optimal number of CPU threads
+def get_optimal_cpu_threads():
+    """Get optimal number of CPU threads (total cores - 4, minimum 1)"""
+    total_cores = multiprocessing.cpu_count()
+    # Use total cores minus 4, with minimum of 1
+    return max(1, total_cores - 4)
+
 class ModelTrainer:
     def __init__(self):
         """Initialize the model trainer"""
@@ -65,6 +98,21 @@ class ModelTrainer:
         self.db_url = os.getenv("DATABASE_URL")
         if self.db_url and self.db_url.startswith('postgres://'):
             self.db_url = self.db_url.replace('postgres://', 'postgresql://', 1)
+        
+        # Check for GPU availability
+        self.use_gpu = check_gpu_availability()
+        if self.use_gpu:
+            logger.info("CUDA GPU available and will be used for training")
+            self.device = 'cuda'
+            self.tree_method = 'gpu_hist'  # Use GPU histogram for training
+        else:
+            logger.info("No GPU detected, falling back to CPU")
+            self.device = 'cpu'
+            self.tree_method = 'hist'  # Use CPU histogram for training
+            
+            # Set optimal number of threads for CPU
+            self.n_jobs = get_optimal_cpu_threads()
+            logger.info(f"Using {self.n_jobs} CPU threads for training")
     
     def get_db_connection(self):
         """Create a database connection"""
@@ -318,14 +366,21 @@ class ModelTrainer:
                 'eval_metric': 'logloss',
                 'max_depth': trial.suggest_int('max_depth', 3, 10),
                 'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
-                'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
                 'min_child_weight': trial.suggest_int('min_child_weight', 1, 7),
                 'gamma': trial.suggest_float('gamma', 0, 1),
                 'subsample': trial.suggest_float('subsample', 0.6, 1.0),
                 'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
                 'reg_alpha': trial.suggest_float('reg_alpha', 0, 1),
                 'reg_lambda': trial.suggest_float('reg_lambda', 0, 1),
+                'tree_method': self.tree_method,  # Use GPU if available
             }
+            
+            # Add device-specific parameters
+            if self.device == 'cpu':
+                params['nthread'] = self.n_jobs
+            
+            # Get number of boosting rounds separately
+            num_boost_round = trial.suggest_int('n_estimators', 100, 1000)
             
             # Create validation set - enable categorical features
             dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names, enable_categorical=True)
@@ -335,7 +390,7 @@ class ModelTrainer:
             model = xgb.train(
                 params,
                 dtrain,
-                num_boost_round=params['n_estimators'],
+                num_boost_round=num_boost_round,
                 evals=[(dval, 'val')],
                 early_stopping_rounds=50,
                 verbose_eval=False
@@ -351,10 +406,17 @@ class ModelTrainer:
         study = optuna.create_study(direction='maximize')
         study.optimize(objective, n_trials=n_trials)
         
-        logger.info(f"Best hyperparameters: {study.best_params}")
+        # Get best parameters and add n_estimators separately
+        best_params = study.best_params.copy()
+        n_estimators = best_params.pop('n_estimators', 100)  # Remove n_estimators and get its value
+        
+        # Log best parameters
+        logger.info(f"Best hyperparameters: {best_params}, num_boost_round: {n_estimators}")
         logger.info(f"Best validation AUC: {study.best_value:.4f}")
         
-        return study.best_params
+        # Return complete parameters including n_estimators
+        best_params['n_estimators'] = n_estimators
+        return best_params
     
     def train_model(
         self,
@@ -379,21 +441,51 @@ class ModelTrainer:
         Returns:
             Trained XGBoost model
         """
+        # Extract num_boost_round and remove n_estimators from params
+        num_boost_round = params.pop('n_estimators', 100)
+        
+        # Add tree method and device-specific parameters
+        params['tree_method'] = self.tree_method
+        
+        if self.device == 'cpu':
+            params['nthread'] = self.n_jobs
+        
         # Create datasets - enable categorical features
         dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names, enable_categorical=True)
         dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names, enable_categorical=True)
+        
+        # Set up early stopping callback
+        early_stopping_rounds = 50
+        
+        # Dictionary to store best iteration
+        evals_result = {}
         
         # Train model
         model = xgb.train(
             params,
             dtrain,
-            num_boost_round=params['n_estimators'],
+            num_boost_round=num_boost_round,
             evals=[(dtrain, 'train'), (dval, 'val')],
-            early_stopping_rounds=50,
-            verbose_eval=10
+            early_stopping_rounds=early_stopping_rounds,
+            verbose_eval=10,
+            evals_result=evals_result
         )
         
-        logger.info(f"Trained model with {model.best_ntree_limit} trees")
+        # Get best iteration - compatible with newer XGBoost versions
+        best_iteration = getattr(model, 'best_iteration', 0)
+        if best_iteration == 0:
+            # Try alternative method for newer versions
+            try:
+                best_iteration = model.best_ntree_limit
+            except AttributeError:
+                # For newest versions, try attributes or len(evals_result)
+                best_iteration = getattr(model, 'best_iteration', num_boost_round)
+        
+        logger.info(f"Trained model with {best_iteration} trees")
+        
+        # Store best_iteration for future reference
+        model.best_iteration = best_iteration
+        
         return model
     
     def evaluate_model(
@@ -419,7 +511,22 @@ class ModelTrainer:
         """
         # Get predictions
         dmatrix = xgb.DMatrix(X, feature_names=feature_names, enable_categorical=True)
-        y_pred_proba = model.predict(dmatrix)
+        
+        # Use best iteration if available (handles different XGBoost versions)
+        iteration_to_use = None
+        if hasattr(model, 'best_iteration'):
+            iteration_to_use = model.best_iteration
+        elif hasattr(model, 'best_ntree_limit'):
+            iteration_to_use = model.best_ntree_limit
+            
+        # Make predictions
+        if iteration_to_use is not None:
+            logger.info(f"Using best iteration {iteration_to_use} for prediction")
+            y_pred_proba = model.predict(dmatrix, iteration_range=(0, iteration_to_use))
+        else:
+            logger.info("No best iteration found, using all trees")
+            y_pred_proba = model.predict(dmatrix)
+            
         y_pred = (y_pred_proba >= 0.5).astype(int)
         
         # Calculate metrics
@@ -490,11 +597,27 @@ class ModelTrainer:
         with open(metrics_path, 'w') as f:
             json.dump(metrics, f)
         
+        # Save metadata including device used for training
+        metadata = {
+            'model_version': MODEL_VERSION,
+            'training_date': datetime.now().isoformat(),
+            'device': self.device,
+            'tree_method': self.tree_method,
+            'metrics': metrics
+        }
+        
+        metadata_path = MODEL_DIR / f"metadata_{MODEL_VERSION}.json"
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f)
+        
         logger.info(f"Saved model and metadata to {MODEL_DIR}")
     
     def train(self):
         """Main training method"""
         try:
+            # Log training device
+            logger.info(f"Training on {self.device.upper()}")
+            
             # Load data
             df = self.load_training_data()
             
