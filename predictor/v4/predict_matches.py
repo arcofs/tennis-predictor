@@ -27,21 +27,6 @@ from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
 import json
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from functools import partial
-
-# Configure number of cores to use
-# Set to 0 or negative to auto-configure (num_cores - 4)
-NUM_CORES = 0
-
-# Calculate actual number of cores to use
-def get_num_cores():
-    available_cores = multiprocessing.cpu_count()
-    if NUM_CORES <= 0:
-        # Leave 4 cores for system
-        return max(1, available_cores - 4)
-    return min(NUM_CORES, available_cores)
 
 # Add project root to path to allow imports
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -321,21 +306,9 @@ class MatchPredictor:
             logger.error(f"Error calculating features for match {match['match_id']}: {str(e)}")
             raise
     
-    def generate_match_features_parallel(self, match_chunk: List[pd.Series]) -> List[Dict[str, float]]:
-        """
-        Generate features for a chunk of matches in parallel
-        
-        Args:
-            match_chunk: List of Series with match data
-            
-        Returns:
-            List of feature dictionaries
-        """
-        return [self.generate_match_features(match) for match in match_chunk]
-
     def prepare_features(self, matches_df: pd.DataFrame) -> np.ndarray:
         """
-        Prepare feature matrix for prediction using parallel processing
+        Prepare feature matrix for prediction
         
         Args:
             matches_df: DataFrame with match data
@@ -343,26 +316,11 @@ class MatchPredictor:
         Returns:
             numpy array of features in correct order
         """
-        num_cores = get_num_cores()
-        logger.info(f"Using {num_cores} cores for parallel processing")
-        
-        # Split matches into chunks for parallel processing
-        chunk_size = max(1, len(matches_df) // num_cores)
-        match_chunks = [matches_df.iloc[i:i + chunk_size] for i in range(0, len(matches_df), chunk_size)]
-        
+        # Generate features for each match
         features_list = []
-        with ProcessPoolExecutor(max_workers=num_cores) as executor:
-            futures = []
-            for chunk in match_chunks:
-                future = executor.submit(self.generate_match_features_parallel, chunk.to_dict('records'))
-                futures.append(future)
-            
-            # Process results as they complete with progress bar
-            with tqdm(total=len(matches_df), desc="Generating match features") as pbar:
-                for future in as_completed(futures):
-                    chunk_features = future.result()
-                    features_list.extend(chunk_features)
-                    pbar.update(len(chunk_features))
+        for _, match in tqdm(matches_df.iterrows(), total=len(matches_df), desc="Generating match features"):
+            features = self.generate_match_features(match)
+            features_list.append(features)
         
         # Convert to DataFrame
         features_df = pd.DataFrame(features_list)
