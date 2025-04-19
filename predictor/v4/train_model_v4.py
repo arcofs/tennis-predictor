@@ -82,7 +82,78 @@ class ModelTrainer:
         # - For historical matches, match_features.match_id = matches.id (auto-incremented PK)
         # - For future matches (excluded here with is_future IS NOT TRUE), we'd use scheduled_matches.match_id
         query = """
-            SELECT f.*, m.winner_id = f.player1_id as result
+            SELECT 
+                f.id,
+                f.match_id,
+                f.player1_id,
+                f.player2_id,
+                f.surface,
+                f.tournament_date,
+                f.tournament_level,
+                f.is_future,
+                -- All the diff features
+                f.player_elo_diff,
+                f.win_rate_5_diff,
+                f.win_streak_diff,
+                f.loss_streak_diff,
+                f.win_rate_hard_5_diff,
+                f.win_rate_clay_5_diff,
+                f.win_rate_grass_5_diff,
+                f.win_rate_carpet_5_diff,
+                f.win_rate_hard_overall_diff,
+                f.win_rate_clay_overall_diff,
+                f.win_rate_grass_overall_diff,
+                f.win_rate_carpet_overall_diff,
+                f.serve_efficiency_5_diff,
+                f.first_serve_pct_5_diff,
+                f.first_serve_win_pct_5_diff,
+                f.second_serve_win_pct_5_diff,
+                f.ace_pct_5_diff,
+                f.bp_saved_pct_5_diff,
+                f.return_efficiency_5_diff,
+                f.bp_conversion_pct_5_diff,
+                -- All player1 features
+                f.player1_win_rate_5,
+                f.player1_win_streak,
+                f.player1_loss_streak,
+                f.player1_win_rate_hard_5,
+                f.player1_win_rate_clay_5,
+                f.player1_win_rate_grass_5,
+                f.player1_win_rate_carpet_5,
+                f.player1_win_rate_hard_overall,
+                f.player1_win_rate_clay_overall,
+                f.player1_win_rate_grass_overall,
+                f.player1_win_rate_carpet_overall,
+                f.player1_serve_efficiency_5,
+                f.player1_first_serve_pct_5,
+                f.player1_first_serve_win_pct_5,
+                f.player1_second_serve_win_pct_5,
+                f.player1_ace_pct_5,
+                f.player1_bp_saved_pct_5,
+                f.player1_return_efficiency_5,
+                f.player1_bp_conversion_pct_5,
+                -- All player2 features
+                f.player2_win_rate_5,
+                f.player2_win_streak,
+                f.player2_loss_streak,
+                f.player2_win_rate_hard_5,
+                f.player2_win_rate_clay_5,
+                f.player2_win_rate_grass_5,
+                f.player2_win_rate_carpet_5,
+                f.player2_win_rate_hard_overall,
+                f.player2_win_rate_clay_overall,
+                f.player2_win_rate_grass_overall,
+                f.player2_win_rate_carpet_overall,
+                f.player2_serve_efficiency_5,
+                f.player2_first_serve_pct_5,
+                f.player2_first_serve_win_pct_5,
+                f.player2_second_serve_win_pct_5,
+                f.player2_ace_pct_5,
+                f.player2_bp_saved_pct_5,
+                f.player2_return_efficiency_5,
+                f.player2_bp_conversion_pct_5,
+                -- Result
+                m.winner_id = f.player1_id as result
             FROM match_features f
             JOIN matches m ON f.match_id = m.id
             WHERE f.is_future IS NOT TRUE
@@ -139,13 +210,28 @@ class ModelTrainer:
         Returns:
             List of feature column names
         """
-        # Exclude non-feature columns
+        # Exclude non-feature columns and date/timestamp columns
         exclude_cols = [
             'id', 'match_id', 'player1_id', 'player2_id', 'tournament_date',
-            'surface', 'tournament_level', 'result', 'is_future'
+            'surface', 'tournament_level', 'result', 'is_future',
+            'created_at', 'updated_at',  # Exclude timestamp columns
         ]
         
+        # Check data types and exclude any date, datetime or timestamp columns
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]) or 'date' in col.lower() or 'time' in col.lower():
+                if col not in exclude_cols:
+                    exclude_cols.append(col)
+        
         feature_cols = [col for col in df.columns if col not in exclude_cols]
+        
+        # Log categorical features - XGBoost can handle these properly
+        for col in feature_cols:
+            if df[col].dtype == 'object' or df[col].dtype.name == 'category':
+                # Convert to categorical type to ensure proper handling
+                df[col] = df[col].astype('category')
+                logger.info(f"Found categorical feature: {col}")
+        
         logger.info(f"Using {len(feature_cols)} features for training")
         return feature_cols
     

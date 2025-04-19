@@ -7937,3 +7937,1280 @@ Traceback (most recent call last):
   File "/home/tom/projects/tennis-predictor/.venv/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 692, in do_rollback
     dbapi_connection.rollback()
 KeyboardInterrupt
+2025-04-19 14:35:13,893 - root - INFO - Will process up to 5 tournaments in parallel
+2025-04-19 14:35:13,894 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:35:13,894 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:35:13,894 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:35:13,894 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:35:16,202 - root - INFO - Matches table created successfully
+2025-04-19 14:35:16,580 - root - INFO - Players table created successfully
+2025-04-19 14:35:16,580 - root - INFO - Fetching tournaments between 2025-04-06 and 2025-04-20
+2025-04-19 14:35:16,580 - root - INFO - Fetching tournament calendar data for year 2025
+2025-04-19 14:35:18,232 - root - INFO - Found 411 tournaments, sorted by date
+2025-04-19 14:35:18,237 - root - INFO - Filtered to 24 tournaments within date range 2025-04-06 to 2025-04-20
+2025-04-19 14:35:18,280 - root - ERROR - Tournament Monte-Carlo Rolex Masters - Monte-Carlo generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,282 - root - ERROR - Tournament Mexico City Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,283 - root - ERROR - Tournament Madrid Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,285 - root - ERROR - Tournament Monza Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,286 - root - ERROR - Tournament Sarasota Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,286 - root - ERROR - Tournament M25 Antalya generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,288 - root - ERROR - Tournament M25 Santa Margherita di Pula generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,290 - root - ERROR - Tournament M15 Monastir generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,291 - root - ERROR - Tournament M15 Luan generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,292 - root - ERROR - Tournament M15 Sharm ElSheikh generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,293 - root - ERROR - Tournament Barcelona Open Banc Sabadell - Barcelona generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,295 - root - ERROR - Tournament BMW Open - Munich generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,296 - root - ERROR - Tournament Busan Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,296 - root - ERROR - Tournament Oeiras 4 Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,296 - root - ERROR - Tournament San Luis Potosi Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,298 - root - ERROR - Tournament Tallahassee Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,299 - root - ERROR - Tournament Abidjan 1 Challenger generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,300 - root - ERROR - Tournament M25 Santa Margherita di Pula generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,301 - root - ERROR - Tournament M25 Sharm ElSheikh generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,302 - root - ERROR - Tournament M15 Osaka generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,302 - root - ERROR - Tournament M15 Dubrovnik generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,303 - root - ERROR - Tournament M15 Monastir generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,304 - root - ERROR - Tournament M15 Luan generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,304 - root - ERROR - Tournament M15 Antalya generated an exception: cannot pickle '_thread.lock' object
+2025-04-19 14:35:18,310 - root - INFO - Finished processing all tournaments
+2025-04-19 14:40:54,780 - root - INFO - Will process up to 5 tournaments in parallel
+2025-04-19 14:40:54,780 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:40:54,780 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:40:54,780 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:40:54,807 - root - ERROR - An error occurred in the main process: name 'create_matches_table' is not defined
+2025-04-19 14:41:00,703 - root - INFO - Will process up to 5 tournaments in parallel
+2025-04-19 14:41:00,703 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:41:00,703 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:41:00,703 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:41:00,729 - root - ERROR - An error occurred in the main process: name 'create_matches_table' is not defined
+2025-04-19 14:41:36,520 - root - INFO - Will process up to 5 tournaments in parallel
+2025-04-19 14:41:36,520 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:41:36,520 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:41:36,520 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:41:36,545 - root - ERROR - An error occurred in the main process: name 'create_matches_table' is not defined
+2025-04-19 14:42:25,630 - root - INFO - Will process up to 5 tournaments in parallel
+2025-04-19 14:42:25,630 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:42:25,630 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:42:25,630 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:42:27,819 - root - INFO - Matches table created successfully
+2025-04-19 14:42:28,196 - root - INFO - Players table created successfully
+2025-04-19 14:42:28,196 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:42:28,196 - root - INFO - Fetching tournaments between 2025-04-06 and 2025-04-20
+2025-04-19 14:42:28,196 - root - ERROR - An error occurred in the main process: 'TennisAPIClient' object has no attribute 'get_tournament_calendar'
+2025-04-19 14:44:00,827 - root - INFO - Will process up to 5 tournaments in parallel
+2025-04-19 14:44:00,827 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:44:00,827 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:44:00,827 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:44:03,008 - root - INFO - Matches table created successfully
+2025-04-19 14:44:03,388 - root - INFO - Players table created successfully
+2025-04-19 14:44:03,388 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:03,388 - root - INFO - Fetching tournaments between 2025-04-06 and 2025-04-20
+2025-04-19 14:44:03,388 - root - INFO - Fetching tournament calendar data for year 2025
+2025-04-19 14:44:05,005 - root - INFO - Found 411 tournaments, sorted by date
+2025-04-19 14:44:05,007 - root - INFO - Filtered to 24 tournaments within date range 2025-04-06 to 2025-04-20
+2025-04-19 14:44:05,008 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:05,008 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:05,009 - root - INFO - Processing tournament: Monte-Carlo Rolex Masters - Monte-Carlo (ID: 20333)
+2025-04-19 14:44:05,009 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:05,010 - root - INFO - Processing tournament: Mexico City Challenger (ID: 20597)
+2025-04-19 14:44:05,010 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:05,021 - root - INFO - Fetching tournament info for tournament ID: 20333
+2025-04-19 14:44:05,021 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:05,021 - root - INFO - Processing tournament: Madrid Challenger (ID: 20598)
+2025-04-19 14:44:05,022 - root - INFO - Fetching tournament info for tournament ID: 20597
+2025-04-19 14:44:05,022 - root - INFO - Processing tournament: Monza Challenger (ID: 20599)
+2025-04-19 14:44:05,023 - root - INFO - Processing tournament: Sarasota Challenger (ID: 20600)
+2025-04-19 14:44:05,024 - root - INFO - Fetching tournament info for tournament ID: 20598
+2025-04-19 14:44:05,025 - root - INFO - Fetching tournament info for tournament ID: 20599
+2025-04-19 14:44:06,022 - root - INFO - Fetching tournament info for tournament ID: 20600
+2025-04-19 14:44:06,488 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:06,488 - root - ERROR - Tournament Monte-Carlo Rolex Masters - Monte-Carlo generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:06,489 - root - INFO - Processing tournament: M25 Antalya (ID: 20619)
+2025-04-19 14:44:06,489 - root - INFO - Fetching tournament info for tournament ID: 20619
+2025-04-19 14:44:06,494 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:06,494 - root - ERROR - Tournament Madrid Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:06,494 - root - INFO - Processing tournament: M25 Santa Margherita di Pula (ID: 20620)
+2025-04-19 14:44:06,495 - root - INFO - Fetching tournament info for tournament ID: 20620
+2025-04-19 14:44:06,575 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:06,575 - root - ERROR - Tournament Mexico City Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:06,576 - root - INFO - Processing tournament: M15 Monastir (ID: 20621)
+2025-04-19 14:44:06,577 - root - INFO - Fetching tournament info for tournament ID: 20621
+2025-04-19 14:44:06,585 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:06,586 - root - ERROR - Tournament Monza Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:06,586 - root - INFO - Processing tournament: M15 Luan (ID: 20622)
+2025-04-19 14:44:06,587 - root - INFO - Fetching tournament info for tournament ID: 20622
+2025-04-19 14:44:07,478 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:07,478 - root - ERROR - Tournament Sarasota Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:07,479 - root - INFO - Processing tournament: M15 Sharm ElSheikh (ID: 20623)
+2025-04-19 14:44:07,479 - root - INFO - Fetching tournament info for tournament ID: 20623
+2025-04-19 14:44:07,937 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:07,937 - root - ERROR - Tournament M25 Antalya generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:07,938 - root - INFO - Processing tournament: Barcelona Open Banc Sabadell - Barcelona (ID: 20334)
+2025-04-19 14:44:07,939 - root - INFO - Fetching tournament info for tournament ID: 20334
+2025-04-19 14:44:07,940 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:07,941 - root - ERROR - Tournament M25 Santa Margherita di Pula generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:07,941 - root - INFO - Processing tournament: BMW Open - Munich (ID: 20335)
+2025-04-19 14:44:07,941 - root - INFO - Fetching tournament info for tournament ID: 20335
+2025-04-19 14:44:07,943 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:07,943 - root - ERROR - Tournament M15 Monastir generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:07,944 - root - INFO - Processing tournament: Busan Challenger (ID: 20601)
+2025-04-19 14:44:07,944 - root - INFO - Fetching tournament info for tournament ID: 20601
+2025-04-19 14:44:07,957 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:07,957 - root - ERROR - Tournament M15 Luan generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:07,957 - root - INFO - Processing tournament: Oeiras 4 Challenger (ID: 20602)
+2025-04-19 14:44:07,958 - root - INFO - Fetching tournament info for tournament ID: 20602
+2025-04-19 14:44:08,948 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:08,948 - root - ERROR - Tournament M15 Sharm ElSheikh generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:08,949 - root - INFO - Processing tournament: San Luis Potosi Challenger (ID: 20603)
+2025-04-19 14:44:08,949 - root - INFO - Fetching tournament info for tournament ID: 20603
+2025-04-19 14:44:09,456 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:09,456 - root - ERROR - Tournament Barcelona Open Banc Sabadell - Barcelona generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:09,456 - root - INFO - Processing tournament: Tallahassee Challenger (ID: 20604)
+2025-04-19 14:44:09,457 - root - INFO - Fetching tournament info for tournament ID: 20604
+2025-04-19 14:44:09,464 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:09,464 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:09,465 - root - ERROR - Tournament Oeiras 4 Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:09,465 - root - INFO - Processing tournament: Abidjan 1 Challenger (ID: 20605)
+2025-04-19 14:44:09,465 - root - INFO - Processing tournament: M25 Santa Margherita di Pula (ID: 20624)
+2025-04-19 14:44:09,466 - root - INFO - Fetching tournament info for tournament ID: 20605
+2025-04-19 14:44:09,466 - root - INFO - Fetching tournament info for tournament ID: 20624
+2025-04-19 14:44:09,467 - root - ERROR - Tournament Busan Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:09,468 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:09,469 - root - INFO - Processing tournament: M25 Sharm ElSheikh (ID: 20625)
+2025-04-19 14:44:09,469 - root - INFO - Made 20 API requests so far
+2025-04-19 14:44:09,469 - root - ERROR - Tournament BMW Open - Munich generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:09,470 - root - INFO - Fetching tournament info for tournament ID: 20625
+2025-04-19 14:44:10,411 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:10,411 - root - ERROR - Tournament San Luis Potosi Challenger generated an exception: name 'print_tournament_info' is not defined
+2025-04-19 14:44:10,412 - root - INFO - Processing tournament: M15 Osaka (ID: 20626)
+2025-04-19 14:44:10,412 - root - INFO - Fetching tournament info for tournament ID: 20626
+2025-04-19 14:44:10,916 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:10,917 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:10,917 - root - INFO - Processing tournament: M15 Dubrovnik (ID: 20627)
+2025-04-19 14:44:10,917 - root - INFO - Processing tournament: M15 Monastir (ID: 20628)
+2025-04-19 14:44:10,918 - root - INFO - Fetching tournament info for tournament ID: 20627
+2025-04-19 14:44:10,918 - root - INFO - Fetching tournament info for tournament ID: 20628
+2025-04-19 14:44:10,930 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:10,932 - root - INFO - Processing tournament: M15 Luan (ID: 20629)
+2025-04-19 14:44:10,932 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:44:10,932 - root - INFO - Fetching tournament info for tournament ID: 20629
+2025-04-19 14:44:10,933 - root - INFO - Processing tournament: M15 Antalya (ID: 20630)
+2025-04-19 14:44:10,934 - root - INFO - Fetching tournament info for tournament ID: 20630
+2025-04-19 14:45:41,726 - root - INFO - Will process up to 3 tournaments in parallel
+2025-04-19 14:45:41,726 - root - INFO - Modified database URL to use postgresql:// prefix
+2025-04-19 14:45:41,726 - root - INFO - Using database URL from environment: postgresql://postgre...
+2025-04-19 14:45:41,726 - root - INFO - Connecting to database: postgresql://postgres:jS8ZZLaL5Ny5Bm7djrw86UEFWUgsqYSUlQQdlt1a09VRvYuUugRBOE55aYT8pnS8@192.168.50.3:5559/postgres
+2025-04-19 14:45:43,908 - root - INFO - Matches table created successfully
+2025-04-19 14:45:44,287 - root - INFO - Players table created successfully
+2025-04-19 14:45:44,287 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:45:44,287 - root - INFO - Fetching tournaments between 2025-04-06 and 2025-04-20
+2025-04-19 14:45:44,287 - root - INFO - Fetching tournament calendar data for year 2025
+2025-04-19 14:45:45,736 - root - INFO - Found 411 tournaments, sorted by date
+2025-04-19 14:45:45,738 - root - INFO - Filtered to 24 tournaments within date range 2025-04-06 to 2025-04-20
+2025-04-19 14:45:45,739 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:45:45,740 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:45:45,740 - root - INFO - Processing tournament: Monte-Carlo Rolex Masters - Monte-Carlo (ID: 20333)
+2025-04-19 14:45:45,740 - root - INFO - TennisAPIClient initialized with API key: 3d766...
+2025-04-19 14:45:45,741 - root - INFO - Processing tournament: Mexico City Challenger (ID: 20597)
+2025-04-19 14:45:45,741 - root - INFO - Fetching tournament info for tournament ID: 20333
+2025-04-19 14:45:45,753 - root - INFO - Processing tournament: Madrid Challenger (ID: 20598)
+2025-04-19 14:45:45,753 - root - INFO - Fetching tournament info for tournament ID: 20597
+2025-04-19 14:45:45,754 - root - INFO - Fetching tournament info for tournament ID: 20598
+2025-04-19 14:45:47,199 - root - INFO - Tournament: Madrid Challenger (ID: 20598)
+2025-04-19 14:45:47,199 - root - INFO -   Level: N/A (N/A)
+2025-04-19 14:45:47,199 - root - INFO -   Surface: N/a
+2025-04-19 14:45:47,199 - root - INFO -   Country: N/A
+2025-04-19 14:45:47,199 - root - INFO -   Date: N/A
+2025-04-19 14:45:47,199 - root - INFO - Fetching results for tournament ID: 20598
+2025-04-19 14:45:47,203 - root - INFO - Tournament: Monte-Carlo Rolex Masters - Monte-Carlo (ID: 20333)
+2025-04-19 14:45:47,203 - root - INFO -   Level: N/A (N/A)
+2025-04-19 14:45:47,203 - root - INFO -   Surface: N/a
+2025-04-19 14:45:47,203 - root - INFO -   Country: N/A
+2025-04-19 14:45:47,203 - root - INFO -   Date: N/A
+2025-04-19 14:45:47,204 - root - INFO - Fetching results for tournament ID: 20333
+2025-04-19 14:45:47,204 - root - INFO - Tournament: Mexico City Challenger (ID: 20597)
+2025-04-19 14:45:47,205 - root - INFO -   Level: N/A (N/A)
+2025-04-19 14:45:47,205 - root - INFO -   Surface: N/a
+2025-04-19 14:45:47,205 - root - INFO -   Country: N/A
+2025-04-19 14:45:47,205 - root - INFO -   Date: N/A
+2025-04-19 14:45:47,205 - root - INFO - Fetching results for tournament ID: 20597
+2025-04-19 14:45:48,662 - root - INFO - Singles matches: 31, Qualifying singles matches: 18
+2025-04-19 14:45:48,663 - root - INFO - Found 49 singles matches for tournament 20598
+2025-04-19 14:45:48,690 - root - INFO - Singles matches: 31, Qualifying singles matches: 18
+2025-04-19 14:45:48,690 - root - INFO - Found 49 singles matches for tournament 20597
+2025-04-19 14:45:48,725 - root - INFO - Singles matches: 55, Qualifying singles matches: 21
+2025-04-19 14:45:48,725 - root - INFO - Found 76 singles matches for tournament 20333
+2025-04-19 14:45:50,827 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896549'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896549'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:50,908 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896536'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896536'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:50,909 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2034142530'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2034142530'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:51,207 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896549' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896549'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:51,207 - root - INFO - Processing match Pedro Cachin vs David Jorda Sanchis
+2025-04-19 14:45:51,207 - root - INFO - Fetching match statistics for tournament 20598, players 23100 vs 18669
+2025-04-19 14:45:51,286 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896536' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896536'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:51,286 - root - INFO - Processing match Vladyslav Orlov vs Govind Nanda
+2025-04-19 14:45:51,286 - root - INFO - Fetching match statistics for tournament 20597, players 36257 vs 47324
+2025-04-19 14:45:51,287 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2034142530' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2034142530'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:51,287 - root - INFO - Processing match Camilo Ugo Carabelli vs Hugo Gaston
+2025-04-19 14:45:51,287 - root - INFO - Fetching match statistics for tournament 20333, players 42229 vs 46747
+2025-04-19 14:45:52,653 - root - INFO - Successfully fetched statistics for match 2140896536
+2025-04-19 14:45:52,653 - root - INFO - Match winner: Vladyslav Orlov (ID: 36257), loser: Govind Nanda (ID: 47324)
+2025-04-19 14:45:52,671 - root - INFO - Successfully fetched statistics for match 2034142530
+2025-04-19 14:45:52,671 - root - INFO - Match winner: Camilo Ugo Carabelli (ID: 42229), loser: Hugo Gaston (ID: 46747)
+2025-04-19 14:45:52,674 - root - INFO - Successfully fetched statistics for match 2140896549
+2025-04-19 14:45:52,674 - root - INFO - Match winner: Pedro Cachin (ID: 23100), loser: David Jorda Sanchis (ID: 18669)
+2025-04-19 14:45:53,040 - root - INFO - Player Vladyslav Orlov already exists in database
+2025-04-19 14:45:53,055 - root - INFO - Player Camilo Ugo Carabelli already exists in database
+2025-04-19 14:45:53,060 - root - INFO - Player Pedro Cachin already exists in database
+2025-04-19 14:45:53,418 - root - INFO - Player Govind Nanda already exists in database
+2025-04-19 14:45:53,434 - root - INFO - Player Hugo Gaston already exists in database
+2025-04-19 14:45:53,437 - root - INFO - Player David Jorda Sanchis already exists in database
+2025-04-19 14:45:53,799 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896536', 'tournament_id': '20597', 'winner_id': 36257, 'loser_id': 47324, 'winner_name': 'Vladyslav Orlov', 'loser_name': 'Govind Nanda', 'score': '6-1 5-7 6-3', 'match_date': '2025-04-06T19:00:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Mexico City Challenger', 'winner_aces': 1, 'winner_double_faults': 4, 'loser_aces': 5, 'loser_double_faults': 5, 'winner_hand': 'R', 'winner_height_cm': 185.0, 'winner_country_code': 'UKR', 'loser_hand': 'R', 'loser_height_cm': 178.0, 'loser_country_code': 'USA'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:53,800 - root - WARNING - Failed to insert data for match 2140896536
+2025-04-19 14:45:53,812 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2034142530', 'tournament_id': '20333', 'winner_id': 42229, 'loser_id': 46747, 'winner_name': 'Camilo Ugo Carabelli', 'loser_name': 'Hugo Gaston', 'score': '6-4 6-0', 'match_date': '2025-04-05T12:00:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 0, 'winner_double_faults': 0, 'loser_aces': 3, 'loser_double_faults': 3, 'winner_hand': 'R', 'winner_height_cm': 185.0, 'winner_country_code': 'ARG', 'loser_hand': 'L', 'loser_height_cm': 173.0, 'loser_country_code': 'FRA'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:53,813 - root - WARNING - Failed to insert data for match 2034142530
+2025-04-19 14:45:53,815 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896549', 'tournament_id': '20598', 'winner_id': 23100, 'loser_id': 18669, 'winner_name': 'Pedro Cachin', 'loser_name': 'David Jorda Sanchis', 'score': '6-1 6-2', 'match_date': '2025-04-06T12:05:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 2, 'winner_double_faults': 1, 'loser_aces': 1, 'loser_double_faults': 2, 'winner_hand': 'R', 'winner_height_cm': 185.0, 'winner_country_code': 'ARG', 'loser_hand': 'R', 'loser_height_cm': 196.0, 'loser_country_code': 'ESP'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:53,815 - root - WARNING - Failed to insert data for match 2140896549
+2025-04-19 14:45:54,177 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896540'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896540'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:54,192 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2045747221'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2045747221'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:54,195 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896552'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896552'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:54,556 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896540' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896540'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:54,556 - root - INFO - Processing match Alafia Ayeni vs Alvin Nicholas Tudorica
+2025-04-19 14:45:54,556 - root - INFO - Fetching match statistics for tournament 20597, players 46474 vs 64258
+2025-04-19 14:45:54,571 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2045747221' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2045747221'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:54,571 - root - INFO - Processing match Daniel Altmaier vs Jaume Antoni Munar Clar
+2025-04-19 14:45:54,571 - root - INFO - Fetching match statistics for tournament 20333, players 29732 vs 31358
+2025-04-19 14:45:54,574 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896552' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896552'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:54,574 - root - INFO - Processing match Lorenzo Giustino vs Giovanni Fonio
+2025-04-19 14:45:54,574 - root - INFO - Fetching match statistics for tournament 20598, players 11981 vs 38107
+2025-04-19 14:45:56,002 - root - INFO - Successfully fetched statistics for match 2140896552
+2025-04-19 14:45:56,002 - root - INFO - Match winner: Lorenzo Giustino (ID: 11981), loser: Giovanni Fonio (ID: 38107)
+2025-04-19 14:45:56,016 - root - INFO - Successfully fetched statistics for match 2140896540
+2025-04-19 14:45:56,017 - root - INFO - Match winner: Alafia Ayeni (ID: 46474), loser: Alvin Nicholas Tudorica (ID: 64258)
+2025-04-19 14:45:56,022 - root - INFO - Successfully fetched statistics for match 2045747221
+2025-04-19 14:45:56,022 - root - INFO - Match winner: Daniel Altmaier (ID: 29732), loser: Jaume Antoni Munar Clar (ID: 31358)
+2025-04-19 14:45:56,383 - root - INFO - Player Lorenzo Giustino already exists in database
+2025-04-19 14:45:56,394 - root - INFO - Player Alafia Ayeni already exists in database
+2025-04-19 14:45:56,403 - root - INFO - Player Daniel Altmaier already exists in database
+2025-04-19 14:45:56,761 - root - INFO - Player Giovanni Fonio already exists in database
+2025-04-19 14:45:56,771 - root - INFO - Player Alvin Nicholas Tudorica already exists in database
+2025-04-19 14:45:56,781 - root - INFO - Player Jaume Antoni Munar Clar already exists in database
+2025-04-19 14:45:57,141 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896552', 'tournament_id': '20598', 'winner_id': 11981, 'loser_id': 38107, 'winner_name': 'Lorenzo Giustino', 'loser_name': 'Giovanni Fonio', 'score': '6-3 6-4', 'match_date': '2025-04-06T12:05:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 5, 'winner_double_faults': 2, 'loser_aces': 3, 'loser_double_faults': 3, 'winner_hand': 'R', 'winner_height_cm': 180.0, 'winner_country_code': 'ITA', 'loser_hand': 'R', 'loser_height_cm': 183.0, 'loser_country_code': 'ITA'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,141 - root - WARNING - Failed to insert data for match 2140896552
+2025-04-19 14:45:57,150 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896540', 'tournament_id': '20597', 'winner_id': 46474, 'loser_id': 64258, 'winner_name': 'Alafia Ayeni', 'loser_name': 'Alvin Nicholas Tudorica', 'score': '6-3 6-3', 'match_date': '2025-04-06T19:05:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Mexico City Challenger', 'winner_aces': 8, 'winner_double_faults': 6, 'loser_aces': 0, 'loser_double_faults': 10, 'winner_hand': 'R', 'winner_height_cm': 191.0, 'winner_country_code': 'USA', 'loser_country_code': 'CAN'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,151 - root - WARNING - Failed to insert data for match 2140896540
+2025-04-19 14:45:57,158 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2045747221', 'tournament_id': '20333', 'winner_id': 29732, 'loser_id': 31358, 'winner_name': 'Daniel Altmaier', 'loser_name': 'Jaume Antoni Munar Clar', 'score': '7-5 3-6 7-5', 'match_date': '2025-04-05T12:00:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 7, 'winner_double_faults': 6, 'loser_aces': 0, 'loser_double_faults': 2, 'winner_hand': 'R', 'winner_height_cm': 191.0, 'winner_country_code': 'GER', 'loser_hand': 'R', 'loser_height_cm': 183.0, 'loser_country_code': 'ESP'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,158 - root - WARNING - Failed to insert data for match 2045747221
+2025-04-19 14:45:57,516 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896555'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896555'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,528 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896543'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896543'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,535 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2045747223'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2045747223'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,895 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896555' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896555'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,896 - root - INFO - Processing match Javier Barranco Cosano vs John Echeverria
+2025-04-19 14:45:57,896 - root - INFO - Fetching match statistics for tournament 20598, players 38273 vs 57038
+2025-04-19 14:45:57,907 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896543' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896543'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,907 - root - INFO - Processing match Juan Carlos Manuel Aguilar vs Rafael De Alba
+2025-04-19 14:45:57,907 - root - INFO - Fetching match statistics for tournament 20597, players 46749 vs 84558
+2025-04-19 14:45:57,913 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2045747223' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2045747223'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:45:57,913 - root - INFO - Processing match Corentin Moutet vs Gabriel Diallo
+2025-04-19 14:45:57,913 - root - INFO - Fetching match statistics for tournament 20333, players 36263 vs 68627
+2025-04-19 14:45:59,341 - root - INFO - Successfully fetched statistics for match 2140896555
+2025-04-19 14:45:59,341 - root - INFO - Successfully fetched statistics for match 2045747223
+2025-04-19 14:45:59,341 - root - INFO - Match winner: Javier Barranco Cosano (ID: 38273), loser: John Echeverria (ID: 57038)
+2025-04-19 14:45:59,341 - root - INFO - Match winner: Corentin Moutet (ID: 36263), loser: Gabriel Diallo (ID: 68627)
+2025-04-19 14:45:59,353 - root - INFO - Successfully fetched statistics for match 2140896543
+2025-04-19 14:45:59,353 - root - INFO - Match winner: Juan Carlos Manuel Aguilar (ID: 46749), loser: Rafael De Alba (ID: 84558)
+2025-04-19 14:45:59,723 - root - INFO - Player Corentin Moutet already exists in database
+2025-04-19 14:45:59,731 - root - INFO - Player Javier Barranco Cosano already exists in database
+2025-04-19 14:45:59,734 - root - INFO - Player Juan Carlos Manuel Aguilar already exists in database
+2025-04-19 14:46:00,101 - root - INFO - Player Gabriel Diallo already exists in database
+2025-04-19 14:46:00,108 - root - INFO - Player John Echeverria already exists in database
+2025-04-19 14:46:00,110 - root - INFO - Player Rafael De Alba already exists in database
+2025-04-19 14:46:00,111 - root - INFO - Updating player Rafael De Alba with new ID: 84558
+2025-04-19 14:46:00,535 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2045747223', 'tournament_id': '20333', 'winner_id': 36263, 'loser_id': 68627, 'winner_name': 'Corentin Moutet', 'loser_name': 'Gabriel Diallo', 'score': '5-7 6-4 6-4', 'match_date': '2025-04-05T12:00:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 2, 'winner_double_faults': 2, 'loser_aces': 2, 'loser_double_faults': 2, 'winner_hand': 'L', 'winner_height_cm': 175.0, 'winner_country_code': 'FRA', 'loser_country_code': 'CAN'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:00,535 - root - WARNING - Failed to insert data for match 2045747223
+2025-04-19 14:46:00,542 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896555', 'tournament_id': '20598', 'winner_id': 38273, 'loser_id': 57038, 'winner_name': 'Javier Barranco Cosano', 'loser_name': 'John Echeverria', 'score': '7-5 6-3', 'match_date': '2025-04-06T12:05:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 1, 'winner_double_faults': 3, 'loser_aces': 4, 'loser_double_faults': 2, 'winner_hand': 'L', 'winner_height_cm': 175.0, 'winner_country_code': 'ESP', 'loser_country_code': 'ESP'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:00,542 - root - ERROR - Error in get_or_create_player: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "players_pkey"
+DETAIL:  Key (id)=(84558) already exists.
+
+[SQL: 
+                        UPDATE players
+                        SET id = %(player_id)s, 
+                            last_updated = CURRENT_TIMESTAMP
+                        WHERE name = %(name)s
+                    ]
+[parameters: {'player_id': 84558, 'name': 'Rafael De Alba'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-04-19 14:46:00,542 - root - WARNING - Failed to insert data for match 2140896555
+2025-04-19 14:46:00,543 - root - WARNING - Missing player data for match 2140896543, skipping database insert
+2025-04-19 14:46:00,926 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2059930886'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2059930886'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:00,927 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896547'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896547'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:00,930 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896534'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896534'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:01,305 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2059930886' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2059930886'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:01,305 - root - INFO - Processing match Pierre-Hugues Herbert vs Aleksandar Vukic
+2025-04-19 14:46:01,305 - root - INFO - Fetching match statistics for tournament 20333, players 14727 vs 28267
+2025-04-19 14:46:01,308 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896547' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896547'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:01,308 - root - INFO - Processing match Jakub Paul vs Nikoloz Basilashvili
+2025-04-19 14:46:01,308 - root - INFO - Fetching match statistics for tournament 20598, players 50504 vs 14716
+2025-04-19 14:46:01,311 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896534' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896534'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:01,311 - root - INFO - Processing match Neil Oberleitner vs Patricio Betancourt
+2025-04-19 14:46:01,311 - root - INFO - Fetching match statistics for tournament 20597, players 55634 vs 42138
+2025-04-19 14:46:02,761 - root - INFO - Successfully fetched statistics for match 2140896547
+2025-04-19 14:46:02,761 - root - INFO - Match winner: Jakub Paul (ID: 50504), loser: Nikoloz Basilashvili (ID: 14716)
+2025-04-19 14:46:02,764 - root - INFO - Successfully fetched statistics for match 2140896534
+2025-04-19 14:46:02,764 - root - INFO - Match winner: Neil Oberleitner (ID: 55634), loser: Patricio Betancourt (ID: 42138)
+2025-04-19 14:46:02,788 - root - INFO - Successfully fetched statistics for match 2059930886
+2025-04-19 14:46:02,788 - root - INFO - Match winner: Pierre-Hugues Herbert (ID: 14727), loser: Aleksandar Vukic (ID: 28267)
+2025-04-19 14:46:03,142 - root - INFO - Player Jakub Paul already exists in database
+2025-04-19 14:46:03,146 - root - INFO - Player Neil Oberleitner already exists in database
+2025-04-19 14:46:03,166 - root - INFO - Player Pierre-Hugues Herbert already exists in database
+2025-04-19 14:46:03,520 - root - INFO - Player Nikoloz Basilashvili already exists in database
+2025-04-19 14:46:03,522 - root - INFO - Player Patricio Betancourt already exists in database
+2025-04-19 14:46:03,543 - root - INFO - Player Aleksandar Vukic already exists in database
+2025-04-19 14:46:03,898 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896547', 'tournament_id': '20598', 'winner_id': 50504, 'loser_id': 14716, 'winner_name': 'Jakub Paul', 'loser_name': 'Nikoloz Basilashvili', 'score': '4-6 6-1 6-2', 'match_date': '2025-04-06T13:30:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 2, 'winner_double_faults': 3, 'loser_aces': 5, 'loser_double_faults': 5, 'winner_hand': 'R', 'winner_height_cm': 180.0, 'winner_country_code': 'SUI', 'loser_hand': 'R', 'loser_height_cm': 185.0, 'loser_country_code': 'GEO'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:03,898 - root - WARNING - Failed to insert data for match 2140896547
+2025-04-19 14:46:03,901 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896534', 'tournament_id': '20597', 'winner_id': 55634, 'loser_id': 42138, 'winner_name': 'Neil Oberleitner', 'loser_name': 'Patricio Betancourt', 'score': '6-3 6-2', 'match_date': '2025-04-06T20:30:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Mexico City Challenger', 'winner_aces': 6, 'winner_double_faults': 3, 'loser_aces': 2, 'loser_double_faults': 3, 'winner_hand': 'R', 'winner_height_cm': 193.0, 'winner_country_code': 'AUT', 'loser_hand': 'R', 'loser_country_code': 'MEX'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:03,901 - root - WARNING - Failed to insert data for match 2140896534
+2025-04-19 14:46:03,921 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2059930886', 'tournament_id': '20333', 'winner_id': 14727, 'loser_id': 28267, 'winner_name': 'Pierre-Hugues Herbert', 'loser_name': 'Aleksandar Vukic', 'score': '4-6 6-2 6-3', 'match_date': '2025-04-05T13:30:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 3, 'winner_double_faults': 4, 'loser_aces': 6, 'loser_double_faults': 3, 'winner_hand': 'R', 'winner_height_cm': 188.0, 'winner_country_code': 'FRA', 'loser_hand': 'R', 'loser_height_cm': 188.0, 'loser_country_code': 'AUS'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:03,921 - root - WARNING - Failed to insert data for match 2059930886
+2025-04-19 14:46:04,277 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896556'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896556'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:04,280 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896538'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896538'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:04,299 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2072824883'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2072824883'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:04,661 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896538' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896538'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:04,661 - root - INFO - Processing match Maximilian Neuchrist vs Kousuke Ogura
+2025-04-19 14:46:04,661 - root - INFO - Fetching match statistics for tournament 20597, players 16998 vs 51086
+2025-04-19 14:46:04,662 - root - INFO - Made 20 API requests so far
+2025-04-19 14:46:04,664 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896556' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896556'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:04,664 - root - INFO - Processing match Alex Marti Pujolras vs Abedallah Shelbayh
+2025-04-19 14:46:04,664 - root - INFO - Fetching match statistics for tournament 20598, players 51846 vs 76009
+2025-04-19 14:46:04,680 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2072824883' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2072824883'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:04,680 - root - INFO - Processing match Arthur Rinderknech vs Luca Nardi
+2025-04-19 14:46:04,680 - root - INFO - Fetching match statistics for tournament 20333, players 28170 vs 71221
+2025-04-19 14:46:06,110 - root - INFO - Successfully fetched statistics for match 2072824883
+2025-04-19 14:46:06,110 - root - INFO - Match winner: Arthur Rinderknech (ID: 28170), loser: Luca Nardi (ID: 71221)
+2025-04-19 14:46:06,118 - root - INFO - Successfully fetched statistics for match 2140896538
+2025-04-19 14:46:06,118 - root - INFO - Match winner: Maximilian Neuchrist (ID: 16998), loser: Kousuke Ogura (ID: 51086)
+2025-04-19 14:46:06,120 - root - INFO - Successfully fetched statistics for match 2140896556
+2025-04-19 14:46:06,120 - root - INFO - Match winner: Alex Marti Pujolras (ID: 51846), loser: Abedallah Shelbayh (ID: 76009)
+2025-04-19 14:46:06,489 - root - INFO - Player Arthur Rinderknech already exists in database
+2025-04-19 14:46:06,497 - root - INFO - Player Maximilian Neuchrist already exists in database
+2025-04-19 14:46:06,503 - root - INFO - Player Alex Marti Pujolras already exists in database
+2025-04-19 14:46:06,867 - root - INFO - Player Luca Nardi already exists in database
+2025-04-19 14:46:06,873 - root - INFO - Player Kousuke Ogura already exists in database
+2025-04-19 14:46:06,879 - root - INFO - Player Abedallah Shelbayh already exists in database
+2025-04-19 14:46:07,245 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2072824883', 'tournament_id': '20333', 'winner_id': 28170, 'loser_id': 71221, 'winner_name': 'Arthur Rinderknech', 'loser_name': 'Luca Nardi', 'score': '6-4 6-4', 'match_date': '2025-04-05T13:30:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 2, 'winner_double_faults': 0, 'loser_aces': 1, 'loser_double_faults': 5, 'winner_hand': 'R', 'winner_height_cm': 196.0, 'winner_country_code': 'FRA', 'loser_country_code': 'ITA'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:07,245 - root - WARNING - Failed to insert data for match 2072824883
+2025-04-19 14:46:07,251 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896538', 'tournament_id': '20597', 'winner_id': 16998, 'loser_id': 51086, 'winner_name': 'Maximilian Neuchrist', 'loser_name': 'Kousuke Ogura', 'score': '6-3 6-0', 'match_date': '2025-04-06T20:45:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Mexico City Challenger', 'winner_aces': 5, 'winner_double_faults': 3, 'loser_aces': 0, 'loser_double_faults': 1, 'winner_hand': 'R', 'winner_country_code': 'AUT', 'loser_hand': 'R', 'loser_height_cm': 170.0, 'loser_country_code': 'JPN'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:07,251 - root - WARNING - Failed to insert data for match 2140896538
+2025-04-19 14:46:07,257 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896556', 'tournament_id': '20598', 'winner_id': 51846, 'loser_id': 76009, 'winner_name': 'Alex Marti Pujolras', 'loser_name': 'Abedallah Shelbayh', 'score': '7-5 6-4', 'match_date': '2025-04-06T13:40:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 1, 'winner_double_faults': 7, 'loser_aces': 3, 'loser_double_faults': 3, 'winner_country_code': 'ESP', 'loser_country_code': 'JOR'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:07,257 - root - WARNING - Failed to insert data for match 2140896556
+2025-04-19 14:46:07,625 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2084429558'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2084429558'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:07,630 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896544'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896544'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:07,635 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896551'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896551'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:08,004 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2084429558' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2084429558'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:08,004 - root - INFO - Processing match David Goffin vs Yannick Hanfmann
+2025-04-19 14:46:08,004 - root - INFO - Fetching match statistics for tournament 20333, players 11226 vs 14856
+2025-04-19 14:46:08,010 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896544' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896544'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:08,010 - root - INFO - Processing match Elmar Ejupovic vs Bor Artnak
+2025-04-19 14:46:08,010 - root - INFO - Fetching match statistics for tournament 20597, players 20702 vs 87865
+2025-04-19 14:46:08,014 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896551' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896551'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:08,014 - root - INFO - Processing match Zsombor Piros vs Sergi Perez Contri
+2025-04-19 14:46:08,014 - root - INFO - Fetching match statistics for tournament 20598, players 47021 vs 32910
+2025-04-19 14:46:09,465 - root - INFO - Successfully fetched statistics for match 2140896551
+2025-04-19 14:46:09,465 - root - INFO - Successfully fetched statistics for match 2084429558
+2025-04-19 14:46:09,465 - root - INFO - Match winner: Zsombor Piros (ID: 47021), loser: Sergi Perez Contri (ID: 32910)
+2025-04-19 14:46:09,465 - root - INFO - Match winner: David Goffin (ID: 11226), loser: Yannick Hanfmann (ID: 14856)
+2025-04-19 14:46:09,474 - root - INFO - Successfully fetched statistics for match 2140896544
+2025-04-19 14:46:09,474 - root - INFO - Match winner: Elmar Ejupovic (ID: 20702), loser: Bor Artnak (ID: 87865)
+2025-04-19 14:46:09,847 - root - INFO - Player Zsombor Piros already exists in database
+2025-04-19 14:46:09,848 - root - INFO - Player David Goffin already exists in database
+2025-04-19 14:46:09,855 - root - INFO - Player Elmar Ejupovic already exists in database
+2025-04-19 14:46:10,229 - root - INFO - Player Sergi Perez Contri already exists in database
+2025-04-19 14:46:10,231 - root - INFO - Player Yannick Hanfmann already exists in database
+2025-04-19 14:46:10,232 - root - INFO - Player Bor Artnak already exists in database
+2025-04-19 14:46:10,610 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2084429558', 'tournament_id': '20333', 'winner_id': 11226, 'loser_id': 14856, 'winner_name': 'David Goffin', 'loser_name': 'Yannick Hanfmann', 'score': '7-5 4-6 6-4', 'match_date': '2025-04-05T13:30:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 6, 'winner_double_faults': 7, 'loser_aces': 2, 'loser_double_faults': 2, 'winner_hand': 'R', 'winner_height_cm': 180.0, 'winner_country_code': 'BEL', 'loser_hand': 'R', 'loser_height_cm': 193.0, 'loser_country_code': 'GER'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:10,610 - root - WARNING - Failed to insert data for match 2084429558
+2025-04-19 14:46:10,613 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896551', 'tournament_id': '20598', 'winner_id': 47021, 'loser_id': 32910, 'winner_name': 'Zsombor Piros', 'loser_name': 'Sergi Perez Contri', 'score': '6-3 5-7 6-1', 'match_date': '2025-04-06T14:20:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 4, 'winner_double_faults': 3, 'loser_aces': 0, 'loser_double_faults': 3, 'winner_hand': 'R', 'winner_height_cm': 180.0, 'winner_country_code': 'HUN', 'loser_country_code': 'ESP'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:10,613 - root - WARNING - Failed to insert data for match 2140896551
+2025-04-19 14:46:10,616 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896544', 'tournament_id': '20597', 'winner_id': 20702, 'loser_id': 87865, 'winner_name': 'Elmar Ejupovic', 'loser_name': 'Bor Artnak', 'score': '6-2 6-4', 'match_date': '2025-04-06T21:30:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Mexico City Challenger', 'winner_aces': 3, 'winner_double_faults': 4, 'loser_aces': 0, 'loser_double_faults': 2, 'winner_hand': 'R', 'winner_height_cm': 193.0, 'winner_country_code': 'GER', 'loser_country_code': 'SLO'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:10,616 - root - WARNING - Failed to insert data for match 2140896544
+2025-04-19 14:46:10,989 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2059930887'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2059930887'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:10,992 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896546'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896546'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:10,993 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896535'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896535'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:11,368 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2059930887' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2059930887'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:11,369 - root - INFO - Processing match Hamad Medjedovic vs Borna Gojo
+2025-04-19 14:46:11,369 - root - INFO - Fetching match statistics for tournament 20333, players 79060 vs 30550
+2025-04-19 14:46:11,370 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896546' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896546'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:11,370 - root - INFO - Processing match Bernabe Zapata Miralles vs Maxime Chazal
+2025-04-19 14:46:11,370 - root - INFO - Fetching match statistics for tournament 20598, players 29579 vs 13209
+2025-04-19 14:46:11,373 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896535' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896535'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:11,373 - root - INFO - Processing match Ryan Seggerman vs Alan Fernando Rubio Fierros
+2025-04-19 14:46:11,373 - root - INFO - Fetching match statistics for tournament 20597, players 56577 vs 43645
+2025-04-19 14:46:12,820 - root - INFO - Successfully fetched statistics for match 2140896535
+2025-04-19 14:46:12,820 - root - INFO - Match winner: Ryan Seggerman (ID: 56577), loser: Alan Fernando Rubio Fierros (ID: 43645)
+2025-04-19 14:46:12,823 - root - INFO - Successfully fetched statistics for match 2140896546
+2025-04-19 14:46:12,823 - root - INFO - Match winner: Bernabe Zapata Miralles (ID: 29579), loser: Maxime Chazal (ID: 13209)
+2025-04-19 14:46:12,833 - root - INFO - Successfully fetched statistics for match 2059930887
+2025-04-19 14:46:12,833 - root - INFO - Match winner: Hamad Medjedovic (ID: 79060), loser: Borna Gojo (ID: 30550)
+2025-04-19 14:46:13,201 - root - INFO - Player Ryan Seggerman already exists in database
+2025-04-19 14:46:13,205 - root - INFO - Player Bernabe Zapata Miralles already exists in database
+2025-04-19 14:46:13,212 - root - INFO - Player Hamad Medjedovic already exists in database
+2025-04-19 14:46:13,578 - root - INFO - Player Alan Fernando Rubio Fierros already exists in database
+2025-04-19 14:46:13,580 - root - INFO - Player Maxime Chazal already exists in database
+2025-04-19 14:46:13,587 - root - INFO - Player Borna Gojo already exists in database
+2025-04-19 14:46:13,956 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_country_code, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_country_code)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896535', 'tournament_id': '20597', 'winner_id': 56577, 'loser_id': 43645, 'winner_name': 'Ryan Seggerman', 'loser_name': 'Alan Fernando Rubio Fierros', 'score': '6-7(4) 6-4 6-4', 'match_date': '2025-04-06T22:00:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Mexico City Challenger', 'winner_aces': 11, 'winner_double_faults': 9, 'loser_aces': 6, 'loser_double_faults': 10, 'winner_country_code': 'USA', 'loser_country_code': 'MEX'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:13,957 - root - WARNING - Failed to insert data for match 2140896535
+2025-04-19 14:46:13,959 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_hand, winner_height_cm, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_hand)s, %(winner_height_cm)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2140896546', 'tournament_id': '20598', 'winner_id': 29579, 'loser_id': 13209, 'winner_name': 'Bernabe Zapata Miralles', 'loser_name': 'Maxime Chazal', 'score': '6-3 3-6 6-3', 'match_date': '2025-04-06T15:10:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Madrid Challenger', 'winner_aces': 1, 'winner_double_faults': 2, 'loser_aces': 0, 'loser_double_faults': 2, 'winner_hand': 'R', 'winner_height_cm': 183.0, 'winner_country_code': 'ESP', 'loser_hand': 'R', 'loser_height_cm': 175.0, 'loser_country_code': 'FRA'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:13,959 - root - WARNING - Failed to insert data for match 2140896546
+2025-04-19 14:46:13,964 - root - ERROR - Error inserting match data: (psycopg2.errors.UndefinedColumn) column "match_id" of relation "matches" does not exist
+LINE 2:                 INSERT INTO matches (match_id, tournament_id...
+                                             ^
+
+[SQL: 
+                INSERT INTO matches (match_id, tournament_id, winner_id, loser_id, winner_name, loser_name, score, match_date, best_of, surface, tournament_name, winner_aces, winner_double_faults, loser_aces, loser_double_faults, winner_country_code, loser_hand, loser_height_cm, loser_country_code)
+                VALUES (%(match_id)s, %(tournament_id)s, %(winner_id)s, %(loser_id)s, %(winner_name)s, %(loser_name)s, %(score)s, %(match_date)s, %(best_of)s, %(surface)s, %(tournament_name)s, %(winner_aces)s, %(winner_double_faults)s, %(loser_aces)s, %(loser_double_faults)s, %(winner_country_code)s, %(loser_hand)s, %(loser_height_cm)s, %(loser_country_code)s)
+                ON CONFLICT (match_id) DO UPDATE
+                SET tournament_name = %(tournament_name)s,
+                    updated_at = CURRENT_TIMESTAMP
+            ]
+[parameters: {'match_id': '2059930887', 'tournament_id': '20333', 'winner_id': 79060, 'loser_id': 30550, 'winner_name': 'Hamad Medjedovic', 'loser_name': 'Borna Gojo', 'score': '6-4 6-4', 'match_date': '2025-04-05T14:00:00.000Z', 'best_of': 3, 'surface': 'Unknown', 'tournament_name': 'Monte-Carlo Rolex Masters - Monte-Carlo', 'winner_aces': 3, 'winner_double_faults': 0, 'loser_aces': 8, 'loser_double_faults': 2, 'winner_country_code': 'SRB', 'loser_hand': 'R', 'loser_height_cm': 196.0, 'loser_country_code': 'CRO'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:13,964 - root - WARNING - Failed to insert data for match 2059930887
+2025-04-19 14:46:14,334 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896542'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896542'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:14,335 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896553'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896553'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:14,341 - root - ERROR - Error checking match in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2059930890'
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2059930890'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:14,713 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896542' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896542'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:14,713 - root - INFO - Processing match Kiranpal Pannu vs Max Wiskandt
+2025-04-19 14:46:14,713 - root - INFO - Fetching match statistics for tournament 20597, players 62722 vs 74151
+2025-04-19 14:46:14,716 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2140896553' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2140896553'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:14,716 - root - INFO - Processing match Ryan Nijboer vs Nicolas Alvarez Varona
+2025-04-19 14:46:14,716 - root - INFO - Fetching match statistics for tournament 20598, players 58606 vs 46748
+2025-04-19 14:46:14,720 - root - ERROR - Error checking match stats in database: (psycopg2.errors.UndefinedColumn) column "match_id" does not exist
+LINE 4:                 WHERE match_id = '2059930890' AND 
+                              ^
+HINT:  Perhaps you meant to reference the column "matches.match_num".
+
+[SQL: 
+                SELECT COUNT(*) as count
+                FROM matches 
+                WHERE match_id = %(match_id)s AND 
+                      (winner_aces IS NOT NULL OR loser_aces IS NOT NULL)
+                LIMIT 1
+            ]
+[parameters: {'match_id': '2059930890'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-04-19 14:46:14,720 - root - INFO - Processing match Mariano Navone vs Chun Hsin Tseng
+2025-04-19 14:46:14,720 - root - INFO - Fetching match statistics for tournament 20333, players 66828 vs 47557

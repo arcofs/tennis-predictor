@@ -1,0 +1,10 @@
+2025-04-19 13:30:56,159 - __main__ - INFO - Loaded 829271 matches for training
+2025-04-19 13:30:56,160 - __main__ - INFO - Using 60 features for training
+2025-04-19 13:30:57,474 - __main__ - INFO - Split data into train (580489), val (124391), test (124391) sets
+2025-04-19 13:31:02,917 - __main__ - ERROR - Error in training: float() argument must be a string or a real number, not 'Timestamp'
+2025-04-19 13:31:02,917 - __main__ - ERROR - Error in main function: float() argument must be a string or a real number, not 'Timestamp'
+2025-04-19 13:44:20,125 - __main__ - INFO - Loaded 829271 matches for training
+2025-04-19 13:44:20,128 - __main__ - INFO - Using 58 features for training
+2025-04-19 13:44:21,306 - __main__ - INFO - Split data into train (580489), val (124391), test (124391) sets
+2025-04-19 13:44:22,419 - __main__ - ERROR - Error in training: ('feature names must have the same length as the number of data columns, ', 'expected 61, got 58')
+2025-04-19 13:44:22,419 - __main__ - ERROR - Error in main function: ('feature names must have the same length as the number of data columns, ', 'expected 61, got 58')
