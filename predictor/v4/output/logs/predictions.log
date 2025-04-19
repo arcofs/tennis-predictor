@@ -1,0 +1,1135 @@
+2025-04-19 16:20:29,731 - __main__ - INFO - Loaded model version v4_20250419_155936 with 58 features
+2025-04-19 16:20:33,544 - __main__ - ERROR - Error making predictions: Execution failed on sql '
+            SELECT 
+                s.match_id,
+                s.tournament_id,
+                s.player1_id,
+                s.player2_id,
+                s.surface,
+                s.scheduled_date,
+                p1.elo as player1_elo,
+                p2.elo as player2_elo
+            FROM scheduled_matches s
+            LEFT JOIN player_elo p1 ON s.player1_id = p1.player_id
+            LEFT JOIN player_elo p2 ON s.player2_id = p2.player_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM match_predictions p
+                WHERE p.match_id = s.match_id
+                AND p.model_version = %s
+            )
+            AND s.scheduled_date >= CURRENT_DATE
+            AND s.scheduled_date <= CURRENT_DATE + INTERVAL '7 days'
+            ORDER BY s.scheduled_date ASC
+        ': relation "player_elo" does not exist
+LINE 12:             LEFT JOIN player_elo p1 ON s.player1_id = p1.pla...
+                               ^
+
+2025-04-19 16:20:33,545 - __main__ - ERROR - Error in main function: Execution failed on sql '
+            SELECT 
+                s.match_id,
+                s.tournament_id,
+                s.player1_id,
+                s.player2_id,
+                s.surface,
+                s.scheduled_date,
+                p1.elo as player1_elo,
+                p2.elo as player2_elo
+            FROM scheduled_matches s
+            LEFT JOIN player_elo p1 ON s.player1_id = p1.player_id
+            LEFT JOIN player_elo p2 ON s.player2_id = p2.player_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM match_predictions p
+                WHERE p.match_id = s.match_id
+                AND p.model_version = %s
+            )
+            AND s.scheduled_date >= CURRENT_DATE
+            AND s.scheduled_date <= CURRENT_DATE + INTERVAL '7 days'
+            ORDER BY s.scheduled_date ASC
+        ': relation "player_elo" does not exist
+LINE 12:             LEFT JOIN player_elo p1 ON s.player1_id = p1.pla...
+                               ^
+
+2025-04-19 16:24:40,783 - __main__ - INFO - Loaded model version v4_20250419_155936 with 58 features
+2025-04-19 16:24:51,445 - __main__ - INFO - Found 132 matches needing predictions
+2025-04-19 16:24:53,562 - __main__ - ERROR - Error making predictions: 'won'
+2025-04-19 16:24:53,563 - __main__ - ERROR - Error in main function: 'won'
+2025-04-19 16:26:05,902 - __main__ - INFO - Loaded model version v4_20250419_155936 with 58 features
+2025-04-19 16:26:16,247 - __main__ - INFO - Found 132 matches needing predictions
+2025-04-19 16:26:21,164 - __main__ - ERROR - Error making predictions: unsupported operand type(s) for -: 'NoneType' and 'NoneType'
+2025-04-19 16:26:21,164 - __main__ - ERROR - Error in main function: unsupported operand type(s) for -: 'NoneType' and 'NoneType'
+2025-04-19 16:37:15,277 - __main__ - INFO - Loaded model version v4_20250419_155936 with 58 features
+2025-04-19 16:37:25,983 - __main__ - INFO - Found 132 matches needing predictions
+2025-04-19 16:37:30,863 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:37:30,863 - __main__ - INFO - Player1 ELO: 1448.665360457634
+2025-04-19 16:37:30,863 - __main__ - INFO - Player2 ELO: 1489.1523327441769
+2025-04-19 16:37:30,863 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:37:30,863 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:37:30,864 - __main__ - ERROR - Error calculating features: unsupported operand type(s) for -: 'NoneType' and 'NoneType'
+2025-04-19 16:37:30,864 - __main__ - ERROR - Match data that caused error: {'match_id': '1448', 'tournament_id': '20603', 'player1_id': 11517, 'player2_id': 16998, 'surface': 'Clay', 'scheduled_date': Timestamp('2025-04-19 01:00:00'), 'player1_elo': 1448.665360457634, 'player2_elo': 1489.1523327441769}
+2025-04-19 16:37:30,864 - __main__ - ERROR - Error making predictions: unsupported operand type(s) for -: 'NoneType' and 'NoneType'
+2025-04-19 16:37:30,864 - __main__ - ERROR - Error in main function: unsupported operand type(s) for -: 'NoneType' and 'NoneType'
+2025-04-19 16:39:11,416 - __main__ - INFO - Loaded model version v4_20250419_155936 with 58 features
+2025-04-19 16:39:22,005 - __main__ - INFO - Found 132 matches needing predictions
+2025-04-19 16:39:26,946 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:39:26,946 - __main__ - INFO - Player1 ELO: 1448.665360457634
+2025-04-19 16:39:26,946 - __main__ - INFO - Player2 ELO: 1489.1523327441769
+2025-04-19 16:39:26,946 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:39:26,946 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:39:31,819 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:39:31,819 - __main__ - INFO - Player1 ELO: 1558.4080771631507
+2025-04-19 16:39:31,820 - __main__ - INFO - Player2 ELO: 1489.1523327441769
+2025-04-19 16:39:31,820 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:39:31,820 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:39:36,699 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:39:36,699 - __main__ - INFO - Player1 ELO: 1448.665360457634
+2025-04-19 16:39:36,699 - __main__ - INFO - Player2 ELO: 1526.9028233655945
+2025-04-19 16:39:36,699 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:39:36,699 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:39:41,552 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:39:41,552 - __main__ - INFO - Player1 ELO: 1558.4080771631507
+2025-04-19 16:39:41,552 - __main__ - INFO - Player2 ELO: 1526.9028233655945
+2025-04-19 16:39:41,552 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:39:41,552 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:39:46,496 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:39:46,497 - __main__ - INFO - Player1 ELO: 1488.1329814349106
+2025-04-19 16:39:46,497 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:39:46,497 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:39:46,497 - __main__ - INFO - Player2 stats: {'win_rate_5': 1.0, 'wins': 20, 'losses': 0, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:39:51,400 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:39:51,400 - __main__ - INFO - Player1 ELO: 1268.0977294923898
+2025-04-19 16:39:51,400 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:39:51,400 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:39:51,400 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:39:56,293 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:39:56,293 - __main__ - INFO - Player1 ELO: 1488.1329814349106
+2025-04-19 16:39:56,293 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:39:56,293 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:39:56,293 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:40:01,177 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:40:01,178 - __main__ - INFO - Player1 ELO: 1268.0977294923898
+2025-04-19 16:40:01,178 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:40:01,178 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:40:01,178 - __main__ - INFO - Player2 stats: {'win_rate_5': 1.0, 'wins': 20, 'losses': 0, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:40:06,148 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:40:06,148 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:06,148 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:06,148 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:40:06,148 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:40:11,016 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:40:11,016 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:11,016 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:11,016 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:40:11,016 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:40:15,925 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:40:15,925 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:15,925 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:15,925 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:40:15,925 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:40:20,887 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:40:20,888 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:20,888 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:20,888 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 4}
+2025-04-19 16:40:20,888 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:40:25,806 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:40:25,806 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:25,806 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:25,806 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:40:25,806 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:40:30,681 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:40:30,681 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:30,681 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:30,681 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 4}
+2025-04-19 16:40:30,681 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:40:35,610 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:40:35,611 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:35,611 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:35,611 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:40:35,611 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:40:40,520 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:40:40,520 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:40:40,520 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:40:40,520 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:40:40,520 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:40:45,446 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:40:45,446 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:40:45,446 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:40:45,446 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:40:45,446 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:40:50,321 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:40:50,321 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:40:50,321 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:40:50,321 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:40:50,321 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:40:55,232 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:40:55,232 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:40:55,232 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:40:55,232 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:40:55,232 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:00,133 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:41:00,133 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:41:00,133 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:41:00,133 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:41:00,133 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:05,115 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:41:05,115 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:41:05,115 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:41:05,115 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:41:05,116 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:10,038 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:41:10,038 - __main__ - INFO - Player1 ELO: 1552.1215871916886
+2025-04-19 16:41:10,038 - __main__ - INFO - Player2 ELO: 1421.1949433772206
+2025-04-19 16:41:10,038 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:10,038 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:14,997 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:41:14,997 - __main__ - INFO - Player1 ELO: 1552.1215871916886
+2025-04-19 16:41:14,997 - __main__ - INFO - Player2 ELO: 1465.5980403835824
+2025-04-19 16:41:14,997 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:41:14,998 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:19,909 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:41:19,909 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:41:19,909 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:41:19,909 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:19,909 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:24,822 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:41:24,822 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:41:24,822 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:41:24,822 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:24,822 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:29,769 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:41:29,769 - __main__ - INFO - Player1 ELO: 1539.217893591073
+2025-04-19 16:41:29,769 - __main__ - INFO - Player2 ELO: 1465.5980403835824
+2025-04-19 16:41:29,769 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:29,769 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:34,685 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:41:34,685 - __main__ - INFO - Player1 ELO: 1539.217893591073
+2025-04-19 16:41:34,685 - __main__ - INFO - Player2 ELO: 1421.1949433772206
+2025-04-19 16:41:34,685 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:41:34,685 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:41:39,534 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:41:39,534 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:41:39,534 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:41:39,534 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:39,534 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:44,422 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:41:44,422 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:41:44,422 - __main__ - INFO - Player2 ELO: 1568.5735727221493
+2025-04-19 16:41:44,422 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:41:44,423 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:49,273 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:41:49,273 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:41:49,273 - __main__ - INFO - Player2 ELO: 1568.5735727221493
+2025-04-19 16:41:49,273 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:49,274 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:54,130 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:41:54,130 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:41:54,130 - __main__ - INFO - Player2 ELO: 1539.0725015233925
+2025-04-19 16:41:54,130 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:41:54,130 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:41:58,972 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:41:58,972 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:41:58,972 - __main__ - INFO - Player2 ELO: 1539.0725015233925
+2025-04-19 16:41:58,972 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:41:58,972 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:42:03,845 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:42:03,845 - __main__ - INFO - Player1 ELO: 1631.8575372393782
+2025-04-19 16:42:03,845 - __main__ - INFO - Player2 ELO: 1569.264902443859
+2025-04-19 16:42:03,845 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:42:03,845 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:42:08,739 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:42:08,739 - __main__ - INFO - Player1 ELO: 1631.8575372393782
+2025-04-19 16:42:08,739 - __main__ - INFO - Player2 ELO: 1499.9448226682575
+2025-04-19 16:42:08,739 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:08,739 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:42:13,699 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:42:13,699 - __main__ - INFO - Player1 ELO: 1631.8591779977999
+2025-04-19 16:42:13,699 - __main__ - INFO - Player2 ELO: 1499.9448226682575
+2025-04-19 16:42:13,699 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:13,699 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:42:18,569 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:42:18,569 - __main__ - INFO - Player1 ELO: 1631.8591779977999
+2025-04-19 16:42:18,569 - __main__ - INFO - Player2 ELO: 1569.264902443859
+2025-04-19 16:42:18,569 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:42:18,569 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:42:23,467 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:42:23,467 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:42:23,467 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:23,467 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:23,467 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:42:28,334 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:42:28,334 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:42:28,334 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:28,334 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:28,334 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:42:33,160 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:42:33,160 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:42:33,160 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:33,160 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:33,160 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:42:38,049 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:42:38,049 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:42:38,050 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:38,050 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:38,050 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:42:42,929 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:42:42,929 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:42:42,929 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:42,929 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:42,929 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:47,852 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:42:47,852 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:42:47,852 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:47,852 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:47,852 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:42:52,701 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:42:52,701 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:42:52,701 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:52,701 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:52,701 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:42:57,586 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:42:57,586 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:42:57,586 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:42:57,586 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:42:57,586 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:43:02,406 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:43:02,406 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:43:02,406 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:43:02,406 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:02,406 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:07,278 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:43:07,278 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:43:07,278 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:43:07,278 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:07,278 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:43:12,237 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:43:12,237 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:43:12,237 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:43:12,237 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:12,237 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:17,156 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:43:17,156 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:43:17,157 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:43:17,157 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:17,157 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:22,116 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:43:22,116 - __main__ - INFO - Player1 ELO: 1594.1010199931716
+2025-04-19 16:43:22,116 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:43:22,116 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:22,116 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:43:27,018 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:43:27,018 - __main__ - INFO - Player1 ELO: 1536.6912329273364
+2025-04-19 16:43:27,018 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:43:27,018 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:43:27,018 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:43:31,951 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:43:31,951 - __main__ - INFO - Player1 ELO: 1536.6912329273364
+2025-04-19 16:43:31,952 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:43:31,952 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:31,952 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:43:36,836 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:43:36,837 - __main__ - INFO - Player1 ELO: 1594.1010199931716
+2025-04-19 16:43:36,837 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:43:36,837 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:43:36,837 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:43:41,751 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:43:41,751 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:43:41,751 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:43:41,751 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:41,751 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:43:46,658 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:43:46,659 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:43:46,659 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:43:46,659 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:46,659 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:43:51,577 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:43:51,577 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:43:51,577 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:43:51,577 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:51,577 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:43:56,449 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:43:56,450 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:43:56,450 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:43:56,450 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:43:56,450 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:01,356 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:44:01,356 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:44:01,356 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:44:01,356 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:01,356 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:44:06,279 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:44:06,279 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:44:06,279 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:44:06,279 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:44:06,279 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:44:11,272 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:44:11,273 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:44:11,273 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:44:11,273 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:44:11,273 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:44:16,328 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:44:16,329 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:44:16,329 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:44:16,329 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:44:16,329 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:44:21,374 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:44:21,374 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:44:21,374 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:44:21,374 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:44:21,374 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:44:26,232 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:44:26,232 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:44:26,232 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:44:26,232 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:26,233 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:44:31,170 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:44:31,171 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:44:31,171 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:44:31,171 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:31,171 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:44:36,079 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:44:36,079 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:44:36,079 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:44:36,079 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:36,079 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:44:40,948 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:44:40,949 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:44:40,949 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:44:40,949 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:40,949 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:44:45,838 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:44:45,838 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:44:45,838 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:44:45,839 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:44:45,839 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:44:50,688 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:44:50,688 - __main__ - INFO - Player1 ELO: 1631.3514077781888
+2025-04-19 16:44:50,688 - __main__ - INFO - Player2 ELO: 1560.6487952114933
+2025-04-19 16:44:50,689 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:44:50,689 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:44:55,571 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:44:55,571 - __main__ - INFO - Player1 ELO: 1631.3514077781888
+2025-04-19 16:44:55,571 - __main__ - INFO - Player2 ELO: 1547.7409499946143
+2025-04-19 16:44:55,572 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 8, 'loss_streak': 0}
+2025-04-19 16:44:55,572 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:45:00,469 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:45:00,469 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:45:00,469 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:45:00,469 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:45:00,469 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:45:05,310 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:45:05,310 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:45:05,310 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:45:05,310 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:45:05,311 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:45:10,206 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:45:10,206 - __main__ - INFO - Player1 ELO: 1509.3060885944283
+2025-04-19 16:45:10,206 - __main__ - INFO - Player2 ELO: 1560.6487952114933
+2025-04-19 16:45:10,207 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:45:10,207 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:15,044 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:45:15,044 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:45:15,045 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:45:15,045 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:45:15,045 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:45:19,948 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:45:19,948 - __main__ - INFO - Player1 ELO: 1509.3060885944283
+2025-04-19 16:45:19,948 - __main__ - INFO - Player2 ELO: 1547.7409499946143
+2025-04-19 16:45:19,949 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:45:19,949 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:24,819 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:45:24,820 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:45:24,820 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:45:24,820 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:45:24,820 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:29,698 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:45:29,698 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:45:29,699 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:45:29,699 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:29,699 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:45:34,571 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:45:34,571 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:45:34,571 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:45:34,571 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:34,571 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:45:39,468 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:45:39,468 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:45:39,468 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:45:39,468 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:45:39,468 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:44,292 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:45:44,292 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:45:44,293 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:45:44,293 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:45:44,293 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:49,160 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:45:49,161 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:45:49,161 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:45:49,161 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:45:49,161 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:45:54,041 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:45:54,042 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:45:54,042 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:45:54,042 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:45:54,042 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:47:23,330 - __main__ - INFO - Loaded model version v4_20250419_155936 with 58 features
+2025-04-19 16:47:33,781 - __main__ - INFO - Found 132 matches needing predictions
+2025-04-19 16:47:38,652 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:47:38,652 - __main__ - INFO - Player1 ELO: 1448.665360457634
+2025-04-19 16:47:38,652 - __main__ - INFO - Player2 ELO: 1489.1523327441769
+2025-04-19 16:47:38,652 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:38,652 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:43,566 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:47:43,566 - __main__ - INFO - Player1 ELO: 1558.4080771631507
+2025-04-19 16:47:43,566 - __main__ - INFO - Player2 ELO: 1489.1523327441769
+2025-04-19 16:47:43,566 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:43,566 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:48,454 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:47:48,454 - __main__ - INFO - Player1 ELO: 1448.665360457634
+2025-04-19 16:47:48,454 - __main__ - INFO - Player2 ELO: 1526.9028233655945
+2025-04-19 16:47:48,454 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:48,454 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:53,451 - __main__ - INFO - Match data for match_id 1448:
+2025-04-19 16:47:53,452 - __main__ - INFO - Player1 ELO: 1558.4080771631507
+2025-04-19 16:47:53,452 - __main__ - INFO - Player2 ELO: 1526.9028233655945
+2025-04-19 16:47:53,452 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:47:53,452 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:47:58,419 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:47:58,419 - __main__ - INFO - Player1 ELO: 1488.1329814349106
+2025-04-19 16:47:58,419 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:47:58,419 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:47:58,419 - __main__ - INFO - Player2 stats: {'win_rate_5': 1.0, 'wins': 20, 'losses': 0, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:48:03,315 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:48:03,315 - __main__ - INFO - Player1 ELO: 1268.0977294923898
+2025-04-19 16:48:03,315 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:48:03,315 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:48:03,315 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:48:08,333 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:48:08,334 - __main__ - INFO - Player1 ELO: 1488.1329814349106
+2025-04-19 16:48:08,334 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:48:08,334 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:48:08,334 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:48:13,232 - __main__ - INFO - Match data for match_id 1519:
+2025-04-19 16:48:13,232 - __main__ - INFO - Player1 ELO: 1268.0977294923898
+2025-04-19 16:48:13,232 - __main__ - INFO - Player2 ELO: 1731.9022705076102
+2025-04-19 16:48:13,232 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.2727272727272727, 'wins': 3, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:48:13,232 - __main__ - INFO - Player2 stats: {'win_rate_5': 1.0, 'wins': 20, 'losses': 0, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 20, 'loss_streak': 0}
+2025-04-19 16:48:18,114 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:48:18,115 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:18,115 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:18,115 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:18,115 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:48:23,038 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:48:23,038 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:23,038 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:23,038 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:23,038 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:48:27,928 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:48:27,928 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:27,928 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:27,928 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:27,928 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:48:32,837 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:48:32,837 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:32,837 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:32,837 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:32,837 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:48:37,672 - __main__ - INFO - Match data for match_id 1491:
+2025-04-19 16:48:37,672 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:37,672 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:37,672 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:37,672 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:48:42,524 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:48:42,524 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:42,524 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:42,524 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:42,524 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:48:47,407 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:48:47,407 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:47,407 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:47,407 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:47,407 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:48:52,319 - __main__ - INFO - Match data for match_id 1489:
+2025-04-19 16:48:52,320 - __main__ - INFO - Player1 ELO: 1483.261808886852
+2025-04-19 16:48:52,320 - __main__ - INFO - Player2 ELO: 1544.3184968076494
+2025-04-19 16:48:52,320 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:48:52,320 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:48:57,263 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:48:57,263 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:48:57,263 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:48:57,263 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:48:57,263 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:02,145 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:49:02,145 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:49:02,145 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:02,145 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:49:02,145 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:07,133 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:49:07,133 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:49:07,133 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:07,133 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:49:07,133 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:11,993 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:49:11,993 - __main__ - INFO - Player1 ELO: 1499.4875004322269
+2025-04-19 16:49:11,993 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:11,993 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:49:11,993 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:16,890 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:49:16,890 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:49:16,890 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:16,890 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:49:16,890 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:49:21,755 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:49:21,755 - __main__ - INFO - Player1 ELO: 1552.1215871916886
+2025-04-19 16:49:21,755 - __main__ - INFO - Player2 ELO: 1421.1949433772206
+2025-04-19 16:49:21,755 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:21,755 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:26,673 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:49:26,673 - __main__ - INFO - Player1 ELO: 1552.1215871916886
+2025-04-19 16:49:26,673 - __main__ - INFO - Player2 ELO: 1465.5980403835824
+2025-04-19 16:49:26,673 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:26,673 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:31,974 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:49:31,974 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:49:31,975 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:31,975 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:31,975 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:37,755 - __main__ - INFO - Match data for match_id 1464:
+2025-04-19 16:49:37,755 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:49:37,755 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:37,755 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:37,755 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:49:42,730 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:49:42,730 - __main__ - INFO - Player1 ELO: 1539.217893591073
+2025-04-19 16:49:42,730 - __main__ - INFO - Player2 ELO: 1465.5980403835824
+2025-04-19 16:49:42,730 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:42,730 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:47,589 - __main__ - INFO - Match data for match_id 1344:
+2025-04-19 16:49:47,590 - __main__ - INFO - Player1 ELO: 1539.217893591073
+2025-04-19 16:49:47,590 - __main__ - INFO - Player2 ELO: 1421.1949433772206
+2025-04-19 16:49:47,590 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:47,590 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:52,406 - __main__ - INFO - Match data for match_id 1466:
+2025-04-19 16:49:52,406 - __main__ - INFO - Player1 ELO: 1581.2255011589386
+2025-04-19 16:49:52,406 - __main__ - INFO - Player2 ELO: 1521.1456172646122
+2025-04-19 16:49:52,406 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:49:52,406 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:49:57,265 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:49:57,266 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:49:57,266 - __main__ - INFO - Player2 ELO: 1568.5735727221493
+2025-04-19 16:49:57,266 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:49:57,266 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:02,146 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:50:02,146 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:50:02,146 - __main__ - INFO - Player2 ELO: 1568.5735727221493
+2025-04-19 16:50:02,146 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:02,146 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:07,098 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:50:07,098 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:50:07,098 - __main__ - INFO - Player2 ELO: 1539.0725015233925
+2025-04-19 16:50:07,099 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:07,099 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:50:12,029 - __main__ - INFO - Match data for match_id 2099:
+2025-04-19 16:50:12,029 - __main__ - INFO - Player1 ELO: 1561.2993509687217
+2025-04-19 16:50:12,029 - __main__ - INFO - Player2 ELO: 1539.0725015233925
+2025-04-19 16:50:12,029 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:12,029 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:50:16,879 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:50:16,879 - __main__ - INFO - Player1 ELO: 1631.8575372393782
+2025-04-19 16:50:16,879 - __main__ - INFO - Player2 ELO: 1569.264902443859
+2025-04-19 16:50:16,879 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:16,879 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:21,779 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:50:21,779 - __main__ - INFO - Player1 ELO: 1631.8575372393782
+2025-04-19 16:50:21,779 - __main__ - INFO - Player2 ELO: 1499.9448226682575
+2025-04-19 16:50:21,779 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:21,779 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:27,233 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:50:27,233 - __main__ - INFO - Player1 ELO: 1631.8591779977999
+2025-04-19 16:50:27,233 - __main__ - INFO - Player2 ELO: 1499.9448226682575
+2025-04-19 16:50:27,233 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:27,233 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:32,107 - __main__ - INFO - Match data for match_id 2062:
+2025-04-19 16:50:32,107 - __main__ - INFO - Player1 ELO: 1631.8591779977999
+2025-04-19 16:50:32,107 - __main__ - INFO - Player2 ELO: 1569.264902443859
+2025-04-19 16:50:32,107 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:32,107 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:50:36,960 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:50:36,960 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:50:36,960 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:50:36,960 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:36,960 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:50:41,849 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:50:41,849 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:50:41,849 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:50:41,849 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:41,849 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:50:46,797 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:50:46,797 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:50:46,797 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:50:46,797 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:46,797 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:50:51,685 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:50:51,685 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:50:51,685 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:50:51,685 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:51,685 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:50:56,618 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:50:56,618 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:50:56,618 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:50:56,618 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:50:56,618 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:51:01,521 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:51:01,521 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:51:01,521 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:51:01,521 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:01,521 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:51:06,473 - __main__ - INFO - Match data for match_id 1345:
+2025-04-19 16:51:06,473 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:51:06,473 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:51:06,473 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:06,473 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 12, 'loss_streak': 0}
+2025-04-19 16:51:11,356 - __main__ - INFO - Match data for match_id 1347:
+2025-04-19 16:51:11,356 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:51:11,356 - __main__ - INFO - Player2 ELO: 1490.4177311411459
+2025-04-19 16:51:11,356 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:11,357 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:16,244 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:51:16,245 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:51:16,245 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:51:16,245 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:16,245 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:21,143 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:51:21,143 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:51:21,143 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:51:21,144 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:21,144 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:26,051 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:51:26,051 - __main__ - INFO - Player1 ELO: 1555.6356728838914
+2025-04-19 16:51:26,051 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:51:26,051 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:26,051 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:30,916 - __main__ - INFO - Match data for match_id 1346:
+2025-04-19 16:51:30,916 - __main__ - INFO - Player1 ELO: 1545.706081526544
+2025-04-19 16:51:30,917 - __main__ - INFO - Player2 ELO: 1508.8053812132055
+2025-04-19 16:51:30,917 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:30,917 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:35,802 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:51:35,802 - __main__ - INFO - Player1 ELO: 1594.1010199931716
+2025-04-19 16:51:35,802 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:51:35,802 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:35,802 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:51:40,651 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:51:40,652 - __main__ - INFO - Player1 ELO: 1536.6912329273364
+2025-04-19 16:51:40,652 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:51:40,652 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:51:40,652 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:45,570 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:51:45,571 - __main__ - INFO - Player1 ELO: 1536.6912329273364
+2025-04-19 16:51:45,571 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:51:45,571 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:45,571 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:51:50,540 - __main__ - INFO - Match data for match_id 1852:
+2025-04-19 16:51:50,541 - __main__ - INFO - Player1 ELO: 1594.1010199931716
+2025-04-19 16:51:50,541 - __main__ - INFO - Player2 ELO: 1536.103380359553
+2025-04-19 16:51:50,541 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:50,541 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:51:55,420 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:51:55,421 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:51:55,421 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:51:55,421 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:51:55,421 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:00,362 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:52:00,362 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:52:00,362 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:52:00,362 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:52:00,362 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:52:05,225 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:52:05,225 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:52:05,225 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:52:05,225 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:52:05,225 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:52:10,167 - __main__ - INFO - Match data for match_id 2190:
+2025-04-19 16:52:10,167 - __main__ - INFO - Player1 ELO: 1575.5207965142158
+2025-04-19 16:52:10,167 - __main__ - INFO - Player2 ELO: 1531.364585819697
+2025-04-19 16:52:10,167 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:52:10,167 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:15,048 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:52:15,048 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:52:15,048 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:52:15,048 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:15,048 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:52:19,951 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:52:19,951 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:52:19,951 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:52:19,951 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:52:19,951 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:52:24,817 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:52:24,817 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:52:24,817 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:52:24,817 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:52:24,817 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:52:29,702 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:52:29,702 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:52:29,702 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:52:29,702 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:52:29,702 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:52:34,561 - __main__ - INFO - Match data for match_id 1685:
+2025-04-19 16:52:34,561 - __main__ - INFO - Player1 ELO: 1476.5982344015174
+2025-04-19 16:52:34,562 - __main__ - INFO - Player2 ELO: 1465.896800337459
+2025-04-19 16:52:34,562 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:52:34,562 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:52:39,440 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:52:39,440 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:52:39,440 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:52:39,440 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:39,440 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:52:44,305 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:52:44,306 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:52:44,306 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:52:44,306 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:44,306 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:52:49,235 - __main__ - INFO - Match data for match_id 1649:
+2025-04-19 16:52:49,235 - __main__ - INFO - Player1 ELO: 1471.0588201921846
+2025-04-19 16:52:49,235 - __main__ - INFO - Player2 ELO: 1589.9498409040875
+2025-04-19 16:52:49,236 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:49,236 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:52:54,082 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:52:54,082 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:52:54,083 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:52:54,083 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:54,083 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:58,989 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:52:58,989 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:52:58,989 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:52:58,989 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:52:58,989 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:53:03,917 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:53:03,917 - __main__ - INFO - Player1 ELO: 1631.3514077781888
+2025-04-19 16:53:03,917 - __main__ - INFO - Player2 ELO: 1560.6487952114933
+2025-04-19 16:53:03,917 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:53:03,918 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:53:08,806 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:53:08,806 - __main__ - INFO - Player1 ELO: 1631.3514077781888
+2025-04-19 16:53:08,806 - __main__ - INFO - Player2 ELO: 1547.7409499946143
+2025-04-19 16:53:08,806 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 8, 'loss_streak': 0}
+2025-04-19 16:53:08,806 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:53:13,741 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:53:13,741 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:53:13,741 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:53:13,741 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:53:13,742 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:53:18,774 - __main__ - INFO - Match data for match_id 1732:
+2025-04-19 16:53:18,774 - __main__ - INFO - Player1 ELO: 1572.2020739853704
+2025-04-19 16:53:18,774 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:53:18,774 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.4444444444444444, 'wins': 8, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:53:18,774 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:53:23,704 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:53:23,705 - __main__ - INFO - Player1 ELO: 1509.3060885944283
+2025-04-19 16:53:23,705 - __main__ - INFO - Player2 ELO: 1560.6487952114933
+2025-04-19 16:53:23,705 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:53:23,705 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:53:28,697 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:53:28,698 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:53:28,698 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:53:28,698 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:53:28,698 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:53:33,718 - __main__ - INFO - Match data for match_id 1426:
+2025-04-19 16:53:33,718 - __main__ - INFO - Player1 ELO: 1509.3060885944283
+2025-04-19 16:53:33,719 - __main__ - INFO - Player2 ELO: 1547.7409499946143
+2025-04-19 16:53:33,719 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:53:33,719 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:53:38,692 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:53:38,693 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:53:38,693 - __main__ - INFO - Player2 ELO: 1586.9802856231474
+2025-04-19 16:53:38,693 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:53:38,693 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:53:43,663 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:53:43,664 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:53:43,664 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:53:43,664 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:53:43,664 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:53:48,673 - __main__ - INFO - Match data for match_id 1719:
+2025-04-19 16:53:48,673 - __main__ - INFO - Player1 ELO: 1503.3681075548286
+2025-04-19 16:53:48,673 - __main__ - INFO - Player2 ELO: 1643.9585834921443
+2025-04-19 16:53:48,673 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:53:48,673 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:53:53,657 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:53:53,658 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:53:53,658 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:53:53,658 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:53:53,658 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:53:58,544 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:53:58,544 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:53:58,544 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:53:58,544 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:53:58,544 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:03,434 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:54:03,435 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:54:03,435 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:54:03,435 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:54:03,435 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:08,350 - __main__ - INFO - Match data for match_id 2168:
+2025-04-19 16:54:08,350 - __main__ - INFO - Player1 ELO: 1572.677492785637
+2025-04-19 16:54:08,350 - __main__ - INFO - Player2 ELO: 1550.905801303068
+2025-04-19 16:54:08,350 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:54:08,350 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.45, 'wins': 9, 'losses': 11, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:13,192 - __main__ - INFO - Match data for match_id 1980:
+2025-04-19 16:54:13,193 - __main__ - INFO - Player1 ELO: 1584.1118182278742
+2025-04-19 16:54:13,193 - __main__ - INFO - Player2 ELO: 1654.2426336437734
+2025-04-19 16:54:13,193 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:54:13,193 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:18,110 - __main__ - INFO - Match data for match_id 1980:
+2025-04-19 16:54:18,111 - __main__ - INFO - Player1 ELO: 1546.0691612942462
+2025-04-19 16:54:18,111 - __main__ - INFO - Player2 ELO: 1654.2426336437734
+2025-04-19 16:54:18,111 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:54:18,111 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:22,986 - __main__ - INFO - Match data for match_id 1980:
+2025-04-19 16:54:22,986 - __main__ - INFO - Player1 ELO: 1546.0691612942462
+2025-04-19 16:54:22,986 - __main__ - INFO - Player2 ELO: 1654.2426336437734
+2025-04-19 16:54:22,986 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:54:22,986 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:27,886 - __main__ - INFO - Match data for match_id 1659:
+2025-04-19 16:54:27,886 - __main__ - INFO - Player1 ELO: 1550.5861123310144
+2025-04-19 16:54:27,886 - __main__ - INFO - Player2 ELO: 1395.529508711225
+2025-04-19 16:54:27,886 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:54:27,886 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:54:32,775 - __main__ - INFO - Match data for match_id 1659:
+2025-04-19 16:54:32,775 - __main__ - INFO - Player1 ELO: 1550.5861123310144
+2025-04-19 16:54:32,775 - __main__ - INFO - Player2 ELO: 1395.529508711225
+2025-04-19 16:54:32,775 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:54:32,775 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:54:37,702 - __main__ - INFO - Match data for match_id 1667:
+2025-04-19 16:54:37,702 - __main__ - INFO - Player1 ELO: 1550.5861123310144
+2025-04-19 16:54:37,702 - __main__ - INFO - Player2 ELO: 1455.5771737425628
+2025-04-19 16:54:37,702 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:54:37,702 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:54:42,527 - __main__ - INFO - Match data for match_id 1667:
+2025-04-19 16:54:42,527 - __main__ - INFO - Player1 ELO: 1550.5861123310144
+2025-04-19 16:54:42,527 - __main__ - INFO - Player2 ELO: 1455.5771737425628
+2025-04-19 16:54:42,527 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:54:42,527 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:54:47,461 - __main__ - INFO - Match data for match_id 1987:
+2025-04-19 16:54:47,461 - __main__ - INFO - Player1 ELO: 1576.9663000637202
+2025-04-19 16:54:47,461 - __main__ - INFO - Player2 ELO: 1555.4554323822836
+2025-04-19 16:54:47,461 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:54:47,461 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:54:52,357 - __main__ - INFO - Match data for match_id 1987:
+2025-04-19 16:54:52,357 - __main__ - INFO - Player1 ELO: 1576.9663000637202
+2025-04-19 16:54:52,357 - __main__ - INFO - Player2 ELO: 1520.7124665217543
+2025-04-19 16:54:52,357 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:54:52,357 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:54:57,220 - __main__ - INFO - Match data for match_id 1980:
+2025-04-19 16:54:57,220 - __main__ - INFO - Player1 ELO: 1584.1118182278742
+2025-04-19 16:54:57,220 - __main__ - INFO - Player2 ELO: 1654.2426336437734
+2025-04-19 16:54:57,220 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:54:57,220 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:55:02,056 - __main__ - INFO - Match data for match_id 1659:
+2025-04-19 16:55:02,056 - __main__ - INFO - Player1 ELO: 1427.545528655562
+2025-04-19 16:55:02,056 - __main__ - INFO - Player2 ELO: 1395.529508711225
+2025-04-19 16:55:02,057 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:55:02,057 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:55:07,629 - __main__ - INFO - Match data for match_id 1659:
+2025-04-19 16:55:07,629 - __main__ - INFO - Player1 ELO: 1427.545528655562
+2025-04-19 16:55:07,629 - __main__ - INFO - Player2 ELO: 1395.529508711225
+2025-04-19 16:55:07,630 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:55:07,630 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:55:12,473 - __main__ - INFO - Match data for match_id 1667:
+2025-04-19 16:55:12,473 - __main__ - INFO - Player1 ELO: 1427.545528655562
+2025-04-19 16:55:12,473 - __main__ - INFO - Player2 ELO: 1455.5771737425628
+2025-04-19 16:55:12,473 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:55:12,473 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:55:17,566 - __main__ - INFO - Match data for match_id 1667:
+2025-04-19 16:55:17,567 - __main__ - INFO - Player1 ELO: 1427.545528655562
+2025-04-19 16:55:17,567 - __main__ - INFO - Player2 ELO: 1455.5771737425628
+2025-04-19 16:55:17,567 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:55:17,567 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:55:22,484 - __main__ - INFO - Match data for match_id 1987:
+2025-04-19 16:55:22,484 - __main__ - INFO - Player1 ELO: 1576.9663000637202
+2025-04-19 16:55:22,484 - __main__ - INFO - Player2 ELO: 1555.4554323822836
+2025-04-19 16:55:22,484 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:55:22,484 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:27,312 - __main__ - INFO - Match data for match_id 1987:
+2025-04-19 16:55:27,312 - __main__ - INFO - Player1 ELO: 1576.9663000637202
+2025-04-19 16:55:27,312 - __main__ - INFO - Player2 ELO: 1520.7124665217543
+2025-04-19 16:55:27,312 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:55:27,312 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:32,191 - __main__ - INFO - Match data for match_id 1293:
+2025-04-19 16:55:32,191 - __main__ - INFO - Player1 ELO: 1651.829485675309
+2025-04-19 16:55:32,192 - __main__ - INFO - Player2 ELO: 1517.0213157430865
+2025-04-19 16:55:32,192 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:55:32,192 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:55:37,117 - __main__ - INFO - Match data for match_id 1293:
+2025-04-19 16:55:37,118 - __main__ - INFO - Player1 ELO: 1651.829485675309
+2025-04-19 16:55:37,118 - __main__ - INFO - Player2 ELO: 1517.0213157430865
+2025-04-19 16:55:37,118 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:55:37,118 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:55:41,976 - __main__ - INFO - Match data for match_id 1293:
+2025-04-19 16:55:41,976 - __main__ - INFO - Player1 ELO: 1651.829485675309
+2025-04-19 16:55:41,976 - __main__ - INFO - Player2 ELO: 1517.0213157430865
+2025-04-19 16:55:41,976 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:41,976 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:55:46,844 - __main__ - INFO - Match data for match_id 1207:
+2025-04-19 16:55:46,845 - __main__ - INFO - Player1 ELO: 1539.3549169669989
+2025-04-19 16:55:46,845 - __main__ - INFO - Player2 ELO: 1521.8114192813582
+2025-04-19 16:55:46,845 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:46,845 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:51,741 - __main__ - INFO - Match data for match_id 1207:
+2025-04-19 16:55:51,742 - __main__ - INFO - Player1 ELO: 1539.3549169669989
+2025-04-19 16:55:51,742 - __main__ - INFO - Player2 ELO: 1521.8114192813582
+2025-04-19 16:55:51,742 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:51,742 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:55:56,605 - __main__ - INFO - Match data for match_id 1207:
+2025-04-19 16:55:56,605 - __main__ - INFO - Player1 ELO: 1534.7195825987162
+2025-04-19 16:55:56,606 - __main__ - INFO - Player2 ELO: 1521.8114192813582
+2025-04-19 16:55:56,606 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:55:56,606 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:56:01,515 - __main__ - INFO - Match data for match_id 1293:
+2025-04-19 16:56:01,515 - __main__ - INFO - Player1 ELO: 1651.829485675309
+2025-04-19 16:56:01,515 - __main__ - INFO - Player2 ELO: 1517.0213157430865
+2025-04-19 16:56:01,515 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:56:01,515 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:06,436 - __main__ - INFO - Match data for match_id 1207:
+2025-04-19 16:56:06,436 - __main__ - INFO - Player1 ELO: 1534.7195825987162
+2025-04-19 16:56:06,436 - __main__ - INFO - Player2 ELO: 1521.8114192813582
+2025-04-19 16:56:06,436 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:06,436 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:56:11,281 - __main__ - INFO - Match data for match_id 1419:
+2025-04-19 16:56:11,281 - __main__ - INFO - Player1 ELO: 1464.3139560663521
+2025-04-19 16:56:11,282 - __main__ - INFO - Player2 ELO: 1496.9120004117713
+2025-04-19 16:56:11,282 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:11,282 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:16,167 - __main__ - INFO - Match data for match_id 1419:
+2025-04-19 16:56:16,168 - __main__ - INFO - Player1 ELO: 1464.3139560663521
+2025-04-19 16:56:16,168 - __main__ - INFO - Player2 ELO: 1446.0589710671625
+2025-04-19 16:56:16,168 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:56:16,168 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.55, 'wins': 11, 'losses': 9, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:21,113 - __main__ - INFO - Match data for match_id 1918:
+2025-04-19 16:56:21,113 - __main__ - INFO - Player1 ELO: 1683.330434522654
+2025-04-19 16:56:21,114 - __main__ - INFO - Player2 ELO: 1678.1429037177993
+2025-04-19 16:56:21,114 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:56:21,114 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:56:26,044 - __main__ - INFO - Match data for match_id 1918:
+2025-04-19 16:56:26,045 - __main__ - INFO - Player1 ELO: 1692.1926448817544
+2025-04-19 16:56:26,045 - __main__ - INFO - Player2 ELO: 1653.2215557167804
+2025-04-19 16:56:26,045 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:56:26,045 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:56:30,975 - __main__ - INFO - Match data for match_id 1419:
+2025-04-19 16:56:30,976 - __main__ - INFO - Player1 ELO: 1464.3139560663521
+2025-04-19 16:56:30,976 - __main__ - INFO - Player2 ELO: 1496.9120004117713
+2025-04-19 16:56:30,976 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:56:30,976 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:35,986 - __main__ - INFO - Match data for match_id 1918:
+2025-04-19 16:56:35,986 - __main__ - INFO - Player1 ELO: 1692.1926448817544
+2025-04-19 16:56:35,986 - __main__ - INFO - Player2 ELO: 1678.1429037177993
+2025-04-19 16:56:35,986 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:56:35,986 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 7, 'loss_streak': 0}
+2025-04-19 16:56:40,864 - __main__ - INFO - Match data for match_id 1419:
+2025-04-19 16:56:40,864 - __main__ - INFO - Player1 ELO: 1464.3139560663521
+2025-04-19 16:56:40,864 - __main__ - INFO - Player2 ELO: 1446.0589710671625
+2025-04-19 16:56:40,864 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:56:40,864 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:45,807 - __main__ - INFO - Match data for match_id 1918:
+2025-04-19 16:56:45,807 - __main__ - INFO - Player1 ELO: 1683.330434522654
+2025-04-19 16:56:45,807 - __main__ - INFO - Player2 ELO: 1653.2215557167804
+2025-04-19 16:56:45,807 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.95, 'wins': 19, 'losses': 1, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:56:45,807 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.9, 'wins': 18, 'losses': 2, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 7, 'loss_streak': 0}
+2025-04-19 16:56:50,722 - __main__ - INFO - Match data for match_id 1269:
+2025-04-19 16:56:50,722 - __main__ - INFO - Player1 ELO: 1498.442155658711
+2025-04-19 16:56:50,722 - __main__ - INFO - Player2 ELO: 1626.9604164377015
+2025-04-19 16:56:50,722 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:56:50,722 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:56:55,662 - __main__ - INFO - Match data for match_id 1269:
+2025-04-19 16:56:55,662 - __main__ - INFO - Player1 ELO: 1530.1660105044803
+2025-04-19 16:56:55,662 - __main__ - INFO - Player2 ELO: 1626.9604164377015
+2025-04-19 16:56:55,662 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:56:55,662 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:57:00,615 - __main__ - INFO - Match data for match_id 1269:
+2025-04-19 16:57:00,615 - __main__ - INFO - Player1 ELO: 1498.442155658711
+2025-04-19 16:57:00,615 - __main__ - INFO - Player2 ELO: 1626.9604164377015
+2025-04-19 16:57:00,615 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:57:00,615 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:57:05,553 - __main__ - INFO - Match data for match_id 1269:
+2025-04-19 16:57:05,553 - __main__ - INFO - Player1 ELO: 1530.1660105044803
+2025-04-19 16:57:05,553 - __main__ - INFO - Player2 ELO: 1626.9604164377015
+2025-04-19 16:57:05,553 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 6, 'loss_streak': 0}
+2025-04-19 16:57:05,553 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:57:10,510 - __main__ - INFO - Match data for match_id 1238:
+2025-04-19 16:57:10,510 - __main__ - INFO - Player1 ELO: 1559.445921173961
+2025-04-19 16:57:10,510 - __main__ - INFO - Player2 ELO: 1585.1261920503698
+2025-04-19 16:57:10,510 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:57:10,510 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 5, 'loss_streak': 0}
+2025-04-19 16:57:15,450 - __main__ - INFO - Match data for match_id 1238:
+2025-04-19 16:57:15,450 - __main__ - INFO - Player1 ELO: 1550.7413248146102
+2025-04-19 16:57:15,450 - __main__ - INFO - Player2 ELO: 1612.1599408821562
+2025-04-19 16:57:15,450 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:57:15,450 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:57:20,390 - __main__ - INFO - Match data for match_id 1238:
+2025-04-19 16:57:20,390 - __main__ - INFO - Player1 ELO: 1559.445921173961
+2025-04-19 16:57:20,391 - __main__ - INFO - Player2 ELO: 1612.1599408821562
+2025-04-19 16:57:20,391 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:57:20,391 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:57:25,303 - __main__ - INFO - Match data for match_id 1238:
+2025-04-19 16:57:25,303 - __main__ - INFO - Player1 ELO: 1550.7413248146102
+2025-04-19 16:57:25,303 - __main__ - INFO - Player2 ELO: 1585.1261920503698
+2025-04-19 16:57:25,303 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.85, 'wins': 17, 'losses': 3, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:57:25,303 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:57:30,207 - __main__ - INFO - Match data for match_id 1578:
+2025-04-19 16:57:30,207 - __main__ - INFO - Player1 ELO: 1476.8969039391818
+2025-04-19 16:57:30,207 - __main__ - INFO - Player2 ELO: 1514.738098346566
+2025-04-19 16:57:30,207 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:57:30,207 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:57:35,113 - __main__ - INFO - Match data for match_id 1578:
+2025-04-19 16:57:35,113 - __main__ - INFO - Player1 ELO: 1476.8969039391818
+2025-04-19 16:57:35,113 - __main__ - INFO - Player2 ELO: 1514.738098346566
+2025-04-19 16:57:35,113 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:57:35,113 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.75, 'wins': 15, 'losses': 5, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:57:40,055 - __main__ - INFO - Match data for match_id 1578:
+2025-04-19 16:57:40,055 - __main__ - INFO - Player1 ELO: 1476.8969039391818
+2025-04-19 16:57:40,055 - __main__ - INFO - Player2 ELO: 1514.738098346566
+2025-04-19 16:57:40,055 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 3}
+2025-04-19 16:57:40,055 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:57:45,023 - __main__ - INFO - Match data for match_id 1578:
+2025-04-19 16:57:45,023 - __main__ - INFO - Player1 ELO: 1476.8969039391818
+2025-04-19 16:57:45,023 - __main__ - INFO - Player2 ELO: 1514.738098346566
+2025-04-19 16:57:45,023 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:57:45,024 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.8, 'wins': 16, 'losses': 4, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:57:49,972 - __main__ - INFO - Match data for match_id 1517:
+2025-04-19 16:57:49,972 - __main__ - INFO - Player1 ELO: 1475.1185536262074
+2025-04-19 16:57:49,972 - __main__ - INFO - Player2 ELO: 1526.0739047757481
+2025-04-19 16:57:49,972 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 3, 'loss_streak': 0}
+2025-04-19 16:57:49,972 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:57:54,895 - __main__ - INFO - Match data for match_id 1517:
+2025-04-19 16:57:54,895 - __main__ - INFO - Player1 ELO: 1538.0938609653413
+2025-04-19 16:57:54,895 - __main__ - INFO - Player2 ELO: 1454.0369886399292
+2025-04-19 16:57:54,896 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:57:54,896 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:57:59,916 - __main__ - INFO - Match data for match_id 1517:
+2025-04-19 16:57:59,916 - __main__ - INFO - Player1 ELO: 1538.0938609653413
+2025-04-19 16:57:59,916 - __main__ - INFO - Player2 ELO: 1526.0739047757481
+2025-04-19 16:57:59,916 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 4, 'loss_streak': 0}
+2025-04-19 16:57:59,916 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 2, 'loss_streak': 0}
+2025-04-19 16:58:04,791 - __main__ - INFO - Match data for match_id 1517:
+2025-04-19 16:58:04,791 - __main__ - INFO - Player1 ELO: 1475.1185536262074
+2025-04-19 16:58:04,791 - __main__ - INFO - Player2 ELO: 1454.0369886399292
+2025-04-19 16:58:04,791 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.5, 'wins': 10, 'losses': 10, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:58:04,791 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.6, 'wins': 12, 'losses': 8, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:58:09,654 - __main__ - INFO - Match data for match_id 1597:
+2025-04-19 16:58:09,655 - __main__ - INFO - Player1 ELO: 1565.1613046184304
+2025-04-19 16:58:09,655 - __main__ - INFO - Player2 ELO: 1591.330432956036
+2025-04-19 16:58:09,655 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 1, 'loss_streak': 0}
+2025-04-19 16:58:09,655 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 2}
+2025-04-19 16:58:14,548 - __main__ - INFO - Match data for match_id 1597:
+2025-04-19 16:58:14,548 - __main__ - INFO - Player1 ELO: 1609.8760564460517
+2025-04-19 16:58:14,549 - __main__ - INFO - Player2 ELO: 1591.330432956036
+2025-04-19 16:58:14,549 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 6}
+2025-04-19 16:58:14,549 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:58:19,491 - __main__ - INFO - Match data for match_id 1597:
+2025-04-19 16:58:19,491 - __main__ - INFO - Player1 ELO: 1609.8760564460517
+2025-04-19 16:58:19,491 - __main__ - INFO - Player2 ELO: 1554.3816050593507
+2025-04-19 16:58:19,491 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 6}
+2025-04-19 16:58:19,492 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:58:24,404 - __main__ - INFO - Match data for match_id 1597:
+2025-04-19 16:58:24,405 - __main__ - INFO - Player1 ELO: 1565.1613046184304
+2025-04-19 16:58:24,405 - __main__ - INFO - Player2 ELO: 1554.3816050593507
+2025-04-19 16:58:24,405 - __main__ - INFO - Player1 stats: {'win_rate_5': 0.7, 'wins': 14, 'losses': 6, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 6}
+2025-04-19 16:58:24,405 - __main__ - INFO - Player2 stats: {'win_rate_5': 0.65, 'wins': 13, 'losses': 7, 'win_rate_hard': None, 'win_rate_clay': None, 'win_rate_grass': None, 'win_rate_carpet': None, 'win_streak': 0, 'loss_streak': 1}
+2025-04-19 16:58:27,242 - __main__ - INFO - Stored 132 predictions

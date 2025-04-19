@@ -147,6 +147,7 @@ class MatchPredictor:
             SELECT 
                 s.match_id,
                 s.tournament_id,
+                s.round,
                 s.player1_id,
                 s.player2_id,
                 s.surface,
@@ -372,6 +373,8 @@ class MatchPredictor:
                 for idx, row in matches_df.iterrows():
                     prediction = {
                         'match_id': row['match_id'],
+                        'tournament_id': row['tournament_id'],
+                        'round': row['round'],
                         'player1_id': row['player1_id'],
                         'player2_id': row['player2_id'],
                         'player1_win_probability': float(predictions[idx]),
@@ -423,19 +426,17 @@ class MatchPredictor:
                     ELSE 0.0
                 END
             FROM matches m
-            JOIN scheduled_matches s ON 
-                s.tournament_id = m.tournament_id
-                AND EXISTS (
-                    SELECT 1 FROM round_mapping rm 
-                    WHERE rm.api_round = s.round::text 
-                    AND rm.standard_round = m.round
-                )
-                AND (
-                    (s.player1_id = m.winner_id AND s.player2_id = m.loser_id)
-                    OR 
-                    (s.player1_id = m.loser_id AND s.player2_id = m.winner_id)
-                )
-            WHERE p.match_id = s.match_id
+            WHERE p.tournament_id = m.tournament_id
+            AND EXISTS (
+                SELECT 1 FROM round_mapping rm 
+                WHERE rm.api_round = p.round
+                AND rm.standard_round = m.round
+            )
+            AND (
+                (p.player1_id = m.winner_id AND p.player2_id = m.loser_id)
+                OR 
+                (p.player1_id = m.loser_id AND p.player2_id = m.winner_id)
+            )
             AND p.actual_winner_id IS NULL
             AND m.winner_id IS NOT NULL
         """

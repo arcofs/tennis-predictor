@@ -26,3 +26,43 @@ Test Set Performance:
 2025-04-19 07:04:47,271 - __main__ - INFO - auc: 0.5412
 2025-04-19 07:04:47,565 - __main__ - INFO - Saved model and metadata to /workspace/tennis-predictor/predictor/v4/models
 2025-04-19 07:04:47,565 - __main__ - INFO - Training completed successfully
+2025-04-19 15:59:36,641 - __main__ - INFO - XGBoost version: 3.0.0
+2025-04-19 15:59:36,988 - __main__ - INFO - CUDA GPU available and will be used for training
+2025-04-19 15:59:36,988 - __main__ - INFO - Training on CUDA
+2025-04-19 16:03:10,763 - __main__ - INFO - Class distribution: 50.00% positive (player1 wins)
+2025-04-19 16:03:10,763 - __main__ - INFO - Loaded 1658856 matches for training
+2025-04-19 16:03:10,763 - __main__ - INFO - Validation - tournament_date type: <class 'datetime.date'>
+2025-04-19 16:03:22,207 - __main__ - INFO - Data leakage quick check: Train accuracy=0.8226, Test accuracy=0.8040
+2025-04-19 16:03:24,206 - __main__ - INFO - Database check: Player1 win rate = 50.00% (829375/1658856)
+2025-04-19 16:03:26,759 - __main__ - WARNING - Found 1652 matches with more than 2 entries (1 original + 1 symmetric)
+2025-04-19 16:03:26,759 - __main__ - WARNING - This affects approximately 0.20% of the dataset
+2025-04-19 16:03:26,759 - __main__ - INFO - Duplicate matches affect less than 1% of the dataset, proceeding with training
+2025-04-19 16:03:26,984 - __main__ - INFO - Data validation passed: No data leakage detected
+2025-04-19 16:03:26,988 - __main__ - INFO - Using 58 features for training
+2025-04-19 16:03:26,988 - __main__ - INFO - Tournament date column type: <class 'pandas._libs.tslibs.timestamps.Timestamp'>
+2025-04-19 16:03:26,988 - __main__ - INFO - Tournament date sample: 1990-01-01 00:00:00
+2025-04-19 16:03:27,305 - __main__ - INFO - Unique dates type: <class 'pandas._libs.tslibs.timestamps.Timestamp'>
+2025-04-19 16:03:27,306 - __main__ - INFO - Train end date type: <class 'numpy.datetime64'>
+2025-04-19 16:03:27,306 - __main__ - INFO - Train end date value: 2012-11-12T00:00:00.000000000
+2025-04-19 16:03:27,564 - __main__ - INFO - Training data: 1990-01-01 to 2012-11-12
+2025-04-19 16:03:27,564 - __main__ - INFO - Validation data: 2012-11-13 to 2018-12-10
+2025-04-19 16:03:27,566 - __main__ - INFO - Test data: 2018-12-11 to 2025-04-19
+2025-04-19 16:03:27,566 - __main__ - INFO - Split data into train (953275), val (369436), test (336145) sets
+2025-04-19 16:03:27,693 - __main__ - INFO - Training data class distribution: 49.99% positive (player1 wins)
+2025-04-19 16:03:27,694 - __main__ - INFO - Class distribution comparison:
+2025-04-19 16:03:27,694 - __main__ - INFO -   - Train: 49.99% positive
+2025-04-19 16:03:27,694 - __main__ - INFO -   - Validation: 50.00% positive
+2025-04-19 16:03:27,694 - __main__ - INFO -   - Test: 50.00% positive
+2025-04-19 16:12:49,760 - __main__ - INFO - Best hyperparameters: {'max_depth': 10, 'learning_rate': 0.017017654403279316, 'min_child_weight': 1, 'gamma': 0.0839420215795209, 'subsample': 0.7462088120064301, 'colsample_bytree': 0.6723819541327505, 'reg_alpha': 0.4801382523487843, 'reg_lambda': 0.7128599820839816}, num_boost_round: 766
+2025-04-19 16:12:49,761 - __main__ - INFO - Best validation AUC: 0.9330
+2025-04-19 16:13:00,856 - __main__ - INFO - Trained model with 752 trees
+2025-04-19 16:13:00,891 - __main__ - INFO - Using best iteration 752 for prediction
+2025-04-19 16:13:01,057 - __main__ - INFO - 
+Test Set Performance:
+2025-04-19 16:13:01,057 - __main__ - INFO - accuracy: 0.8496
+2025-04-19 16:13:01,057 - __main__ - INFO - precision: 0.8550
+2025-04-19 16:13:01,057 - __main__ - INFO - recall: 0.8420
+2025-04-19 16:13:01,057 - __main__ - INFO - f1: 0.8485
+2025-04-19 16:13:01,057 - __main__ - INFO - auc: 0.9198
+2025-04-19 16:13:01,870 - __main__ - INFO - Saved model and metadata to /workspace/repo/predictor/v4/models
+2025-04-19 16:13:01,870 - __main__ - INFO - Training completed successfully
