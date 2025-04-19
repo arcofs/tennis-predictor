@@ -155,23 +155,27 @@ class ModelTrainer:
     
     def load_training_data(self) -> pd.DataFrame:
         """
-        Load historical match data with features
+        Load historical match data with features, removing any ID fields
+        that might cause data leakage
         
         Returns:
             DataFrame with match data and features
         """
-        # Modified query to prevent data leakage - no longer fetching result directly from matches table
+        # Modified query to prevent data leakage:
+        # 1. Not joining with matches table to get results directly
+        # 2. Explicitly excluding match_id and other ID fields
         query = """
             SELECT 
-                f.id,
-                f.match_id,
-                f.player1_id,
-                f.player2_id,
+                -- Exclude ID columns that are causing data leakage
+                -- f.id,
+                -- f.match_id,  -- Removed as it correlates with result
+                -- f.player1_id,
+                -- f.player2_id,
                 f.surface,
                 f.tournament_date,
                 f.tournament_level,
                 f.is_future,
-                f.result, -- Use pre-calculated result from match_features, not from matches table
+                f.result, -- Use pre-calculated result from match_features
                 -- All the diff features
                 f.player_elo_diff,
                 f.win_rate_5_diff,
@@ -331,7 +335,8 @@ class ModelTrainer:
     
     def get_feature_columns(self, df: pd.DataFrame) -> List[str]:
         """
-        Get list of feature columns for training
+        Get list of feature columns for training, explicitly excluding ID columns
+        and any columns that could cause data leakage
         
         Args:
             df: Input DataFrame
@@ -339,7 +344,7 @@ class ModelTrainer:
         Returns:
             List of feature column names
         """
-        # Exclude non-feature columns and date/timestamp columns
+        # Exclude non-feature columns and those that might cause data leakage
         exclude_cols = [
             'id', 'match_id', 'player1_id', 'player2_id', 'tournament_date',
             'surface', 'tournament_level', 'result', 'is_future',
@@ -350,6 +355,14 @@ class ModelTrainer:
         for col in df.columns:
             if pd.api.types.is_datetime64_any_dtype(df[col]) or 'date' in col.lower() or 'time' in col.lower():
                 if col not in exclude_cols:
+                    exclude_cols.append(col)
+        
+        # Exclude any columns that might be directly related to match outcome
+        leakage_patterns = ['winner', 'loser', 'score', 'match_id', 'match_num']
+        for pattern in leakage_patterns:
+            for col in df.columns:
+                if pattern in col.lower() and col not in exclude_cols:
+                    logger.warning(f"Excluding potential leakage column: {col}")
                     exclude_cols.append(col)
         
         feature_cols = [col for col in df.columns if col not in exclude_cols]
@@ -864,6 +877,59 @@ class ModelTrainer:
                 logger.info(f"Data leakage quick check: Train accuracy={train_accuracy:.4f}, Test accuracy={test_accuracy:.4f}")
         except Exception as e:
             logger.warning(f"Could not perform leakage quick check with simple model: {e}")
+        
+        # Check 7: Special check for the match_features table structure
+        try:
+            if 'result' in df.columns:
+                # Run a query to check if the match_features table is consistently biased
+                with self.get_db_connection() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute("""
+                            SELECT 
+                                COUNT(*) FILTER (WHERE result = 1) AS player1_win_count,
+                                COUNT(*) FILTER (WHERE result = 0) AS player1_loss_count,
+                                COUNT(*) AS total_count
+                            FROM match_features
+                            WHERE is_future IS NOT TRUE
+                        """)
+                        result = cursor.fetchone()
+                        
+                        if result:
+                            player1_win_count, player1_loss_count, total_count = result
+                            if total_count > 0:
+                                win_rate = player1_win_count / total_count
+                                logger.info(f"Database check: Player1 win rate = {win_rate:.2%} ({player1_win_count}/{total_count})")
+                                
+                                # If player1 almost always wins or loses, there's a systematic issue in data generation
+                                if win_rate > 0.95 or win_rate < 0.05:
+                                    logger.error("CRITICAL DATABASE ISSUE: match_features table has systematic bias")
+                                    logger.error(f"Player1 win rate = {win_rate:.2%}, which indicates the data is not properly generated")
+                                    logger.error("This requires fixing the data generation pipeline in generate_historical_features.py")
+                                    validation_passed = False
+                                    
+                                # If win rate is too close to 50%, it might indicate artificial generation
+                                if 0.49 < win_rate < 0.51 and total_count > 10000:
+                                    logger.warning("SUSPICIOUS DATABASE PATTERN: match_features result distribution is too perfectly balanced")
+                                    logger.warning("This might indicate artificial data generation or data leakage")
+                                    
+                        # Check for direct duplicates in the feature table, which would boost accuracy artificially
+                        cursor.execute("""
+                            SELECT COUNT(*) FROM (
+                                SELECT player1_id, player2_id, tournament_date, COUNT(*) 
+                                FROM match_features 
+                                GROUP BY player1_id, player2_id, tournament_date
+                                HAVING COUNT(*) > 1
+                            ) as dup
+                        """)
+                        duplicate_count = cursor.fetchone()[0]
+                        
+                        if duplicate_count > 0:
+                            logger.error(f"DATA QUALITY ISSUE: Found {duplicate_count} duplicate player matchups on same date")
+                            logger.error("This could cause data leakage by having the same match in train and test sets")
+                            if duplicate_count > 100:
+                                validation_passed = False
+        except Exception as e:
+            logger.warning(f"Could not perform database structure check: {e}")
         
         if validation_passed:
             logger.info("Data validation passed: No data leakage detected")
