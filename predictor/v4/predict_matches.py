@@ -129,6 +129,21 @@ class MatchPredictor:
             DataFrame with match data
         """
         query = """
+            WITH latest_player_features AS (
+                SELECT 
+                    player1_id as player_id,
+                    player_elo_diff + 1500 as elo,  -- Convert diff back to absolute ELO
+                    tournament_date,
+                    ROW_NUMBER() OVER (PARTITION BY player1_id ORDER BY tournament_date DESC) as rn1
+                FROM match_features
+                UNION ALL
+                SELECT 
+                    player2_id as player_id,
+                    1500 - player_elo_diff as elo,  -- Convert diff back to absolute ELO
+                    tournament_date,
+                    ROW_NUMBER() OVER (PARTITION BY player2_id ORDER BY tournament_date DESC) as rn1
+                FROM match_features
+            )
             SELECT 
                 s.match_id,
                 s.tournament_id,
@@ -136,11 +151,19 @@ class MatchPredictor:
                 s.player2_id,
                 s.surface,
                 s.scheduled_date,
-                p1.elo as player1_elo,
-                p2.elo as player2_elo
+                COALESCE(p1.elo, 1500) as player1_elo,
+                COALESCE(p2.elo, 1500) as player2_elo
             FROM scheduled_matches s
-            LEFT JOIN player_elo p1 ON s.player1_id = p1.player_id
-            LEFT JOIN player_elo p2 ON s.player2_id = p2.player_id
+            LEFT JOIN (
+                SELECT player_id, elo
+                FROM latest_player_features
+                WHERE rn1 = 1
+            ) p1 ON s.player1_id = p1.player_id
+            LEFT JOIN (
+                SELECT player_id, elo
+                FROM latest_player_features
+                WHERE rn1 = 1
+            ) p2 ON s.player2_id = p2.player_id
             WHERE NOT EXISTS (
                 SELECT 1 FROM match_predictions p
                 WHERE p.match_id = s.match_id
