@@ -295,18 +295,18 @@ class MatchPredictor:
                 'loss_streak_diff': player1_stats['loss_streak'] - player2_stats['loss_streak']
             }
             
-            # Add surface-specific features
+            # Add surface-specific features - handle None values by defaulting to 0
+            # This matches the behavior in the training data where no history on a surface means 0
             for surface in ['hard', 'clay', 'grass', 'carpet']:
-                features[f'win_rate_{surface}_5_diff'] = (
-                    player1_stats.get(f'win_rate_{surface}', 0) - 
-                    player2_stats.get(f'win_rate_{surface}', 0)
-                )
+                p1_rate = player1_stats.get(f'win_rate_{surface}') or 0
+                p2_rate = player2_stats.get(f'win_rate_{surface}') or 0
+                features[f'win_rate_{surface}_5_diff'] = p1_rate - p2_rate
             
             # Add raw player stats
             for stat, value in player1_stats.items():
-                features[f'player1_{stat}'] = value
+                features[f'player1_{stat}'] = value if value is not None else 0
             for stat, value in player2_stats.items():
-                features[f'player2_{stat}'] = value
+                features[f'player2_{stat}'] = value if value is not None else 0
             
             return features
             
