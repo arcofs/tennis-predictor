@@ -185,11 +185,17 @@ class FutureFeatureGenerator:
             'player1_id': player1_id,
             'player2_id': player2_id,
             'surface': scheduled_match['surface'].lower() if scheduled_match['surface'] else 'unknown',
-            'tournament_level': scheduled_match['tournament_level'],  # Add tournament_level
+            'tournament_level': scheduled_match['tournament_level'], 
             'tournament_date': match_date,
-            'is_future': True  # Mark as a future match for identification
-            # Note: We're intentionally NOT setting a 'result' value for future matches
+            'is_future': True,  # Mark as a future match for identification
+            'result': None      # Explicitly set result to NULL for future matches
         }
+        
+        # Important note on pipeline design:
+        # - Future matches always have result=NULL
+        # - When matches are completed, generate_historical_features.py will create new feature records 
+        #   with the correct result values
+        # - This separation ensures clean feature generation and prevents data leakage
         
         # If we have features for both players, calculate differences and copy individual stats
         if player1_features is not None and player2_features is not None:

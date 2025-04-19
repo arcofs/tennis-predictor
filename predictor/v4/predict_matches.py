@@ -207,7 +207,7 @@ class MatchPredictor:
     
     def update_prediction_accuracy(self):
         """Update accuracy for past predictions where results are now known"""
-        # 1. Update prediction accuracy
+        # Update prediction accuracy for completed matches
         # This query updates match_predictions by joining scheduled_matches to matches
         # Key relationship: scheduled_matches.match_id (string) is converted to integer
         # and matched with matches.match_num (which is the external API match ID)
@@ -228,36 +228,20 @@ class MatchPredictor:
             AND m.winner_id IS NOT NULL
         """
         
-        # 2. Update is_future flag in match_features
-        # This query updates match_features to set is_future=FALSE when a match is completed
-        # Again joining through scheduled_matches to connect match_features to matches
-        update_future_flag_query = """
-            UPDATE match_features f
-            SET is_future = FALSE
-            FROM matches m
-            JOIN scheduled_matches s ON s.match_id::integer = m.match_num
-            WHERE f.match_id = s.match_id::integer
-            AND f.is_future = TRUE
-            AND m.winner_id IS NOT NULL
-        """
-        
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
                 # Update prediction accuracy
                 cur.execute(query)
                 updated_predictions = cur.rowcount
                 
-                # Update is_future flag
-                cur.execute(update_future_flag_query)
-                updated_features = cur.rowcount
-                
                 conn.commit()
                 
                 if updated_predictions > 0:
                     logger.info(f"Updated accuracy for {updated_predictions} past predictions")
                     
-                if updated_features > 0:
-                    logger.info(f"Updated is_future flag to FALSE for {updated_features} completed matches")
+                # Note: We deliberately don't update match_features here
+                # This allows generate_historical_features.py to handle all feature generation
+                # which maintains a cleaner separation of concerns
     
     def predict_matches(self):
         """Main method to generate predictions for upcoming matches"""

@@ -672,6 +672,98 @@ class ModelTrainer:
         
         logger.info(f"Saved model and metadata to {MODEL_DIR}")
     
+    def validate_training_data(self, df: pd.DataFrame) -> bool:
+        """
+        Perform thorough data validation to check for data leakage
+        
+        Args:
+            df: Input DataFrame with training data
+            
+        Returns:
+            True if validation passes, False otherwise
+        """
+        validation_passed = True
+        
+        # Check 1: Ensure no future matches in training data
+        future_matches = None
+        if 'is_future' in df.columns:
+            future_matches = df[df['is_future'] == True]
+            if not future_matches.empty:
+                logger.error(f"DATA LEAKAGE: Found {len(future_matches)} future matches in training data")
+                logger.error("This would cause the model to train on data it shouldn't have access to")
+                validation_passed = False
+                
+                # Additional critical check: future matches with results
+                future_with_results = future_matches[future_matches['result'].notnull()]
+                if not future_with_results.empty:
+                    logger.error(f"CRITICAL DATA LEAKAGE: {len(future_with_results)} future matches have result values!")
+                    logger.error("This indicates a severe pipeline issue that must be fixed immediately")
+                    logger.error("Future matches should NEVER have result values set")
+                    
+                    # Sample of problematic matches
+                    if len(future_with_results) > 0:
+                        sample = future_with_results.head(min(5, len(future_with_results)))
+                        logger.error(f"Sample of problematic matches:\n{sample[['match_id', 'player1_id', 'player2_id', 'result']]}")
+        
+        # Check 2: Ensure no matches with dates in the future
+        if 'tournament_date' in df.columns:
+            current_date = datetime.now().date()
+            if pd.api.types.is_object_dtype(df['tournament_date']):
+                df['tournament_date_temp'] = pd.to_datetime(df['tournament_date']).dt.date
+            else:
+                df['tournament_date_temp'] = df['tournament_date'].dt.date
+                
+            future_date_matches = df[df['tournament_date_temp'] > current_date]
+            if not future_date_matches.empty:
+                logger.error(f"DATA LEAKAGE: Found {len(future_date_matches)} matches with dates in the future")
+                earliest_future = future_date_matches['tournament_date_temp'].min()
+                logger.error(f"Earliest future date: {earliest_future}")
+                validation_passed = False
+        
+        # Check 3: Verify class balance to detect potential bias
+        if 'result' in df.columns:
+            pos_rate = df['result'].mean()
+            if pos_rate < 0.45 or pos_rate > 0.55:
+                logger.warning(f"POTENTIAL BIAS: Class distribution is imbalanced: {pos_rate:.2%} positive")
+                logger.warning("This may indicate data issues or bias in match selection")
+                # Don't fail validation for this, but warn
+        
+        # Check 4: Verify all result values are valid (0 or 1, or NULL for future matches)
+        if 'result' in df.columns:
+            # Future matches should have NULL result
+            future_matches_invalid_results = 0
+            if 'is_future' in df.columns:
+                future_matches_invalid_results = df[(df['is_future'] == True) & (df['result'].notnull())].shape[0]
+                if future_matches_invalid_results > 0:
+                    logger.error(f"DATA ERROR: {future_matches_invalid_results} future matches have non-NULL results")
+                    validation_passed = False
+            
+            # Historical matches should have 0 or 1 result
+            historical_invalid_results = 0
+            if 'is_future' in df.columns:
+                historical_invalid_results = df[
+                    (df['is_future'] != True) & 
+                    (df['result'].notnull()) & 
+                    (~df['result'].isin([0, 1]))
+                ].shape[0]
+            else:
+                historical_invalid_results = df[
+                    (df['result'].notnull()) & 
+                    (~df['result'].isin([0, 1]))
+                ].shape[0]
+                
+            if historical_invalid_results > 0:
+                logger.error(f"DATA ERROR: {historical_invalid_results} historical matches have invalid result values")
+                logger.error("Result values should be 0 or 1 for historical matches")
+                validation_passed = False
+        
+        if validation_passed:
+            logger.info("Data validation passed: No data leakage detected")
+        else:
+            logger.error("DATA VALIDATION FAILED: Please fix data issues before training")
+            
+        return validation_passed
+
     def train(self):
         """Main training method"""
         try:
@@ -680,6 +772,12 @@ class ModelTrainer:
             
             # Load data
             df = self.load_training_data()
+            
+            # Validate data to check for leakage
+            validation_passed = self.validate_training_data(df)
+            if not validation_passed:
+                logger.error("Aborting training due to data validation failures")
+                return
             
             # Double-check that no future matches are included
             assert 'is_future' not in df.columns or df[df['is_future'] == True].empty, "Training data contains future matches!"

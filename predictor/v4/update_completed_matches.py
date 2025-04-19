@@ -180,7 +180,7 @@ class CompletedMatchUpdater:
     
     def mark_match_as_processed(self, match_id: str, processed: bool = True) -> bool:
         """
-        Mark a scheduled match as processed and update match_features
+        Mark a scheduled match as processed.
         
         Args:
             match_id: Match ID
@@ -191,34 +191,26 @@ class CompletedMatchUpdater:
         """
         try:
             with self.get_db_connection() as conn:
-                # Start transaction
-                conn.autocommit = False
-                
                 with conn.cursor() as cur:
                     try:
-                        # Update scheduled_matches table
+                        # Update scheduled_matches table only
                         cur.execute(
-                            "UPDATE scheduled_matches SET is_processed = %s WHERE match_id = %s",
+                            "UPDATE scheduled_matches SET is_processed = %s, last_processed_at = CURRENT_TIMESTAMP WHERE match_id = %s",
                             (processed, match_id)
                         )
                         
-                        # Update match_features table to mark match as no longer future
-                        if processed:
-                            cur.execute("""
-                                UPDATE match_features 
-                                SET is_future = FALSE,
-                                    updated_at = CURRENT_TIMESTAMP
-                                WHERE match_id = %s
-                                AND is_future = TRUE
-                            """, (match_id,))
-                        
-                        # If we get here, both updates succeeded
+                        # Commit the transaction
                         conn.commit()
                         logger.info(f"Successfully marked match {match_id} as processed={processed}")
+                        
+                        # Note: We deliberately don't update match_features here
+                        # This allows generate_historical_features.py to handle all feature generation
+                        # which maintains a cleaner separation of concerns
+                        
                         return True
                         
                     except Exception as e:
-                        # If any update fails, roll back both
+                        # If update fails, roll back
                         conn.rollback()
                         logger.error(f"Error marking match as processed, rolling back: {str(e)}")
                         return False
