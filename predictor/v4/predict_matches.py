@@ -27,10 +27,25 @@ from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
 import json
+import multiprocessing
+from functools import partial
 
 # Add project root to path to allow imports
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
+
+# Multiprocessing settings
+NUM_CORES = 0  # Set to 0 to use all available cores
+CHUNK_MULTIPLIER = 8  # Controls chunk size for better load balancing
+WORKER_BATCH_SIZE = 8000  # Maximum records to process in a worker
+POOL_BATCH_SIZE = 16  # Number of chunks to process per pool creation
+
+# If NUM_CORES is set to 0, use all available cores
+if NUM_CORES <= 0:
+    NUM_CORES = multiprocessing.cpu_count()
+
+# Limit to a reasonable number to prevent system overload
+NUM_CORES = min(NUM_CORES, multiprocessing.cpu_count())
 
 # Configure logging
 logging.basicConfig(
@@ -42,6 +57,13 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Add a process-safe logger for multiprocessing
+mp_logger = multiprocessing.get_logger()
+mp_logger.setLevel(logging.INFO)
+mp_handler = logging.FileHandler(f"{project_root}/predictor/v4/output/logs/predictions_mp.log")
+mp_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+mp_logger.addHandler(mp_handler)
 
 class MatchPredictor:
     def __init__(self):
@@ -311,7 +333,7 @@ class MatchPredictor:
     
     def prepare_features(self, matches_df: pd.DataFrame) -> np.ndarray:
         """
-        Prepare feature matrix for prediction
+        Prepare feature matrix for prediction using parallel processing
         
         Args:
             matches_df: DataFrame with match data
@@ -319,14 +341,62 @@ class MatchPredictor:
         Returns:
             numpy array of features in correct order
         """
-        # Generate features for each match
-        features_list = []
-        for _, match in tqdm(matches_df.iterrows(), total=len(matches_df), desc="Generating match features"):
-            features = self.generate_match_features(match)
-            features_list.append(features)
+        logger.info(f"Preparing features using {NUM_CORES} CPU cores")
+        
+        # Create smaller chunks for better load balancing
+        chunk_size = max(1, len(matches_df) // (NUM_CORES * CHUNK_MULTIPLIER))
+        chunks = [(i, matches_df.iloc[i:i+chunk_size]) for i in range(0, len(matches_df), chunk_size)]
+        
+        logger.info(f"Created {len(chunks)} chunks with approximately {chunk_size} matches each")
+        
+        all_features = []
+        
+        # Process in sequential chunks to avoid memory issues
+        num_batches = (len(chunks) + POOL_BATCH_SIZE - 1) // POOL_BATCH_SIZE
+        logger.info(f"Processing data in {num_batches} batches of {POOL_BATCH_SIZE} chunks each")
+        
+        for i in range(0, len(chunks), POOL_BATCH_SIZE):
+            batch_chunks = chunks[i:i+POOL_BATCH_SIZE]
+            batch_num = i // POOL_BATCH_SIZE + 1
+            
+            logger.info(f"Starting batch {batch_num}/{num_batches} with {len(batch_chunks)} chunks")
+            
+            try:
+                # Create a pool of workers with maxtasksperchild to free resources
+                with multiprocessing.Pool(processes=NUM_CORES, maxtasksperchild=2) as pool:
+                    # Process each chunk in parallel
+                    results = list(tqdm(
+                        pool.imap(
+                            partial(process_match_features_batch, db_url=self.db_url),
+                            batch_chunks
+                        ),
+                        total=len(batch_chunks),
+                        desc=f"Processing batch {batch_num}/{num_batches}",
+                        unit="chunk"
+                    ))
+                
+                # Count valid results
+                valid_results = [r for r in results if r is not None]
+                logger.info(f"Batch {batch_num}: processed {len(valid_results)}/{len(batch_chunks)} chunks successfully")
+                
+                # Combine results from this batch
+                batch_features_count = 0
+                for chunk_features in results:
+                    if chunk_features is not None:
+                        all_features.extend(chunk_features)
+                        batch_features_count += len(chunk_features)
+                
+                logger.info(f"Batch {batch_num}: added {batch_features_count} features, total so far: {len(all_features)}")
+                
+                # Free memory
+                del results
+                
+            except Exception as e:
+                logger.error(f"Error processing batch {batch_num}: {str(e)}")
+                continue
         
         # Convert to DataFrame
-        features_df = pd.DataFrame(features_list)
+        features_df = pd.DataFrame(all_features)
         
         # Ensure all required features are present
         missing_features = set(self.feature_columns) - set(features_df.columns)
@@ -483,6 +553,142 @@ class MatchPredictor:
         except Exception as e:
             logger.error(f"Error making predictions: {e}")
             raise
+
+def process_match_features_batch(batch_data: Tuple[int, pd.DataFrame], db_url: str) -> List[Dict[str, float]]:
+    """
+    Process a batch of matches to generate features in parallel
+    
+    Args:
+        batch_data: Tuple containing (batch_idx, batch_df)
+        db_url: Database connection URL
+        
+    Returns:
+        List of feature dictionaries
+    """
+    try:
+        batch_idx, batch_df = batch_data
+        
+        # Create a connection for this worker
+        conn = psycopg2.connect(db_url)
+        
+        features_list = []
+        for _, match in batch_df.iterrows():
+            # Get historical stats for both players
+            player1_stats = get_player_historical_stats_worker(conn, match['player1_id'], match['scheduled_date'])
+            player2_stats = get_player_historical_stats_worker(conn, match['player2_id'], match['scheduled_date'])
+            
+            try:
+                # Calculate feature differences
+                features = {
+                    'player_elo_diff': match['player1_elo'] - match['player2_elo'],
+                    'win_rate_5_diff': player1_stats['win_rate_5'] - player2_stats['win_rate_5'],
+                    'win_streak_diff': player1_stats['win_streak'] - player2_stats['win_streak'],
+                    'loss_streak_diff': player1_stats['loss_streak'] - player2_stats['loss_streak']
+                }
+                
+                # Add surface-specific features
+                for surface in ['hard', 'clay', 'grass', 'carpet']:
+                    p1_rate = player1_stats.get(f'win_rate_{surface}') or 0
+                    p2_rate = player2_stats.get(f'win_rate_{surface}') or 0
+                    features[f'win_rate_{surface}_5_diff'] = p1_rate - p2_rate
+                
+                # Add raw player stats
+                for stat, value in player1_stats.items():
+                    features[f'player1_{stat}'] = value if value is not None else 0
+                for stat, value in player2_stats.items():
+                    features[f'player2_{stat}'] = value if value is not None else 0
+                
+                features_list.append(features)
+                
+            except Exception as e:
+                mp_logger.error(f"Error calculating features for match {match['match_id']}: {str(e)}")
+                continue
+            
+            # Limit batch size
+            if len(features_list) >= WORKER_BATCH_SIZE:
+                break
+        
+        conn.close()
+        return features_list
+        
+    except Exception as e:
+        mp_logger.error(f"Error processing batch {batch_idx}: {str(e)}")
+        return None
+
+def get_player_historical_stats_worker(conn: psycopg2.extensions.connection, player_id: int, before_date: datetime) -> Dict[str, float]:
+    """Worker version of get_player_historical_stats that uses an existing connection"""
+    query = """
+        WITH player_matches AS (
+            SELECT 
+                tournament_date,
+                CASE 
+                    WHEN winner_id = %s THEN 1 
+                    ELSE 0 
+                END as win,
+                surface
+            FROM matches 
+            WHERE (winner_id = %s OR loser_id = %s)
+            AND tournament_date < %s
+            ORDER BY tournament_date DESC
+            LIMIT 20
+        )
+        SELECT 
+            -- Overall stats
+            AVG(win) as win_rate_5,
+            SUM(CASE WHEN win = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN win = 0 THEN 1 ELSE 0 END) as losses,
+            -- Surface stats
+            AVG(CASE WHEN surface = 'hard' THEN win END) as win_rate_hard,
+            AVG(CASE WHEN surface = 'clay' THEN win END) as win_rate_clay,
+            AVG(CASE WHEN surface = 'grass' THEN win END) as win_rate_grass,
+            AVG(CASE WHEN surface = 'carpet' THEN win END) as win_rate_carpet
+        FROM player_matches
+    """
+    
+    stats = pd.read_sql(query, conn, params=(player_id, player_id, player_id, before_date))
+    
+    if stats.empty:
+        return {}
+    
+    # Calculate streaks
+    cursor = conn.cursor()
+    streak_query = """
+        WITH player_matches AS (
+            SELECT 
+                tournament_date,
+                CASE 
+                    WHEN winner_id = %s THEN 1 
+                    ELSE 0 
+                END as win
+            FROM matches 
+            WHERE (winner_id = %s OR loser_id = %s)
+            AND tournament_date < %s
+            ORDER BY tournament_date DESC
+            LIMIT 20
+        )
+        SELECT win FROM player_matches
+    """
+    cursor.execute(streak_query, (player_id, player_id, player_id, before_date))
+    results = cursor.fetchall()
+    
+    # Calculate streaks
+    win_streak = 0
+    loss_streak = 0
+    for (win,) in results:
+        if win == 1:
+            win_streak += 1
+            loss_streak = 0
+        else:
+            loss_streak += 1
+            win_streak = 0
+    
+    stats_dict = stats.iloc[0].to_dict()
+    stats_dict.update({
+        'win_streak': win_streak,
+        'loss_streak': loss_streak
+    })
+    
+    return stats_dict
 
 def main():
     """Main execution function"""
