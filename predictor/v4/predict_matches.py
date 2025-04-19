@@ -656,13 +656,16 @@ def get_player_historical_stats_worker(conn: psycopg2.extensions.connection, pla
         FROM player_matches
     """
     
-    stats = pd.read_sql(query, conn, params=(player_id, player_id, player_id, before_date))
+    cursor = conn.cursor()
+    cursor.execute(query, (player_id, player_id, player_id, before_date))
+    columns = [desc[0] for desc in cursor.description]
+    results = cursor.fetchall()
+    stats = pd.DataFrame.from_records(results, columns=columns)
     
     if stats.empty:
         return {}
     
     # Calculate streaks
-    cursor = conn.cursor()
     streak_query = """
         WITH player_matches AS (
             SELECT 
@@ -681,6 +684,7 @@ def get_player_historical_stats_worker(conn: psycopg2.extensions.connection, pla
     """
     cursor.execute(streak_query, (player_id, player_id, player_id, before_date))
     results = cursor.fetchall()
+    cursor.close()
     
     # Calculate streaks
     win_streak = 0
