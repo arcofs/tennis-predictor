@@ -165,11 +165,21 @@ class MatchPredictor:
                     tournament_date,
                     ROW_NUMBER() OVER (PARTITION BY player2_id ORDER BY tournament_date DESC) as rn1
                 FROM match_features
+            ),
+            round_mapping AS (
+                SELECT unnest(ARRAY[
+                    '1','2','3','4','5','6','7','8','9','10','12',
+                    'Q1','Q2','Q3','R128','R64','R32','R16','RR','QF','SF','F'
+                ]) as api_round,
+                unnest(ARRAY[
+                    'Q1','Q2','Q3','R128','R64','R32','R16','RR','QF','SF','F',
+                    'Q1','Q2','Q3','R128','R64','R32','R16','RR','QF','SF','F'
+                ]) as standard_round
             )
             SELECT 
                 s.match_id,
                 s.tournament_id,
-                s.round,
+                COALESCE(rm.standard_round, s.round) as round,
                 s.player1_id,
                 s.player2_id,
                 s.surface,
@@ -177,6 +187,7 @@ class MatchPredictor:
                 COALESCE(p1.elo, 1500) as player1_elo,
                 COALESCE(p2.elo, 1500) as player2_elo
             FROM scheduled_matches s
+            LEFT JOIN round_mapping rm ON rm.api_round = s.round
             LEFT JOIN (
                 SELECT player_id, elo
                 FROM latest_player_features
