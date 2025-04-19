@@ -279,7 +279,7 @@ class ModelTrainer:
         # Find date cutoffs rather than using row indices
         # This handles multiple matches on same day better
         dates = df['tournament_date'].unique()
-        dates.sort()
+        dates = np.sort(dates)  # Use np.sort instead of dates.sort()
         
         train_end_idx = int(len(dates) * train_ratio)
         val_end_idx = int(len(dates) * (train_ratio + val_ratio))
