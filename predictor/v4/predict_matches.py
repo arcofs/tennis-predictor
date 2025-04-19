@@ -38,7 +38,7 @@ sys.path.append(str(project_root))
 NUM_CORES = 0  # Set to 0 to use all available cores
 CHUNK_MULTIPLIER = 8  # Controls chunk size for better load balancing
 WORKER_BATCH_SIZE = 8000  # Maximum records to process in a worker
-POOL_BATCH_SIZE = 16  # Number of chunks to process per pool creation
+POOL_BATCH_SIZE = 50  # Number of chunks to process per pool creation
 
 # If NUM_CORES is set to 0, use all available cores
 if NUM_CORES <= 0:
@@ -466,7 +466,7 @@ class MatchPredictor:
                     }
                     prediction_data.append(prediction)
                 
-                # Insert predictions
+                # Insert predictions with ON CONFLICT DO UPDATE
                 if prediction_data:
                     columns = prediction_data[0].keys()
                     values = [[pred[col] for col in columns] for pred in prediction_data]
@@ -477,6 +477,10 @@ class MatchPredictor:
                         INSERT INTO match_predictions (
                             {','.join(columns)}
                         ) VALUES %s
+                        ON CONFLICT (match_id, model_version) DO UPDATE SET
+                            player1_win_probability = EXCLUDED.player1_win_probability,
+                            prediction_date = EXCLUDED.prediction_date,
+                            features_used = EXCLUDED.features_used
                         """,
                         values
                     )
