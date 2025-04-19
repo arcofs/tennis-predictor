@@ -198,7 +198,7 @@ class MatchPredictor:
                     CASE 
                         WHEN winner_id = %s THEN 1 
                         ELSE 0 
-                    END as won,
+                    END as win,
                     surface
                 FROM matches 
                 WHERE (winner_id = %s OR loser_id = %s)
@@ -208,14 +208,14 @@ class MatchPredictor:
             )
             SELECT 
                 -- Overall stats
-                AVG(won) as win_rate_5,
-                SUM(CASE WHEN won = 1 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN won = 0 THEN 1 ELSE 0 END) as losses,
+                AVG(win) as win_rate_5,
+                SUM(CASE WHEN win = 1 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN win = 0 THEN 1 ELSE 0 END) as losses,
                 -- Surface stats
-                AVG(CASE WHEN surface = 'hard' THEN won END) as win_rate_hard,
-                AVG(CASE WHEN surface = 'clay' THEN won END) as win_rate_clay,
-                AVG(CASE WHEN surface = 'grass' THEN won END) as win_rate_grass,
-                AVG(CASE WHEN surface = 'carpet' THEN won END) as win_rate_carpet
+                AVG(CASE WHEN surface = 'hard' THEN win END) as win_rate_hard,
+                AVG(CASE WHEN surface = 'clay' THEN win END) as win_rate_clay,
+                AVG(CASE WHEN surface = 'grass' THEN win END) as win_rate_grass,
+                AVG(CASE WHEN surface = 'carpet' THEN win END) as win_rate_carpet
             FROM player_matches
         """
         
@@ -226,10 +226,31 @@ class MatchPredictor:
                 return {}
             
             # Calculate streaks
+            cursor = conn.cursor()
+            streak_query = """
+                WITH player_matches AS (
+                    SELECT 
+                        tournament_date,
+                        CASE 
+                            WHEN winner_id = %s THEN 1 
+                            ELSE 0 
+                        END as win
+                    FROM matches 
+                    WHERE (winner_id = %s OR loser_id = %s)
+                    AND tournament_date < %s
+                    ORDER BY tournament_date DESC
+                    LIMIT 20
+                )
+                SELECT win FROM player_matches
+            """
+            cursor.execute(streak_query, (player_id, player_id, player_id, before_date))
+            results = cursor.fetchall()
+            
+            # Calculate streaks
             win_streak = 0
             loss_streak = 0
-            for won in stats['won'].values:
-                if won == 1:
+            for (win,) in results:
+                if win == 1:
                     win_streak += 1
                     loss_streak = 0
                 else:
