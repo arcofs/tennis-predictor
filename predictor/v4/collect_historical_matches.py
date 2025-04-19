@@ -58,20 +58,28 @@ START_DATE = (TODAY - timedelta(days=13)).strftime('%Y-%m-%d')  # 14 days back (
 API_REQUESTS_PER_SECOND = 7
 
 # Configure logging
+# Create formatters
+detailed_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_formatter = logging.Formatter('%(levelname)s: %(message)s')  # Simpler format for console
+
+# Create handlers
+file_handler = logging.FileHandler(f"{project_root}/predictor/v4/output/logs/historical_collection.log")
+file_handler.setFormatter(detailed_formatter)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(console_formatter)
+
+# Configure root logger
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(f"{project_root}/predictor/v4/output/logs/historical_collection.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, console_handler]
 )
 logger = logging.getLogger(__name__)
 
 # Add file handler for warnings and errors
 error_handler = logging.FileHandler(f"{project_root}/predictor/v4/output/logs/tennis_api_errors.log")
-error_handler.setLevel(logging.WARNING)  # Only log WARNING and above (WARNING, ERROR, CRITICAL)
-error_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+error_handler.setLevel(logging.WARNING)  # Only log WARNING and above
+error_handler.setFormatter(detailed_formatter)  # Use detailed format for error logs
 logger.addHandler(error_handler)
 
 # Load environment variables

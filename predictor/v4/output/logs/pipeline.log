@@ -1,0 +1,2 @@
+2025-04-19 12:22:25,975 - __main__ - INFO - Starting prediction pipeline
+2025-04-19 12:22:25,975 - __main__ - INFO - Running historical script: /home/tom/projects/tennis-predictor/predictor/v4/collect_historical_matches.py

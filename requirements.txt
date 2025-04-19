@@ -16,3 +16,4 @@ optuna-integration[xgboost]
 plotly>=5.18.0
 kaleido
 requests==2.31.0
+aiohttp
