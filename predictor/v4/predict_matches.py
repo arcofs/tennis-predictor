@@ -58,6 +58,34 @@ class MatchPredictor:
         self.model = None
         self.model_version = None
         self.feature_columns = None
+
+        # Round mapping from API round_id to matches table format
+        self.round_mapping = {
+            # API round_id to standard format
+            '1': 'Q1',     # Qualifier 1
+            '2': 'Q2',     # Qualifier 2
+            '3': 'Q3',     # Qualifier 3
+            '4': 'R128',   # First round
+            '5': 'R64',    # Second round
+            '6': 'R32',    # Third round
+            '7': 'R16',    # Fourth round
+            '8': 'RR',     # Round Robin
+            '9': 'QF',     # Quarter Final (1/4)
+            '10': 'SF',    # Semi Final (1/2)
+            '12': 'F',     # Final
+            # Also support direct round names
+            'Q1': 'Q1',
+            'Q2': 'Q2',
+            'Q3': 'Q3',
+            'R128': 'R128',
+            'R64': 'R64',
+            'R32': 'R32',
+            'R16': 'R16',
+            'RR': 'RR',
+            'QF': 'QF',
+            'SF': 'SF',
+            'F': 'F'
+        }
     
     def get_db_connection(self):
         """Create a database connection"""
@@ -328,6 +356,16 @@ class MatchPredictor:
     def update_prediction_accuracy(self):
         """Update accuracy for past predictions where results are now known"""
         query = """
+            WITH round_mapping AS (
+                SELECT unnest(ARRAY[
+                    '1','2','3','4','5','6','7','8','9','10','12',
+                    'Q1','Q2','Q3','R128','R64','R32','R16','RR','QF','SF','F'
+                ]) as api_round,
+                unnest(ARRAY[
+                    'Q1','Q2','Q3','R128','R64','R32','R16','RR','QF','SF','F',
+                    'Q1','Q2','Q3','R128','R64','R32','R16','RR','QF','SF','F'
+                ]) as standard_round
+            )
             UPDATE match_predictions p
             SET 
                 actual_winner_id = m.winner_id,
@@ -338,7 +376,18 @@ class MatchPredictor:
                     ELSE 0.0
                 END
             FROM matches m
-            JOIN scheduled_matches s ON s.match_id::integer = m.match_num
+            JOIN scheduled_matches s ON 
+                s.tournament_id = m.tournament_id
+                AND EXISTS (
+                    SELECT 1 FROM round_mapping rm 
+                    WHERE rm.api_round = s.round::text 
+                    AND rm.standard_round = m.round
+                )
+                AND (
+                    (s.player1_id = m.winner_id AND s.player2_id = m.loser_id)
+                    OR 
+                    (s.player1_id = m.loser_id AND s.player2_id = m.winner_id)
+                )
             WHERE p.match_id = s.match_id
             AND p.actual_winner_id IS NULL
             AND m.winner_id IS NOT NULL

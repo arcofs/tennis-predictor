@@ -1,5 +1,6 @@
 .venv
 .env
+setup-git.sh
 /data/raw
 /data/cleaned/combined_matches.csv
 # Large data files
