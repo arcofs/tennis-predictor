@@ -269,9 +269,14 @@ class ModelTrainer:
         Returns:
             Tuple of (train_df, val_df, test_df)
         """
+        # Debug logging for datetime operations
+        logger.info(f"Tournament date column type: {type(df['tournament_date'].iloc[0])}")
+        logger.info(f"Tournament date sample: {df['tournament_date'].iloc[0]}")
+        
         # Ensure we have datetime format for tournament_date
         if pd.api.types.is_object_dtype(df['tournament_date']):
             df['tournament_date'] = pd.to_datetime(df['tournament_date'])
+            logger.info("Converted tournament_date from object to datetime")
 
         # Sort by date (enforcing strict chronological order)
         df = df.sort_values('tournament_date')
@@ -279,7 +284,8 @@ class ModelTrainer:
         # Find date cutoffs rather than using row indices
         # This handles multiple matches on same day better
         dates = df['tournament_date'].unique()
-        dates = np.sort(dates)  # Use np.sort instead of dates.sort()
+        logger.info(f"Unique dates type: {type(dates[0])}")
+        dates = np.sort(dates)
         
         train_end_idx = int(len(dates) * train_ratio)
         val_end_idx = int(len(dates) * (train_ratio + val_ratio))
@@ -287,9 +293,12 @@ class ModelTrainer:
         train_end_date = dates[train_end_idx - 1]
         val_end_date = dates[val_end_idx - 1]
         
+        logger.info(f"Train end date type: {type(train_end_date)}")
+        logger.info(f"Train end date value: {train_end_date}")
+        
         # Add one day to ensure strict separation
-        train_end_date_exclusive = train_end_date + pd.Timedelta(days=1)
-        val_end_date_exclusive = val_end_date + pd.Timedelta(days=1)
+        train_end_date_exclusive = pd.Timestamp(train_end_date) + pd.Timedelta(days=1)
+        val_end_date_exclusive = pd.Timestamp(val_end_date) + pd.Timedelta(days=1)
         
         # Split data by dates with explicit separation
         train_df = df[df['tournament_date'] < train_end_date_exclusive].copy()
@@ -297,10 +306,10 @@ class ModelTrainer:
                    (df['tournament_date'] < val_end_date_exclusive)].copy()
         test_df = df[df['tournament_date'] >= val_end_date_exclusive].copy()
         
-        # Log the date ranges
-        logger.info(f"Training data: {df['tournament_date'].min().strftime('%Y-%m-%d')} to {train_end_date.strftime('%Y-%m-%d')}")
-        logger.info(f"Validation data: {train_end_date_exclusive.strftime('%Y-%m-%d')} to {val_end_date.strftime('%Y-%m-%d')}")
-        logger.info(f"Test data: {val_end_date_exclusive.strftime('%Y-%m-%d')} to {df['tournament_date'].max().strftime('%Y-%m-%d')}")
+        # Log the date ranges using proper conversion
+        logger.info(f"Training data: {pd.Timestamp(df['tournament_date'].min()).strftime('%Y-%m-%d')} to {pd.Timestamp(train_end_date).strftime('%Y-%m-%d')}")
+        logger.info(f"Validation data: {pd.Timestamp(train_end_date_exclusive).strftime('%Y-%m-%d')} to {pd.Timestamp(val_end_date).strftime('%Y-%m-%d')}")
+        logger.info(f"Test data: {pd.Timestamp(val_end_date_exclusive).strftime('%Y-%m-%d')} to {pd.Timestamp(df['tournament_date'].max()).strftime('%Y-%m-%d')}")
         
         # Verify split sizes
         logger.info(f"Split data into train ({len(train_df)}), val ({len(val_df)}), test ({len(test_df)}) sets")
@@ -313,12 +322,12 @@ class ModelTrainer:
         
         if val_min is not None and val_min <= train_max:
             logger.error(f"CRITICAL ERROR: Time overlap between train and validation sets!")
-            logger.error(f"Train max: {train_max}, Val min: {val_min}")
+            logger.error(f"Train max: {pd.Timestamp(train_max).strftime('%Y-%m-%d')}, Val min: {pd.Timestamp(val_min).strftime('%Y-%m-%d')}")
             raise ValueError("Train and validation sets have time overlap")
             
         if test_min is not None and val_max is not None and test_min <= val_max:
             logger.error(f"CRITICAL ERROR: Time overlap between validation and test sets!")
-            logger.error(f"Val max: {val_max}, Test min: {test_min}")
+            logger.error(f"Val max: {pd.Timestamp(val_max).strftime('%Y-%m-%d')}, Test min: {pd.Timestamp(test_min).strftime('%Y-%m-%d')}")
             raise ValueError("Validation and test sets have time overlap")
         
         # Return the splits
@@ -734,17 +743,26 @@ class ModelTrainer:
         # Check 1: Ensure no matches with dates in the future
         if 'tournament_date' in df.columns:
             current_date = pd.Timestamp.now().normalize()  # Get current date without time
+            
+            # Debug logging
+            logger.info(f"Validation - tournament_date type: {type(df['tournament_date'].iloc[0])}")
+            
+            # Convert to pandas datetime if needed
             if pd.api.types.is_object_dtype(df['tournament_date']):
-                df['tournament_date_temp'] = pd.to_datetime(df['tournament_date']).dt.normalize()
-            else:
-                df['tournament_date_temp'] = df['tournament_date'].dt.normalize()
+                df['tournament_date'] = pd.to_datetime(df['tournament_date'])
+            
+            # Create normalized dates for comparison
+            df['tournament_date_temp'] = df['tournament_date'].dt.normalize()
                 
             future_date_matches = df[df['tournament_date_temp'] > current_date]
             if not future_date_matches.empty:
                 logger.error(f"DATA LEAKAGE: Found {len(future_date_matches)} matches with dates in the future")
-                earliest_future = pd.Timestamp(future_date_matches['tournament_date_temp'].min()).strftime('%Y-%m-%d')
-                logger.error(f"Earliest future date: {earliest_future}")
+                earliest_future = future_date_matches['tournament_date_temp'].min()
+                logger.error(f"Earliest future date: {pd.Timestamp(earliest_future).strftime('%Y-%m-%d')}")
                 validation_passed = False
+            
+            # Clean up temporary column
+            df.drop('tournament_date_temp', axis=1, inplace=True)
         
         # Check 2: Verify class balance to detect potential bias or leakage
         if 'result' in df.columns:
@@ -999,16 +1017,16 @@ class ModelTrainer:
                     'val_size': len(val_df),
                     'test_size': len(test_df),
                     'train_date_range': [
-                        pd.Timestamp(train_df['tournament_date'].min()).isoformat(),
-                        pd.Timestamp(train_df['tournament_date'].max()).isoformat()
+                        pd.Timestamp(train_df['tournament_date'].min()).strftime('%Y-%m-%d'),
+                        pd.Timestamp(train_df['tournament_date'].max()).strftime('%Y-%m-%d')
                     ],
                     'val_date_range': [
-                        pd.Timestamp(val_df['tournament_date'].min()).isoformat(),
-                        pd.Timestamp(val_df['tournament_date'].max()).isoformat()
+                        pd.Timestamp(val_df['tournament_date'].min()).strftime('%Y-%m-%d'),
+                        pd.Timestamp(val_df['tournament_date'].max()).strftime('%Y-%m-%d')
                     ],
                     'test_date_range': [
-                        pd.Timestamp(test_df['tournament_date'].min()).isoformat(),
-                        pd.Timestamp(test_df['tournament_date'].max()).isoformat()
+                        pd.Timestamp(test_df['tournament_date'].min()).strftime('%Y-%m-%d'),
+                        pd.Timestamp(test_df['tournament_date'].max()).strftime('%Y-%m-%d')
                     ],
                     'class_distribution': {
                         'train': float(train_positive_rate),
