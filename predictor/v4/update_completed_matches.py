@@ -202,11 +202,6 @@ class CompletedMatchUpdater:
                         # Commit the transaction
                         conn.commit()
                         logger.info(f"Successfully marked match {match_id} as processed={processed}")
-                        
-                        # Note: We deliberately don't update match_features here
-                        # This allows generate_historical_features.py to handle all feature generation
-                        # which maintains a cleaner separation of concerns
-                        
                         return True
                         
                     except Exception as e:

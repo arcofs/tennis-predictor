@@ -1,68 +1,126 @@
 # Tennis Match Prediction Pipeline (v4)
 
-This directory contains the v4 version of the tennis match prediction pipeline, which provides real-time predictions for upcoming tennis matches using historical match data and machine learning.
+This directory contains the v4 version of the tennis match prediction pipeline.
+The pipeline collects match data, generates features, trains models, and makes predictions
+for upcoming tennis matches.
 
 ## Pipeline Overview
 
-The v4 pipeline consists of several components:
+The pipeline consists of several components that run in sequence:
 
-1. **Historical Data Collection** (`collect_historical_matches.py`)
-   - Fetches historical matches from the last 14 days
-   - Updates the matches table with recent match data
-   - Ensures continuous data flow for feature generation
+1. `collect_historical_matches.py`
+   - Collects match data from the last 14 days
+   - Stores matches in `matches` table
 
-2. **Elo Rating Calculation** (`calculate_elo.py`)
-   - Calculates Elo ratings for all players based on match history
-   - Updates Elo-related columns in the matches table
-   - Considers tournament levels and time decay
-   - Essential for feature generation
+2. `calculate_elo.py`
+   - Calculates Elo ratings for all players
+   - Updates `player_elo` table
 
-3. **Future Match Collection** (`collect_future_matches.py`)
-   - Fetches upcoming matches for the next 7 days
-   - Creates/updates necessary database tables
-   - Stores match information in `scheduled_matches` table
+3. `collect_future_matches.py`
+   - Collects upcoming match data
+   - Stores in `scheduled_matches` table
 
-4. **Completed Match Update** (`update_completed_matches.py`)
-   - Identifies scheduled matches that have been completed
-   - Fetches match results from the matches table
-   - Marks matches as processed in `scheduled_matches` table
+4. `update_completed_matches.py`
+   - Finds scheduled matches that have been completed
+   - Links them to entries in `matches` table
+   - Updates `is_processed` flag in `scheduled_matches`
 
-5. **Historical Feature Generation** (`generate_historical_features.py`)
-   - Processes new historical match data incrementally
-   - Updates features for matches defined in the YEARS_TO_PROCESS variable
-   - Uses batch processing to handle large volumes efficiently
-   - Supports time-based filtering to process only matches from a specified time period
-   - Generates and stores features for all historical matches in the match_features table
+5. `generate_historical_features.py`
+   - Generates features for historical matches only
+   - Stores features in `match_features` table
+   - Used for model training
 
-6. **Future Feature Generation** (`generate_future_features.py`)
-   - Generates features for upcoming matches
-   - Uses pre-calculated features from match_features table
-   - Efficiently reuses existing features without recalculation
-   - Stores features in `match_features` table with `is_future=true`
+6. `train_model_v4.py`
+   - Trains the XGBoost model using historical matches
+   - Uses strict time-based train/val/test split
+   - Saves model and metadata to `models` directory
 
-7. **Model Training** (`train_model_v4.py`)
-   - Trains XGBoost model on historical match data
-   - Performs hyperparameter optimization
-   - Generates performance metrics and visualizations
-   - Saves model and metadata in `models/` directory
-
-8. **Match Prediction** (`predict_matches.py`)
+7. `predict_matches.py`
    - Loads latest trained model
-   - Makes predictions for upcoming matches
-   - Stores predictions in `match_predictions` table
-   - Updates prediction accuracy as results come in
+   - Gets unprocessed scheduled matches
+   - Generates features on-the-fly using only historical data
+   - Makes predictions and stores them in `match_predictions` table
 
-9. **Pipeline Orchestration** (`update_predictions.py`)
-   - Coordinates the entire prediction pipeline in the following order:
-     1. Historical matches are collected (last 14 days)
-     2. Elo ratings are calculated
-     3. Future matches are collected
-     4. Completed matches are updated
-     5. Historical features are generated
-     6. Future features are generated
-     7. Predictions are made
-   - Can be run via cron job for automated updates
-   - Handles logging and error reporting
+8. `update_predictions.py`
+   - Orchestrates the entire pipeline
+   - Can be run daily via cron
+
+## Database Tables
+
+The pipeline uses several database tables:
+
+- `matches`: Historical match data
+- `scheduled_matches`: Upcoming match data
+- `player_elo`: Player Elo ratings
+- `match_features`: Features for historical matches (for training)
+- `match_predictions`: Predictions for upcoming matches
+
+## Features
+
+The model uses the following types of features:
+
+1. Elo rating differences
+2. Recent win rates (overall and surface-specific)
+3. Win/loss streaks
+4. Surface-specific performance
+5. Serve and return statistics
+
+Features for historical matches (used in training) are pre-computed and stored in the database.
+Features for future matches are generated on-the-fly during prediction to ensure no data leakage.
+
+## Model Training
+
+The model is trained using only historical matches with strict time-based separation:
+- Training set: Oldest matches
+- Validation set: Middle period
+- Test set: Most recent matches
+
+This ensures no future information leaks into the training process.
+
+## Making Predictions
+
+Predictions for upcoming matches are made by:
+1. Loading the latest trained model
+2. Getting unprocessed scheduled matches
+3. Generating features on-the-fly using only historical data
+4. Making predictions with confidence scores
+5. Storing predictions in the database
+
+## Running the Pipeline
+
+The entire pipeline can be run using:
+
+```bash
+python predictor/v4/update_predictions.py
+```
+
+This will execute all components in sequence.
+
+## Monitoring and Logging
+
+Each component writes logs to `predictor/v4/output/logs/`:
+- `pipeline.log`: Overall pipeline execution
+- `training.log`: Model training details
+- `predictions.log`: Prediction generation
+- `historical_features.log`: Feature generation
+- Other component-specific logs
+
+## Model Performance
+
+Model performance metrics are stored with each trained model in the `models` directory:
+- ROC AUC
+- Accuracy
+- Precision/Recall
+- Feature importance
+
+## Future Improvements
+
+Potential areas for improvement:
+1. Add more features (e.g., head-to-head records)
+2. Experiment with different model architectures
+3. Add ensemble methods
+4. Improve feature engineering
+5. Add more detailed performance analysis
 
 ## Match ID Handling
 
@@ -79,8 +137,6 @@ Understanding match ID relationships is crucial for working with this codebase:
 3. **match_features table**:
    - For historical matches: `match_id` refers to `matches.id` (auto-incremented PK)
    - For future matches: `match_id` refers to `scheduled_matches.match_id` (external API ID)
-   - `is_future`: Flag to distinguish between historical and future matches
-     - When a future match is completed, this flag is automatically updated to FALSE
 
 4. **match_predictions table**:
    - `match_id`: References `scheduled_matches.match_id` (external API ID)
@@ -112,15 +168,6 @@ predictor/v4/
     ├── plots/                     # Performance plots
     └── *.log                      # Log files
 ```
-
-## Database Tables
-
-The pipeline uses the following tables:
-
-1. `matches` - Historical match data
-2. `match_features` - Match features for both historical and future matches
-3. `scheduled_matches` - Upcoming match information
-4. `match_predictions` - Match predictions and accuracy tracking
 
 ## Usage Guide
 
@@ -266,17 +313,6 @@ When adding features or making changes:
 2. Update relevant documentation
 3. Add/update tests
 4. Submit pull request
-
-## Future Improvements
-
-Potential areas for enhancement:
-
-1. Surface-specific models
-2. Tournament-level adjustments
-3. Player form tracking
-4. Confidence scoring
-5. Automated model retraining
-6. Performance visualization dashboard
 
 ## Support
 

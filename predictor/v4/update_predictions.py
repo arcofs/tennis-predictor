@@ -6,7 +6,7 @@ This script orchestrates the entire prediction pipeline:
 2. Calculate Elo ratings
 3. Collect upcoming matches
 4. Update completed matches
-5. Generate features
+5. Generate historical features
 6. Make predictions
 7. Update accuracy for past predictions
 
@@ -46,7 +46,6 @@ class PipelineOrchestrator:
             "collect": self.v4_dir / "collect_future_matches.py",
             "update_completed": self.v4_dir / "update_completed_matches.py",
             "historical_features": self.v4_dir / "generate_historical_features.py",
-            "features": self.v4_dir / "generate_future_features.py",
             "predict": self.v4_dir / "predict_matches.py"
         }
         
@@ -133,15 +132,9 @@ class PipelineOrchestrator:
             # Step 5: Update historical features
             if not self.run_script("historical_features"):
                 logger.error("Historical feature generation failed")
-                logger.warning("Continuing pipeline despite historical feature failure")
-                # Continue pipeline even if historical features fail
-            
-            # Step 6: Generate future features
-            if not self.run_script("features"):
-                logger.error("Future feature generation failed")
                 return False
             
-            # Step 7: Make predictions
+            # Step 6: Make predictions
             if not self.run_script("predict"):
                 logger.error("Prediction generation failed")
                 return False

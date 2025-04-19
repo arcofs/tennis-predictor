@@ -174,7 +174,6 @@ class ModelTrainer:
                 f.surface,
                 f.tournament_date,
                 f.tournament_level,
-                f.is_future,
                 f.result, -- Use pre-calculated result from match_features
                 -- All the diff features
                 f.player_elo_diff,
@@ -238,22 +237,14 @@ class ModelTrainer:
                 f.player2_return_efficiency_5,
                 f.player2_bp_conversion_pct_5
             FROM match_features f
-            WHERE f.is_future IS NOT TRUE
-            AND f.result IS NOT NULL -- Ensure we have valid results
+            WHERE f.result IS NOT NULL -- Ensure we have valid results
             ORDER BY f.tournament_date ASC
         """
         
         with self.get_db_connection() as conn:
             df = pd.read_sql(query, conn)
         
-        # Additional safety check to ensure no future matches are included
-        if 'is_future' in df.columns:
-            future_matches = df[df['is_future'] == True]
-            if not future_matches.empty:
-                logger.error(f"Found {len(future_matches)} future matches in training data! Removing them.")
-                df = df[df['is_future'] != True]
-        
-        # Verify we have proper class balance
+        # Verify class balance
         positive_rate = df['result'].mean()
         logger.info(f"Class distribution: {positive_rate:.2%} positive (player1 wins)")
         
@@ -740,28 +731,7 @@ class ModelTrainer:
         """
         validation_passed = True
         
-        # Check 1: Ensure no future matches in training data
-        future_matches = None
-        if 'is_future' in df.columns:
-            future_matches = df[df['is_future'] == True]
-            if not future_matches.empty:
-                logger.error(f"DATA LEAKAGE: Found {len(future_matches)} future matches in training data")
-                logger.error("This would cause the model to train on data it shouldn't have access to")
-                validation_passed = False
-                
-                # Additional critical check: future matches with results
-                future_with_results = future_matches[future_matches['result'].notnull()]
-                if not future_with_results.empty:
-                    logger.error(f"CRITICAL DATA LEAKAGE: {len(future_with_results)} future matches have result values!")
-                    logger.error("This indicates a severe pipeline issue that must be fixed immediately")
-                    logger.error("Future matches should NEVER have result values set")
-                    
-                    # Sample of problematic matches
-                    if len(future_with_results) > 0:
-                        sample = future_with_results.head(min(5, len(future_with_results)))
-                        logger.error(f"Sample of problematic matches:\n{sample[['match_id', 'player1_id', 'player2_id', 'result']]}")
-        
-        # Check 2: Ensure no matches with dates in the future
+        # Check 1: Ensure no matches with dates in the future
         if 'tournament_date' in df.columns:
             current_date = datetime.now().date()
             if pd.api.types.is_object_dtype(df['tournament_date']):
@@ -776,7 +746,7 @@ class ModelTrainer:
                 logger.error(f"Earliest future date: {earliest_future}")
                 validation_passed = False
         
-        # Check 3: Verify class balance to detect potential bias or leakage
+        # Check 2: Verify class balance to detect potential bias or leakage
         if 'result' in df.columns:
             pos_rate = df['result'].mean()
             if pos_rate < 0.40 or pos_rate > 0.60:
@@ -787,36 +757,20 @@ class ModelTrainer:
                     logger.error("SEVERE CLASS IMBALANCE: This level of imbalance often indicates data leakage")
                     validation_passed = False
         
-        # Check 4: Verify all result values are valid (0 or 1, or NULL for future matches)
+        # Check 3: Verify all result values are valid (0 or 1)
         if 'result' in df.columns:
-            # Future matches should have NULL result
-            future_matches_invalid_results = 0
-            if 'is_future' in df.columns:
-                future_matches_invalid_results = df[(df['is_future'] == True) & (df['result'].notnull())].shape[0]
-                if future_matches_invalid_results > 0:
-                    logger.error(f"DATA ERROR: {future_matches_invalid_results} future matches have non-NULL results")
-                    validation_passed = False
-            
             # Historical matches should have 0 or 1 result
-            historical_invalid_results = 0
-            if 'is_future' in df.columns:
-                historical_invalid_results = df[
-                    (df['is_future'] != True) & 
-                    (df['result'].notnull()) & 
-                    (~df['result'].isin([0, 1]))
-                ].shape[0]
-            else:
-                historical_invalid_results = df[
-                    (df['result'].notnull()) & 
-                    (~df['result'].isin([0, 1]))
-                ].shape[0]
+            historical_invalid_results = df[
+                (df['result'].notnull()) & 
+                (~df['result'].isin([0, 1]))
+            ].shape[0]
                 
             if historical_invalid_results > 0:
                 logger.error(f"DATA ERROR: {historical_invalid_results} historical matches have invalid result values")
                 logger.error("Result values should be 0 or 1 for historical matches")
                 validation_passed = False
         
-        # Check 5: Check for near-perfect correlation between features and result (sign of leakage)
+        # Check 4: Check for near-perfect correlation between features and result (sign of leakage)
         corr_threshold = 0.85  # Threshold for concerning correlation
         # Calculate correlation of result with numeric features
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -836,7 +790,7 @@ class ModelTrainer:
                 logger.error(f"These correlations (>{corr_threshold}) indicate potential data leakage")
                 validation_passed = False
         
-        # Check 6: Check for unrealistic accuracy in a simple model (quick check for obvious leakage)
+        # Check 5: Check for unrealistic accuracy in a simple model (quick check for obvious leakage)
         try:
             if len(df) > 1000 and 'result' in df.columns:
                 from sklearn.model_selection import train_test_split
@@ -878,7 +832,7 @@ class ModelTrainer:
         except Exception as e:
             logger.warning(f"Could not perform leakage quick check with simple model: {e}")
         
-        # Check 7: Special check for the match_features table structure
+        # Check 6: Special check for the match_features table structure
         try:
             if 'result' in df.columns:
                 # Run a query to check if the match_features table is consistently biased
@@ -890,7 +844,7 @@ class ModelTrainer:
                                 COUNT(*) FILTER (WHERE result = 0) AS player1_loss_count,
                                 COUNT(*) AS total_count
                             FROM match_features
-                            WHERE is_future IS NOT TRUE
+                            WHERE result IS NOT NULL
                         """)
                         result = cursor.fetchone()
                         

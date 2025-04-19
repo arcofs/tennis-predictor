@@ -84,7 +84,6 @@ MATCH_FEATURES_TABLE = {
         {"name": "tournament_date", "type": "DATE", "description": "Tournament date"},
         {"name": "tournament_level", "type": "VARCHAR(50)", "description": "Tournament level code (G: Grand Slam, M: Masters, etc.)"},
         {"name": "result", "type": "INTEGER", "description": "Match result (1 if player1 won, 0 if player2 won)"},
-        {"name": "is_future", "type": "BOOLEAN", "description": "Flag indicating if this is a future match prediction (TRUE) or historical match (FALSE)"},
         {"name": "player_elo_diff", "type": "DOUBLE PRECISION", "description": "Difference in Elo ratings between players"},
         {"name": "win_rate_5_diff", "type": "DOUBLE PRECISION", "description": "Difference in 5-match win rates"},
         {"name": "win_streak_diff", "type": "BIGINT", "description": "Difference in win streaks"},

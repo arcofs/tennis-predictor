@@ -3,15 +3,14 @@ Tennis Match Prediction - Future Match Prediction (v4)
 
 This script makes predictions for upcoming tennis matches by:
 1. Loading the latest trained model
-2. Getting features for unprocessed matches
-3. Generating predictions with confidence scores
-4. Storing predictions in the match_predictions table
+2. Getting unprocessed scheduled matches
+3. Generating features for these matches on-the-fly
+4. Making predictions with confidence scores
+5. Storing predictions in the match_predictions table
 
 Important note about match IDs:
 - matches table: 'id' is auto-incremented PK, 'match_num' is the external API match ID
 - scheduled_matches table: 'match_id' is the external API match ID (as string)
-- match_features table: 'match_id' refers to matches.id for historical matches,
-                         and refers to scheduled_matches.match_id for future matches
 """
 
 import os
@@ -96,21 +95,27 @@ class MatchPredictor:
     
     def get_unprocessed_matches(self) -> pd.DataFrame:
         """
-        Get matches that need predictions
+        Get scheduled matches that need predictions
         
         Returns:
-            DataFrame with match features
+            DataFrame with match data
         """
-        # Note: For future matches, match_features.match_id == scheduled_matches.match_id
-        # This query gets future matches that don't have predictions yet
         query = """
-            SELECT f.*, s.scheduled_date
-            FROM match_features f
-            JOIN scheduled_matches s ON f.match_id = s.match_id
-            WHERE f.is_future = TRUE
-            AND NOT EXISTS (
+            SELECT 
+                s.match_id,
+                s.tournament_id,
+                s.player1_id,
+                s.player2_id,
+                s.surface,
+                s.scheduled_date,
+                p1.elo as player1_elo,
+                p2.elo as player2_elo
+            FROM scheduled_matches s
+            LEFT JOIN player_elo p1 ON s.player1_id = p1.player_id
+            LEFT JOIN player_elo p2 ON s.player2_id = p2.player_id
+            WHERE NOT EXISTS (
                 SELECT 1 FROM match_predictions p
-                WHERE p.match_id = f.match_id
+                WHERE p.match_id = s.match_id
                 AND p.model_version = %s
             )
             AND s.scheduled_date >= CURRENT_DATE
@@ -124,23 +129,138 @@ class MatchPredictor:
         logger.info(f"Found {len(df)} matches needing predictions")
         return df
     
+    def get_player_historical_stats(self, player_id: int, before_date: datetime) -> Dict[str, float]:
+        """
+        Get historical stats for a player before a given date
+        
+        Args:
+            player_id: Player ID
+            before_date: Get stats before this date
+            
+        Returns:
+            Dictionary of player stats
+        """
+        query = """
+            WITH player_matches AS (
+                SELECT 
+                    tournament_date,
+                    CASE 
+                        WHEN winner_id = %s THEN 1 
+                        ELSE 0 
+                    END as won,
+                    surface
+                FROM matches 
+                WHERE (winner_id = %s OR loser_id = %s)
+                AND tournament_date < %s
+                ORDER BY tournament_date DESC
+                LIMIT 20
+            )
+            SELECT 
+                -- Overall stats
+                AVG(won) as win_rate_5,
+                SUM(CASE WHEN won = 1 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN won = 0 THEN 1 ELSE 0 END) as losses,
+                -- Surface stats
+                AVG(CASE WHEN surface = 'hard' THEN won END) as win_rate_hard,
+                AVG(CASE WHEN surface = 'clay' THEN won END) as win_rate_clay,
+                AVG(CASE WHEN surface = 'grass' THEN won END) as win_rate_grass,
+                AVG(CASE WHEN surface = 'carpet' THEN won END) as win_rate_carpet
+            FROM player_matches
+        """
+        
+        with self.get_db_connection() as conn:
+            stats = pd.read_sql(query, conn, params=(player_id, player_id, player_id, before_date))
+            
+            if stats.empty:
+                return {}
+            
+            # Calculate streaks
+            win_streak = 0
+            loss_streak = 0
+            for won in stats['won'].values:
+                if won == 1:
+                    win_streak += 1
+                    loss_streak = 0
+                else:
+                    loss_streak += 1
+                    win_streak = 0
+            
+            stats_dict = stats.iloc[0].to_dict()
+            stats_dict.update({
+                'win_streak': win_streak,
+                'loss_streak': loss_streak
+            })
+            
+            return stats_dict
+    
+    def generate_match_features(self, match: pd.Series) -> Dict[str, float]:
+        """
+        Generate features for a single match
+        
+        Args:
+            match: Series with match data
+            
+        Returns:
+            Dictionary of features
+        """
+        # Get historical stats for both players
+        player1_stats = self.get_player_historical_stats(match['player1_id'], match['scheduled_date'])
+        player2_stats = self.get_player_historical_stats(match['player2_id'], match['scheduled_date'])
+        
+        if not player1_stats or not player2_stats:
+            return {}
+        
+        # Calculate feature differences
+        features = {
+            'player_elo_diff': match['player1_elo'] - match['player2_elo'],
+            'win_rate_5_diff': player1_stats['win_rate_5'] - player2_stats['win_rate_5'],
+            'win_streak_diff': player1_stats['win_streak'] - player2_stats['win_streak'],
+            'loss_streak_diff': player1_stats['loss_streak'] - player2_stats['loss_streak']
+        }
+        
+        # Add surface-specific features
+        for surface in ['hard', 'clay', 'grass', 'carpet']:
+            features[f'win_rate_{surface}_5_diff'] = (
+                player1_stats.get(f'win_rate_{surface}', 0) - 
+                player2_stats.get(f'win_rate_{surface}', 0)
+            )
+        
+        # Add raw player stats
+        for stat, value in player1_stats.items():
+            features[f'player1_{stat}'] = value
+        for stat, value in player2_stats.items():
+            features[f'player2_{stat}'] = value
+        
+        return features
+    
     def prepare_features(self, matches_df: pd.DataFrame) -> np.ndarray:
         """
         Prepare feature matrix for prediction
         
         Args:
-            matches_df: DataFrame with match features
+            matches_df: DataFrame with match data
             
         Returns:
             numpy array of features in correct order
         """
+        # Generate features for each match
+        features_list = []
+        for _, match in matches_df.iterrows():
+            features = self.generate_match_features(match)
+            features_list.append(features)
+        
+        # Convert to DataFrame
+        features_df = pd.DataFrame(features_list)
+        
         # Ensure all required features are present
-        missing_features = set(self.feature_columns) - set(matches_df.columns)
+        missing_features = set(self.feature_columns) - set(features_df.columns)
         if missing_features:
-            raise ValueError(f"Missing features: {missing_features}")
+            # Fill missing features with 0 or appropriate default
+            for feature in missing_features:
+                features_df[feature] = 0
         
         # Create feature matrix in correct order
-        X = matches_df[self.feature_columns].values
+        X = features_df[self.feature_columns].values
         
         return X
     
@@ -176,7 +296,7 @@ class MatchPredictor:
                 prediction_data = []
                 for idx, row in matches_df.iterrows():
                     prediction = {
-                        'match_id': row['match_id'],  # This is scheduled_matches.match_id
+                        'match_id': row['match_id'],
                         'player1_id': row['player1_id'],
                         'player2_id': row['player2_id'],
                         'player1_win_probability': float(predictions[idx]),
@@ -207,10 +327,6 @@ class MatchPredictor:
     
     def update_prediction_accuracy(self):
         """Update accuracy for past predictions where results are now known"""
-        # Update prediction accuracy for completed matches
-        # This query updates match_predictions by joining scheduled_matches to matches
-        # Key relationship: scheduled_matches.match_id (string) is converted to integer
-        # and matched with matches.match_num (which is the external API match ID)
         query = """
             UPDATE match_predictions p
             SET 
@@ -230,18 +346,12 @@ class MatchPredictor:
         
         with self.get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Update prediction accuracy
                 cur.execute(query)
                 updated_predictions = cur.rowcount
-                
                 conn.commit()
                 
                 if updated_predictions > 0:
                     logger.info(f"Updated accuracy for {updated_predictions} past predictions")
-                    
-                # Note: We deliberately don't update match_features here
-                # This allows generate_historical_features.py to handle all feature generation
-                # which maintains a cleaner separation of concerns
     
     def predict_matches(self):
         """Main method to generate predictions for upcoming matches"""
