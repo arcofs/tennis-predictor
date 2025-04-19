@@ -279,31 +279,41 @@ class MatchPredictor:
         player1_stats = self.get_player_historical_stats(match['player1_id'], match['scheduled_date'])
         player2_stats = self.get_player_historical_stats(match['player2_id'], match['scheduled_date'])
         
-        if not player1_stats or not player2_stats:
-            return {}
+        # Debug logging for match data
+        logger.info(f"Match data for match_id {match.get('match_id')}:")
+        logger.info(f"Player1 ELO: {match.get('player1_elo')}")
+        logger.info(f"Player2 ELO: {match.get('player2_elo')}")
+        logger.info(f"Player1 stats: {player1_stats}")
+        logger.info(f"Player2 stats: {player2_stats}")
         
-        # Calculate feature differences
-        features = {
-            'player_elo_diff': match['player1_elo'] - match['player2_elo'],
-            'win_rate_5_diff': player1_stats['win_rate_5'] - player2_stats['win_rate_5'],
-            'win_streak_diff': player1_stats['win_streak'] - player2_stats['win_streak'],
-            'loss_streak_diff': player1_stats['loss_streak'] - player2_stats['loss_streak']
-        }
-        
-        # Add surface-specific features
-        for surface in ['hard', 'clay', 'grass', 'carpet']:
-            features[f'win_rate_{surface}_5_diff'] = (
-                player1_stats.get(f'win_rate_{surface}', 0) - 
-                player2_stats.get(f'win_rate_{surface}', 0)
-            )
-        
-        # Add raw player stats
-        for stat, value in player1_stats.items():
-            features[f'player1_{stat}'] = value
-        for stat, value in player2_stats.items():
-            features[f'player2_{stat}'] = value
-        
-        return features
+        try:
+            # Calculate feature differences
+            features = {
+                'player_elo_diff': match['player1_elo'] - match['player2_elo'],
+                'win_rate_5_diff': player1_stats['win_rate_5'] - player2_stats['win_rate_5'],
+                'win_streak_diff': player1_stats['win_streak'] - player2_stats['win_streak'],
+                'loss_streak_diff': player1_stats['loss_streak'] - player2_stats['loss_streak']
+            }
+            
+            # Add surface-specific features
+            for surface in ['hard', 'clay', 'grass', 'carpet']:
+                features[f'win_rate_{surface}_5_diff'] = (
+                    player1_stats.get(f'win_rate_{surface}', 0) - 
+                    player2_stats.get(f'win_rate_{surface}', 0)
+                )
+            
+            # Add raw player stats
+            for stat, value in player1_stats.items():
+                features[f'player1_{stat}'] = value
+            for stat, value in player2_stats.items():
+                features[f'player2_{stat}'] = value
+            
+            return features
+            
+        except Exception as e:
+            logger.error(f"Error calculating features: {str(e)}")
+            logger.error(f"Match data that caused error: {match.to_dict()}")
+            raise
     
     def prepare_features(self, matches_df: pd.DataFrame) -> np.ndarray:
         """
