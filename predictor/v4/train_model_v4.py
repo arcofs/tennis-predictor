@@ -733,16 +733,16 @@ class ModelTrainer:
         
         # Check 1: Ensure no matches with dates in the future
         if 'tournament_date' in df.columns:
-            current_date = datetime.now().date()
+            current_date = pd.Timestamp.now().normalize()  # Get current date without time
             if pd.api.types.is_object_dtype(df['tournament_date']):
-                df['tournament_date_temp'] = pd.to_datetime(df['tournament_date']).dt.date
+                df['tournament_date_temp'] = pd.to_datetime(df['tournament_date']).dt.normalize()
             else:
-                df['tournament_date_temp'] = df['tournament_date'].dt.date
+                df['tournament_date_temp'] = df['tournament_date'].dt.normalize()
                 
             future_date_matches = df[df['tournament_date_temp'] > current_date]
             if not future_date_matches.empty:
                 logger.error(f"DATA LEAKAGE: Found {len(future_date_matches)} matches with dates in the future")
-                earliest_future = future_date_matches['tournament_date_temp'].min()
+                earliest_future = pd.Timestamp(future_date_matches['tournament_date_temp'].min()).strftime('%Y-%m-%d')
                 logger.error(f"Earliest future date: {earliest_future}")
                 validation_passed = False
         
@@ -931,7 +931,7 @@ class ModelTrainer:
             train_df, val_df, test_df = self.create_train_val_test_split(df)
             
             # Final verification that we're not training on future data
-            current_date = datetime.now()
+            current_date = pd.Timestamp.now()
             if pd.api.types.is_object_dtype(train_df['tournament_date']):
                 train_df['tournament_date'] = pd.to_datetime(train_df['tournament_date'])
             
@@ -998,12 +998,18 @@ class ModelTrainer:
                     'train_size': len(train_df),
                     'val_size': len(val_df),
                     'test_size': len(test_df),
-                    'train_date_range': [train_df['tournament_date'].min().isoformat(), 
-                                         train_df['tournament_date'].max().isoformat()],
-                    'val_date_range': [val_df['tournament_date'].min().isoformat(), 
-                                      val_df['tournament_date'].max().isoformat()],
-                    'test_date_range': [test_df['tournament_date'].min().isoformat(), 
-                                       test_df['tournament_date'].max().isoformat()],
+                    'train_date_range': [
+                        pd.Timestamp(train_df['tournament_date'].min()).isoformat(),
+                        pd.Timestamp(train_df['tournament_date'].max()).isoformat()
+                    ],
+                    'val_date_range': [
+                        pd.Timestamp(val_df['tournament_date'].min()).isoformat(),
+                        pd.Timestamp(val_df['tournament_date'].max()).isoformat()
+                    ],
+                    'test_date_range': [
+                        pd.Timestamp(test_df['tournament_date'].min()).isoformat(),
+                        pd.Timestamp(test_df['tournament_date'].max()).isoformat()
+                    ],
                     'class_distribution': {
                         'train': float(train_positive_rate),
                         'val': float(val_positive_rate),
