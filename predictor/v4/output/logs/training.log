@@ -8,3 +8,21 @@
 2025-04-19 13:44:21,306 - __main__ - INFO - Split data into train (580489), val (124391), test (124391) sets
 2025-04-19 13:44:22,419 - __main__ - ERROR - Error in training: ('feature names must have the same length as the number of data columns, ', 'expected 61, got 58')
 2025-04-19 13:44:22,419 - __main__ - ERROR - Error in main function: ('feature names must have the same length as the number of data columns, ', 'expected 61, got 58')
+2025-04-19 07:01:19,600 - __main__ - INFO - CUDA GPU available and will be used for training
+2025-04-19 07:01:19,600 - __main__ - INFO - Training on CUDA
+2025-04-19 07:03:18,232 - __main__ - INFO - Loaded 829271 matches for training
+2025-04-19 07:03:18,233 - __main__ - INFO - Using 58 features for training
+2025-04-19 07:03:18,907 - __main__ - INFO - Split data into train (580489), val (124391), test (124391) sets
+2025-04-19 07:04:46,829 - __main__ - INFO - Best hyperparameters: {'max_depth': 4, 'learning_rate': 0.012557578433448733, 'min_child_weight': 2, 'gamma': 0.29575916818093106, 'subsample': 0.8393930107353852, 'colsample_bytree': 0.9189103075012851, 'reg_alpha': 0.5318723748496221, 'reg_lambda': 0.14627894429007765}, num_boost_round: 104
+2025-04-19 07:04:46,830 - __main__ - INFO - Best validation AUC: 0.5250
+2025-04-19 07:04:47,208 - __main__ - INFO - Trained model with 101 trees
+2025-04-19 07:04:47,224 - __main__ - INFO - Using best iteration 101 for prediction
+2025-04-19 07:04:47,271 - __main__ - INFO - 
+Test Set Performance:
+2025-04-19 07:04:47,271 - __main__ - INFO - accuracy: 0.9959
+2025-04-19 07:04:47,271 - __main__ - INFO - precision: 0.0000
+2025-04-19 07:04:47,271 - __main__ - INFO - recall: 0.0000
+2025-04-19 07:04:47,271 - __main__ - INFO - f1: 0.0000
+2025-04-19 07:04:47,271 - __main__ - INFO - auc: 0.5412
+2025-04-19 07:04:47,565 - __main__ - INFO - Saved model and metadata to /workspace/tennis-predictor/predictor/v4/models
+2025-04-19 07:04:47,565 - __main__ - INFO - Training completed successfully

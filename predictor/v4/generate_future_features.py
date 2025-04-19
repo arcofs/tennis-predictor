@@ -188,6 +188,7 @@ class FutureFeatureGenerator:
             'tournament_level': scheduled_match['tournament_level'],  # Add tournament_level
             'tournament_date': match_date,
             'is_future': True  # Mark as a future match for identification
+            # Note: We're intentionally NOT setting a 'result' value for future matches
         }
         
         # If we have features for both players, calculate differences and copy individual stats

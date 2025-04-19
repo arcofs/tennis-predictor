@@ -236,6 +236,17 @@ class ModelTrainer:
         with self.get_db_connection() as conn:
             df = pd.read_sql(query, conn)
         
+        # Additional safety check to ensure no future matches are included
+        if 'is_future' in df.columns:
+            future_matches = df[df['is_future'] == True]
+            if not future_matches.empty:
+                logger.error(f"Found {len(future_matches)} future matches in training data! Removing them.")
+                df = df[df['is_future'] != True]
+        
+        # Verify we have proper class balance
+        positive_rate = df['result'].mean()
+        logger.info(f"Class distribution: {positive_rate:.2%} positive (player1 wins)")
+        
         logger.info(f"Loaded {len(df)} matches for training")
         return df
     
@@ -256,18 +267,41 @@ class ModelTrainer:
         Returns:
             Tuple of (train_df, val_df, test_df)
         """
-        # Sort by date
+        # Ensure we have datetime format for tournament_date
+        if pd.api.types.is_object_dtype(df['tournament_date']):
+            df['tournament_date'] = pd.to_datetime(df['tournament_date'])
+
+        # Sort by date (enforcing strict chronological order)
         df = df.sort_values('tournament_date')
         
-        # Calculate split points
-        n = len(df)
-        train_idx = int(n * train_ratio)
-        val_idx = int(n * (train_ratio + val_ratio))
+        # Calculate split points based on dates
+        min_date = df['tournament_date'].min()
+        max_date = df['tournament_date'].max()
+        date_range = (max_date - min_date).days
         
-        # Split data
-        train_df = df.iloc[:train_idx]
-        val_df = df.iloc[train_idx:val_idx]
-        test_df = df.iloc[val_idx:]
+        train_end_date = min_date + pd.Timedelta(days=int(date_range * train_ratio))
+        val_end_date = min_date + pd.Timedelta(days=int(date_range * (train_ratio + val_ratio)))
+        
+        # Split data by dates
+        train_df = df[df['tournament_date'] <= train_end_date]
+        val_df = df[(df['tournament_date'] > train_end_date) & (df['tournament_date'] <= val_end_date)]
+        test_df = df[df['tournament_date'] > val_end_date]
+        
+        # Log the date ranges
+        logger.info(f"Training data: {min_date.strftime('%Y-%m-%d')} to {train_end_date.strftime('%Y-%m-%d')}")
+        logger.info(f"Validation data: {(train_end_date + pd.Timedelta(days=1)).strftime('%Y-%m-%d')} to {val_end_date.strftime('%Y-%m-%d')}")
+        logger.info(f"Test data: {(val_end_date + pd.Timedelta(days=1)).strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
+        
+        # Verify there is no overlap
+        train_max = train_df['tournament_date'].max()
+        val_min = val_df['tournament_date'].min() if not val_df.empty else None
+        val_max = val_df['tournament_date'].max() if not val_df.empty else None
+        test_min = test_df['tournament_date'].min() if not test_df.empty else None
+        
+        if val_min is not None and val_min <= train_max:
+            logger.warning(f"Time overlap between train and validation sets! Train max: {train_max}, Val min: {val_min}")
+        if test_min is not None and val_max is not None and test_min <= val_max:
+            logger.warning(f"Time overlap between validation and test sets! Val max: {val_max}, Test min: {test_min}")
         
         logger.info(f"Split data into train ({len(train_df)}), val ({len(val_df)}), test ({len(test_df)}) sets")
         return train_df, val_df, test_df
@@ -647,16 +681,34 @@ class ModelTrainer:
             # Load data
             df = self.load_training_data()
             
+            # Double-check that no future matches are included
+            assert 'is_future' not in df.columns or df[df['is_future'] == True].empty, "Training data contains future matches!"
+            
             # Get feature columns
             feature_cols = self.get_feature_columns(df)
             
             # Split data
             train_df, val_df, test_df = self.create_train_val_test_split(df)
             
+            # Final verification that we're not training on future data
+            current_date = datetime.now()
+            if pd.api.types.is_object_dtype(train_df['tournament_date']):
+                train_df['tournament_date'] = pd.to_datetime(train_df['tournament_date'])
+            
+            future_training_matches = train_df[train_df['tournament_date'] > current_date]
+            if not future_training_matches.empty:
+                logger.error(f"Found {len(future_training_matches)} matches in training data with dates in the future!")
+                logger.error("Removing these matches from training data.")
+                train_df = train_df[train_df['tournament_date'] <= current_date]
+            
             # Prepare features
             (X_train, X_val, X_test), (y_train, y_val, y_test) = self.prepare_features(
                 train_df, val_df, test_df, feature_cols
             )
+            
+            # Verify class balance in training set
+            train_positive_rate = np.mean(y_train)
+            logger.info(f"Training data class distribution: {train_positive_rate:.2%} positive (player1 wins)")
             
             # Tune hyperparameters
             best_params = self.tune_hyperparameters(

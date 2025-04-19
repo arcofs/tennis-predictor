@@ -1,0 +1,1 @@
+{"model_version": "v4_20250419_070119", "training_date": "2025-04-19T07:04:47.564843", "device": "cuda", "tree_method": "gpu_hist", "metrics": {"accuracy": 0.9959321815887001, "precision": 0.0, "recall": 0.0, "f1": 0.0, "auc": 0.541222590886199}}
