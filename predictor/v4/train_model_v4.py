@@ -61,25 +61,49 @@ PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 def check_gpu_availability():
     """Check if CUDA GPU is available for XGBoost"""
     try:
-        # Check if CUDA is available - this will work with newer XGBoost versions
-        gpu_available = xgb.config.get_config().get('use_cuda', False)
+        # Check XGBoost version
+        xgb_version = tuple(map(int, xgb.__version__.split('.')))
+        logger.info(f"XGBoost version: {xgb.__version__}")
         
-        if not gpu_available:
-            # Alternative method for older XGBoost versions
-            # Try to create a simple DMatrix with tree_method='gpu_hist'
-            test_data = np.random.rand(10, 10)
-            test_labels = np.random.randint(0, 2, 10)
-            test_dmatrix = xgb.DMatrix(test_data, label=test_labels)
-            
-            # Try to train a small model with GPU
-            test_params = {'tree_method': 'gpu_hist'}
-            xgb.train(test_params, test_dmatrix, num_boost_round=1)
-            gpu_available = True
-        
-        return gpu_available
+        # For XGBoost 2.0.0 and newer, use different detection methods
+        if xgb_version >= (2, 0, 0):
+            # Try to create a simple DMatrix and train with device='cuda'
+            try:
+                test_data = np.random.rand(10, 10)
+                test_labels = np.random.randint(0, 2, 10)
+                test_dmatrix = xgb.DMatrix(test_data, label=test_labels)
+                
+                # Try to train a small model with GPU
+                test_params = {'tree_method': 'hist', 'device': 'cuda'}
+                xgb.train(test_params, test_dmatrix, num_boost_round=1)
+                return True
+            except Exception as e:
+                logger.info(f"GPU detection failed with newer API: {e}")
+                return False
+        else:
+            # For older XGBoost versions, use older API
+            # Check if CUDA is available
+            try:
+                gpu_available = xgb.config.get_config().get('use_cuda', False)
+                
+                if not gpu_available:
+                    # Try to create a simple DMatrix with tree_method='gpu_hist'
+                    test_data = np.random.rand(10, 10)
+                    test_labels = np.random.randint(0, 2, 10)
+                    test_dmatrix = xgb.DMatrix(test_data, label=test_labels)
+                    
+                    # Try to train a small model with GPU
+                    test_params = {'tree_method': 'gpu_hist'}
+                    xgb.train(test_params, test_dmatrix, num_boost_round=1)
+                    gpu_available = True
+                
+                return gpu_available
+            except Exception as e:
+                logger.info(f"GPU detection failed with older API: {e}")
+                return False
     
     except Exception as e:
-        logger.info(f"GPU detection failed with error: {e}")
+        logger.info(f"GPU detection failed: {e}")
         return False
 
 # Get optimal number of CPU threads
@@ -104,7 +128,7 @@ class ModelTrainer:
         if self.use_gpu:
             logger.info("CUDA GPU available and will be used for training")
             self.device = 'cuda'
-            self.tree_method = 'gpu_hist'  # Use GPU histogram for training
+            self.tree_method = 'hist'  # Use histogram method (works for both CPU and GPU)
         else:
             logger.info("No GPU detected, falling back to CPU")
             self.device = 'cpu'
@@ -372,7 +396,8 @@ class ModelTrainer:
                 'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
                 'reg_alpha': trial.suggest_float('reg_alpha', 0, 1),
                 'reg_lambda': trial.suggest_float('reg_lambda', 0, 1),
-                'tree_method': self.tree_method,  # Use GPU if available
+                'tree_method': self.tree_method,
+                'device': self.device,  # Set device parameter for GPU/CPU
             }
             
             # Add device-specific parameters
@@ -446,6 +471,7 @@ class ModelTrainer:
         
         # Add tree method and device-specific parameters
         params['tree_method'] = self.tree_method
+        params['device'] = self.device  # Set device parameter for GPU/CPU
         
         if self.device == 'cpu':
             params['nthread'] = self.n_jobs
