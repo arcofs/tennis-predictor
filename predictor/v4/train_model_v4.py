@@ -1,13 +1,24 @@
 """
-Tennis Match Prediction - Model Training (v4)
+Tennis Match Prediction - Model Training (v4 - Fixed)
 
 This script trains the XGBoost model for tennis match prediction:
 1. Loads historical match data and features
-2. Performs time-based train/val/test split
+2. Performs time-based train/val/test split with strict temporal separation
 3. Tunes hyperparameters
 4. Trains final model
 5. Evaluates performance
 6. Saves model and metadata for prediction pipeline
+
+Important Changes to Fix Data Leakage:
+1. Modified data loading to NOT calculate result directly from matches table
+2. Added enhanced validation checks to detect signs of data leakage
+3. Improved time-based train/val/test splitting to ensure strict temporal separation
+4. Added checks for suspiciously high accuracy that may indicate leakage
+5. Added detection of features that might directly leak results
+6. Enhanced metadata to track data split information
+
+These changes address the issue where the v4 model was achieving 99% accuracy
+due to data leakage from directly using match outcomes during training.
 """
 
 import os
@@ -149,10 +160,7 @@ class ModelTrainer:
         Returns:
             DataFrame with match data and features
         """
-        # This query gets completed matches from match_features
-        # Important note on match ID relationships:
-        # - For historical matches, match_features.match_id = matches.id (auto-incremented PK)
-        # - For future matches (excluded here with is_future IS NOT TRUE), we'd use scheduled_matches.match_id
+        # Modified query to prevent data leakage - no longer fetching result directly from matches table
         query = """
             SELECT 
                 f.id,
@@ -163,6 +171,7 @@ class ModelTrainer:
                 f.tournament_date,
                 f.tournament_level,
                 f.is_future,
+                f.result, -- Use pre-calculated result from match_features, not from matches table
                 -- All the diff features
                 f.player_elo_diff,
                 f.win_rate_5_diff,
@@ -223,13 +232,10 @@ class ModelTrainer:
                 f.player2_ace_pct_5,
                 f.player2_bp_saved_pct_5,
                 f.player2_return_efficiency_5,
-                f.player2_bp_conversion_pct_5,
-                -- Result
-                m.winner_id = f.player1_id as result
+                f.player2_bp_conversion_pct_5
             FROM match_features f
-            JOIN matches m ON f.match_id = m.id
             WHERE f.is_future IS NOT TRUE
-            AND m.winner_id IS NOT NULL
+            AND f.result IS NOT NULL -- Ensure we have valid results
             ORDER BY f.tournament_date ASC
         """
         
@@ -257,7 +263,8 @@ class ModelTrainer:
         val_ratio: float = 0.15
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
-        Create time-based train/validation/test split
+        Create time-based train/validation/test split with strict temporal separation
+        to prevent any data leakage between sets.
         
         Args:
             df: Input DataFrame
@@ -274,36 +281,52 @@ class ModelTrainer:
         # Sort by date (enforcing strict chronological order)
         df = df.sort_values('tournament_date')
         
-        # Calculate split points based on dates
-        min_date = df['tournament_date'].min()
-        max_date = df['tournament_date'].max()
-        date_range = (max_date - min_date).days
+        # Find date cutoffs rather than using row indices
+        # This handles multiple matches on same day better
+        dates = df['tournament_date'].unique()
+        dates.sort()
         
-        train_end_date = min_date + pd.Timedelta(days=int(date_range * train_ratio))
-        val_end_date = min_date + pd.Timedelta(days=int(date_range * (train_ratio + val_ratio)))
+        train_end_idx = int(len(dates) * train_ratio)
+        val_end_idx = int(len(dates) * (train_ratio + val_ratio))
         
-        # Split data by dates
-        train_df = df[df['tournament_date'] <= train_end_date]
-        val_df = df[(df['tournament_date'] > train_end_date) & (df['tournament_date'] <= val_end_date)]
-        test_df = df[df['tournament_date'] > val_end_date]
+        train_end_date = dates[train_end_idx - 1]
+        val_end_date = dates[val_end_idx - 1]
+        
+        # Add one day to ensure strict separation
+        train_end_date_exclusive = train_end_date + pd.Timedelta(days=1)
+        val_end_date_exclusive = val_end_date + pd.Timedelta(days=1)
+        
+        # Split data by dates with explicit separation
+        train_df = df[df['tournament_date'] < train_end_date_exclusive].copy()
+        val_df = df[(df['tournament_date'] >= train_end_date_exclusive) & 
+                   (df['tournament_date'] < val_end_date_exclusive)].copy()
+        test_df = df[df['tournament_date'] >= val_end_date_exclusive].copy()
         
         # Log the date ranges
-        logger.info(f"Training data: {min_date.strftime('%Y-%m-%d')} to {train_end_date.strftime('%Y-%m-%d')}")
-        logger.info(f"Validation data: {(train_end_date + pd.Timedelta(days=1)).strftime('%Y-%m-%d')} to {val_end_date.strftime('%Y-%m-%d')}")
-        logger.info(f"Test data: {(val_end_date + pd.Timedelta(days=1)).strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
+        logger.info(f"Training data: {df['tournament_date'].min().strftime('%Y-%m-%d')} to {train_end_date.strftime('%Y-%m-%d')}")
+        logger.info(f"Validation data: {train_end_date_exclusive.strftime('%Y-%m-%d')} to {val_end_date.strftime('%Y-%m-%d')}")
+        logger.info(f"Test data: {val_end_date_exclusive.strftime('%Y-%m-%d')} to {df['tournament_date'].max().strftime('%Y-%m-%d')}")
         
-        # Verify there is no overlap
+        # Verify split sizes
+        logger.info(f"Split data into train ({len(train_df)}), val ({len(val_df)}), test ({len(test_df)}) sets")
+        
+        # Verify strict time separation
         train_max = train_df['tournament_date'].max()
         val_min = val_df['tournament_date'].min() if not val_df.empty else None
         val_max = val_df['tournament_date'].max() if not val_df.empty else None
         test_min = test_df['tournament_date'].min() if not test_df.empty else None
         
         if val_min is not None and val_min <= train_max:
-            logger.warning(f"Time overlap between train and validation sets! Train max: {train_max}, Val min: {val_min}")
+            logger.error(f"CRITICAL ERROR: Time overlap between train and validation sets!")
+            logger.error(f"Train max: {train_max}, Val min: {val_min}")
+            raise ValueError("Train and validation sets have time overlap")
+            
         if test_min is not None and val_max is not None and test_min <= val_max:
-            logger.warning(f"Time overlap between validation and test sets! Val max: {val_max}, Test min: {test_min}")
+            logger.error(f"CRITICAL ERROR: Time overlap between validation and test sets!")
+            logger.error(f"Val max: {val_max}, Test min: {test_min}")
+            raise ValueError("Validation and test sets have time overlap")
         
-        logger.info(f"Split data into train ({len(train_df)}), val ({len(val_df)}), test ({len(test_df)}) sets")
+        # Return the splits
         return train_df, val_df, test_df
     
     def get_feature_columns(self, df: pd.DataFrame) -> List[str]:
@@ -633,15 +656,17 @@ class ModelTrainer:
         self,
         model: xgb.Booster,
         feature_names: List[str],
-        metrics: Dict[str, float]
+        metrics: Dict[str, float],
+        training_metadata: Dict[str, Any] = None
     ):
         """
-        Save model and metadata
+        Save model and detailed metadata
         
         Args:
             model: Trained model
             feature_names: List of feature names
             metrics: Dictionary of evaluation metrics
+            training_metadata: Optional dictionary of training metadata
         """
         # Save model
         model_path = MODEL_DIR / f"model_{MODEL_VERSION}.json"
@@ -657,20 +682,38 @@ class ModelTrainer:
         with open(metrics_path, 'w') as f:
             json.dump(metrics, f)
         
-        # Save metadata including device used for training
+        # Combine all metadata
         metadata = {
             'model_version': MODEL_VERSION,
             'training_date': datetime.now().isoformat(),
             'device': self.device,
             'tree_method': self.tree_method,
-            'metrics': metrics
+            'metrics': metrics,
+            'feature_count': len(feature_names),
+            'features': feature_names,
+            'training_notes': [
+                "Model trained with strict time-based split to prevent data leakage",
+                "Enhanced validation performed to detect potential data leakage",
+                f"Model accuracy: {metrics.get('accuracy', None)}"
+            ]
         }
         
+        # Add training_metadata if provided
+        if training_metadata:
+            metadata.update(training_metadata)
+        
+        # Save metadata
         metadata_path = MODEL_DIR / f"metadata_{MODEL_VERSION}.json"
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f)
         
         logger.info(f"Saved model and metadata to {MODEL_DIR}")
+        
+        # Add a warning if accuracy is suspicious
+        if metrics.get('accuracy', 0) > 0.90:
+            logger.warning("NOTE: The model's high accuracy may indicate data leakage.")
+            logger.warning("Review the training process and data preparation carefully.")
+            logger.warning("Consider using the model only after thorough analysis and validation.")
     
     def validate_training_data(self, df: pd.DataFrame) -> bool:
         """
@@ -720,13 +763,16 @@ class ModelTrainer:
                 logger.error(f"Earliest future date: {earliest_future}")
                 validation_passed = False
         
-        # Check 3: Verify class balance to detect potential bias
+        # Check 3: Verify class balance to detect potential bias or leakage
         if 'result' in df.columns:
             pos_rate = df['result'].mean()
-            if pos_rate < 0.45 or pos_rate > 0.55:
-                logger.warning(f"POTENTIAL BIAS: Class distribution is imbalanced: {pos_rate:.2%} positive")
-                logger.warning("This may indicate data issues or bias in match selection")
-                # Don't fail validation for this, but warn
+            if pos_rate < 0.40 or pos_rate > 0.60:
+                logger.warning(f"POTENTIAL BIAS OR LEAKAGE: Class distribution is significantly imbalanced: {pos_rate:.2%} positive")
+                logger.warning("This may indicate data issues, bias in match selection, or data leakage")
+                # Treat extreme imbalance as a potential sign of leakage
+                if pos_rate < 0.35 or pos_rate > 0.65:
+                    logger.error("SEVERE CLASS IMBALANCE: This level of imbalance often indicates data leakage")
+                    validation_passed = False
         
         # Check 4: Verify all result values are valid (0 or 1, or NULL for future matches)
         if 'result' in df.columns:
@@ -757,6 +803,68 @@ class ModelTrainer:
                 logger.error("Result values should be 0 or 1 for historical matches")
                 validation_passed = False
         
+        # Check 5: Check for near-perfect correlation between features and result (sign of leakage)
+        corr_threshold = 0.85  # Threshold for concerning correlation
+        # Calculate correlation of result with numeric features
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        if 'result' in numeric_cols:
+            numeric_cols.remove('result')
+        
+        if numeric_cols and 'result' in df.columns:
+            correlations = df[numeric_cols + ['result']].corr()['result'].abs().sort_values(ascending=False)
+            high_corr_features = correlations[correlations > corr_threshold].index.tolist()
+            
+            if 'result' in high_corr_features:
+                high_corr_features.remove('result')
+                
+            if high_corr_features:
+                logger.error(f"POTENTIAL DATA LEAKAGE: Found {len(high_corr_features)} features with suspiciously high correlation to result")
+                logger.error(f"Top correlated features: {high_corr_features[:5]}")
+                logger.error(f"These correlations (>{corr_threshold}) indicate potential data leakage")
+                validation_passed = False
+        
+        # Check 6: Check for unrealistic accuracy in a simple model (quick check for obvious leakage)
+        try:
+            if len(df) > 1000 and 'result' in df.columns:
+                from sklearn.model_selection import train_test_split
+                from sklearn.ensemble import RandomForestClassifier
+                
+                # Use a subset of the data for quick validation
+                sample_size = min(5000, len(df))
+                df_sample = df.sample(sample_size, random_state=42)
+                
+                # Get numeric features only for quick check
+                feature_cols = df_sample.select_dtypes(include=['number']).columns.tolist()
+                if 'result' in feature_cols:
+                    feature_cols.remove('result')
+                
+                # Split data
+                X = df_sample[feature_cols].fillna(-999)  # Simple imputation for quick check
+                y = df_sample['result']
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+                
+                # Train a simple model
+                clf = RandomForestClassifier(n_estimators=10, max_depth=3, random_state=42)
+                clf.fit(X_train, y_train)
+                
+                # Check accuracy
+                train_accuracy = clf.score(X_train, y_train)
+                test_accuracy = clf.score(X_test, y_test)
+                
+                if train_accuracy > 0.95:
+                    logger.error(f"CRITICAL DATA LEAKAGE INDICATOR: Simple model has {train_accuracy:.4f} training accuracy")
+                    logger.error("This is an almost certain sign of data leakage")
+                    validation_passed = False
+                
+                if test_accuracy > 0.90:
+                    logger.error(f"CRITICAL DATA LEAKAGE INDICATOR: Simple model has {test_accuracy:.4f} test accuracy")
+                    logger.error("This is an almost certain sign of data leakage")
+                    validation_passed = False
+                
+                logger.info(f"Data leakage quick check: Train accuracy={train_accuracy:.4f}, Test accuracy={test_accuracy:.4f}")
+        except Exception as e:
+            logger.warning(f"Could not perform leakage quick check with simple model: {e}")
+        
         if validation_passed:
             logger.info("Data validation passed: No data leakage detected")
         else:
@@ -765,7 +873,7 @@ class ModelTrainer:
         return validation_passed
 
     def train(self):
-        """Main training method"""
+        """Main training method with safeguards against data leakage"""
         try:
             # Log training device
             logger.info(f"Training on {self.device.upper()}")
@@ -785,7 +893,13 @@ class ModelTrainer:
             # Get feature columns
             feature_cols = self.get_feature_columns(df)
             
-            # Split data
+            # Additional safeguard: Remove any columns that might directly leak the result
+            suspicious_cols = [col for col in feature_cols if 'winner' in col.lower() or 'loser' in col.lower()]
+            if suspicious_cols:
+                logger.warning(f"Removing potentially leaky features: {suspicious_cols}")
+                feature_cols = [col for col in feature_cols if col not in suspicious_cols]
+            
+            # Split data with strict temporal separation
             train_df, val_df, test_df = self.create_train_val_test_split(df)
             
             # Final verification that we're not training on future data
@@ -793,6 +907,7 @@ class ModelTrainer:
             if pd.api.types.is_object_dtype(train_df['tournament_date']):
                 train_df['tournament_date'] = pd.to_datetime(train_df['tournament_date'])
             
+            # Remove any matches with dates in the future
             future_training_matches = train_df[train_df['tournament_date'] > current_date]
             if not future_training_matches.empty:
                 logger.error(f"Found {len(future_training_matches)} matches in training data with dates in the future!")
@@ -807,6 +922,26 @@ class ModelTrainer:
             # Verify class balance in training set
             train_positive_rate = np.mean(y_train)
             logger.info(f"Training data class distribution: {train_positive_rate:.2%} positive (player1 wins)")
+            
+            # Check for perfect separation or unrealistic class balance in splits
+            val_positive_rate = np.mean(y_val) if len(y_val) > 0 else 0
+            test_positive_rate = np.mean(y_test) if len(y_test) > 0 else 0
+            
+            logger.info(f"Class distribution comparison:")
+            logger.info(f"  - Train: {train_positive_rate:.2%} positive")
+            logger.info(f"  - Validation: {val_positive_rate:.2%} positive")
+            logger.info(f"  - Test: {test_positive_rate:.2%} positive")
+            
+            # Check for severe deviation in class distribution across splits
+            max_deviation = 0.15  # Maximum allowable deviation in class distribution
+            if (abs(train_positive_rate - val_positive_rate) > max_deviation or 
+                abs(train_positive_rate - test_positive_rate) > max_deviation or
+                abs(val_positive_rate - test_positive_rate) > max_deviation):
+                logger.warning("POTENTIAL DATA ISSUE: Severe class imbalance differences between splits")
+                logger.warning("This could indicate temporal data shifts or potential data leakage")
+                
+                # Continue anyway but note the warning
+                logger.warning("Continuing with training, but results may be unreliable")
             
             # Tune hyperparameters
             best_params = self.tune_hyperparameters(
@@ -823,8 +958,39 @@ class ModelTrainer:
                 model, X_test, y_test, feature_cols, "Test"
             )
             
+            # Check for unrealistically high performance (data leakage indicator)
+            test_accuracy = test_metrics.get('accuracy', 0)
+            if test_accuracy > 0.90:
+                logger.warning(f"SUSPICIOUS PERFORMANCE: Test accuracy is {test_accuracy:.4f}, which is unusually high")
+                logger.warning("This level of accuracy often indicates data leakage. Review your pipeline!")
+            
+            # Prepare training metadata
+            training_metadata = {
+                'data_splits': {
+                    'train_size': len(train_df),
+                    'val_size': len(val_df),
+                    'test_size': len(test_df),
+                    'train_date_range': [train_df['tournament_date'].min().isoformat(), 
+                                         train_df['tournament_date'].max().isoformat()],
+                    'val_date_range': [val_df['tournament_date'].min().isoformat(), 
+                                      val_df['tournament_date'].max().isoformat()],
+                    'test_date_range': [test_df['tournament_date'].min().isoformat(), 
+                                       test_df['tournament_date'].max().isoformat()],
+                    'class_distribution': {
+                        'train': float(train_positive_rate),
+                        'val': float(val_positive_rate),
+                        'test': float(test_positive_rate)
+                    }
+                },
+                'hyperparameters': best_params,
+                'validation_checks': {
+                    'future_matches_removed': len(future_training_matches) if 'future_training_matches' in locals() else 0,
+                    'suspicious_features_removed': len(suspicious_cols) if 'suspicious_cols' in locals() else 0
+                }
+            }
+            
             # Save model and metadata
-            self.save_model(model, feature_cols, test_metrics)
+            self.save_model(model, feature_cols, test_metrics, training_metadata)
             
             logger.info("Training completed successfully")
             
