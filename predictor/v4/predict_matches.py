@@ -171,6 +171,7 @@ class MatchPredictor:
             )
             AND s.scheduled_date >= CURRENT_DATE
             AND s.scheduled_date <= CURRENT_DATE + INTERVAL '7 days'
+            AND s.is_processed = false
             ORDER BY s.scheduled_date ASC
         """
         
