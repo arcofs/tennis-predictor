@@ -280,13 +280,6 @@ class MatchPredictor:
         player1_stats = self.get_player_historical_stats(match['player1_id'], match['scheduled_date'])
         player2_stats = self.get_player_historical_stats(match['player2_id'], match['scheduled_date'])
         
-        # Debug logging for match data
-        logger.info(f"Match data for match_id {match.get('match_id')}:")
-        logger.info(f"Player1 ELO: {match.get('player1_elo')}")
-        logger.info(f"Player2 ELO: {match.get('player2_elo')}")
-        logger.info(f"Player1 stats: {player1_stats}")
-        logger.info(f"Player2 stats: {player2_stats}")
-        
         try:
             # Calculate feature differences
             features = {
@@ -312,8 +305,7 @@ class MatchPredictor:
             return features
             
         except Exception as e:
-            logger.error(f"Error calculating features: {str(e)}")
-            logger.error(f"Match data that caused error: {match.to_dict()}")
+            logger.error(f"Error calculating features for match {match['match_id']}: {str(e)}")
             raise
     
     def prepare_features(self, matches_df: pd.DataFrame) -> np.ndarray:
@@ -328,7 +320,7 @@ class MatchPredictor:
         """
         # Generate features for each match
         features_list = []
-        for _, match in matches_df.iterrows():
+        for _, match in tqdm(matches_df.iterrows(), total=len(matches_df), desc="Generating match features"):
             features = self.generate_match_features(match)
             features_list.append(features)
         
@@ -406,7 +398,7 @@ class MatchPredictor:
                     )
                     
                     conn.commit()
-                    logger.info(f"Stored {len(prediction_data)} predictions")
+                    logger.info(f"Stored predictions for {len(prediction_data)} matches")
     
     def update_prediction_accuracy(self):
         """Update accuracy for past predictions where results are now known"""
@@ -462,6 +454,7 @@ class MatchPredictor:
         try:
             # Load latest model
             self.model, self.model_version, self.feature_columns = self.load_latest_model()
+            logger.info(f"Loaded model version: {self.model_version}")
             
             # Update accuracy for past predictions
             self.update_prediction_accuracy()
@@ -473,6 +466,8 @@ class MatchPredictor:
                 logger.info("No matches need predictions")
                 return
             
+            logger.info(f"Processing {len(matches_df)} matches...")
+            
             # Prepare features
             X = self.prepare_features(matches_df)
             
@@ -481,6 +476,8 @@ class MatchPredictor:
             
             # Store predictions
             self.store_predictions(matches_df, predictions)
+            
+            logger.info("Completed match predictions successfully")
             
         except Exception as e:
             logger.error(f"Error making predictions: {e}")
